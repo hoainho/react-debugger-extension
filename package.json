@@ -1,0 +1,29 @@
+{
+  "name": "react-debugger-extension",
+  "version": "1.0.0",
+  "description": "Advanced debugging & performance optimization tool for ReactJS applications",
+  "author": "NhoNH",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite build --watch --mode development",
+    "build": "vite build --mode production",
+    "build:dev": "vite build --mode development",
+    "clean": "rm -rf dist",
+    "package": "npm run build && cd dist && zip -r ../react-debugger.zip ."
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "@types/chrome": "^0.0.268",
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
+    "@vitejs/plugin-react": "^4.2.1",
+    "sharp": "^0.34.5",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.12"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}
