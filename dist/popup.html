@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>React Debugger</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      width: 300px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+    }
+    
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 16px;
+      background: #16213e;
+      border-bottom: 1px solid #0f3460;
+    }
+    
+    .logo {
+      font-size: 24px;
+    }
+    
+    .title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+    
+    .content {
+      padding: 16px;
+    }
+    
+    .site-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      background: #16213e;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+    
+    .site-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      background: #0f3460;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+    }
+    
+    .site-name {
+      flex: 1;
+      font-size: 13px;
+      color: #aaa;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px;
+      background: #16213e;
+      border-radius: 8px;
+      margin-bottom: 12px;
+    }
+    
+    .toggle-label {
+      font-size: 14px;
+    }
+    
+    .toggle-desc {
+      font-size: 11px;
+      color: #888;
+      margin-top: 4px;
+    }
+    
+    .toggle {
+      position: relative;
+      width: 48px;
+      height: 26px;
+      flex-shrink: 0;
+    }
+    
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #333;
+      transition: 0.3s;
+      border-radius: 26px;
+    }
+    
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background-color: #666;
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+    
+    .toggle input:checked + .toggle-slider {
+      background-color: #4caf50;
+    }
+    
+    .toggle input:checked + .toggle-slider:before {
+      transform: translateX(22px);
+      background-color: white;
+    }
+    
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin-bottom: 12px;
+    }
+    
+    .status.enabled {
+      background: rgba(76, 175, 80, 0.15);
+      color: #4caf50;
+    }
+    
+    .status.disabled {
+      background: rgba(244, 67, 54, 0.15);
+      color: #f44336;
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    
+    .actions {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .btn-primary {
+      background: #0f3460;
+      color: #eee;
+    }
+    
+    .btn-primary:hover {
+      background: #1a4a7a;
+    }
+    
+    .btn-secondary {
+      background: #333;
+      color: #aaa;
+    }
+    
+    .btn-secondary:hover {
+      background: #444;
+      color: #eee;
+    }
+    
+    .footer {
+      padding: 12px 16px;
+      border-top: 1px solid #0f3460;
+      font-size: 10px;
+      color: #666;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <span class="logo">⚛️</span>
+    <span class="title">React Debugger</span>
+  </div>
+  
+  <div class="content">
+    <div class="site-info">
+      <div class="site-icon">🌐</div>
+      <div class="site-name" id="siteName">Loading...</div>
+    </div>
+    
+    <div id="status" class="status enabled">
+      <span class="status-dot"></span>
+      <span id="statusText">Enabled for this site</span>
+    </div>
+    
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">Enable for this site</div>
+        <div class="toggle-desc">Toggle debugging for current domain</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="siteToggle" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    
+    <div class="actions">
+      <button class="btn btn-primary" id="reloadBtn">Reload Page</button>
+      <button class="btn btn-secondary" id="clearBtn">Clear All</button>
+    </div>
+  </div>
+  
+  <div class="footer">
+    React Debugger v1.0.0 by NhoNH
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
