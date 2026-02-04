@@ -7043,6 +7043,8 @@ function IssueCard({ issue }) {
   const severity = SEVERITY_CONFIG[issue.severity];
   const info = ISSUE_INFO[issue.type] || { title: issue.type, why: "" };
   const location = issue.location;
+  const renderCountMatch = issue.message.match(/Rendered (\d+) times/);
+  const renderCount = renderCountMatch ? parseInt(renderCountMatch[1], 10) : null;
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
     {
@@ -7072,6 +7074,10 @@ function IssueCard({ issue }) {
               /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "issue-component", children: [
                 "in ",
                 /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: issue.component })
+              ] }),
+              renderCount !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "render-count-badge", title: "Renders in last second", children: [
+                renderCount,
+                "×"
               ] }),
               (location == null ? void 0 : location.componentPath) && location.componentPath.length > 1 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "component-path", children: [
                 "(",
@@ -7210,7 +7216,23 @@ function getTimeColor(ms) {
   if (ms > 16) return "var(--accent-yellow)";
   return "var(--accent-green)";
 }
-function PerformanceTab({ issues, components, renders, tabId }) {
+function getWebVitalColor(metric, value) {
+  const thresholds = {
+    fcp: { good: 1800, poor: 3e3 },
+    lcp: { good: 2500, poor: 4e3 },
+    ttfb: { good: 800, poor: 1800 }
+  };
+  const t2 = thresholds[metric];
+  if (value <= t2.good) return "var(--accent-green)";
+  if (value <= t2.poor) return "var(--accent-yellow)";
+  return "var(--accent-red)";
+}
+function formatMs(ms) {
+  if (ms === null) return "N/A";
+  if (ms < 1e3) return `${ms}ms`;
+  return `${(ms / 1e3).toFixed(2)}s`;
+}
+function PerformanceTab({ issues, components, renders, tabId, pageLoadMetrics }) {
   const [scanEnabled, setScanEnabled] = reactExports.useState(false);
   const filteredIssues = issues.filter((i) => PERF_ISSUE_TYPES.includes(i.type));
   const toggleScan = () => {
@@ -7228,11 +7250,17 @@ function PerformanceTab({ issues, components, renders, tabId }) {
   const totalRenders = reactExports.useMemo(() => {
     return Array.from(renders.values()).reduce((sum, r2) => sum + r2.renderCount, 0);
   }, [renders]);
-  const avgRenderTime = reactExports.useMemo(() => {
+  const renderTimeData = reactExports.useMemo(() => {
     const allDurations = Array.from(renders.values()).flatMap((r2) => r2.renderDurations);
     const nonZeroDurations = allDurations.filter((d) => d > 0);
-    if (nonZeroDurations.length === 0) return 0;
-    return nonZeroDurations.reduce((sum, d) => sum + d, 0) / nonZeroDurations.length;
+    const componentsWithTiming = Array.from(renders.values()).filter(
+      (r2) => r2.renderDurations.some((d) => d > 0)
+    ).length;
+    if (nonZeroDurations.length === 0) {
+      return { value: null, hasData: false, componentsWithTiming: 0 };
+    }
+    const avg = nonZeroDurations.reduce((sum, d) => sum + d, 0) / nonZeroDurations.length;
+    return { value: avg, hasData: true, componentsWithTiming };
   }, [renders]);
   const slowRenders = reactExports.useMemo(() => {
     return Array.from(renders.values()).map((r2) => {
@@ -7257,7 +7285,7 @@ function PerformanceTab({ issues, components, renders, tabId }) {
         }
       )
     ] }),
-    scanEnabled && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "scan-info", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "scan-info-container", children: scanEnabled && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "scan-info", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "scan-indicator", children: "●" }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "React Scan is active - re-renders are highlighted on the page" }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "scan-legend", children: [
@@ -7267,7 +7295,7 @@ function PerformanceTab({ issues, components, renders, tabId }) {
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "legend-item", style: { background: "rgba(255, 87, 34, 0.6)" }, children: "6-10×" }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "legend-item", style: { background: "rgba(244, 67, 54, 0.7)" }, children: "10+×" })
       ] })
-    ] }),
+    ] }) }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "stats-grid", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "stat-card", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "stat-value", children: components.length }),
@@ -7277,11 +7305,8 @@ function PerformanceTab({ issues, components, renders, tabId }) {
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "stat-value", children: totalRenders }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "stat-label", children: "Total Renders" })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "stat-card", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "stat-value", style: { color: getTimeColor(avgRenderTime) }, children: [
-          avgRenderTime.toFixed(2),
-          "ms"
-        ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "stat-card", title: !renderTimeData.hasData ? "Requires React development build" : void 0, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "stat-value", style: { color: renderTimeData.hasData ? getTimeColor(renderTimeData.value) : "var(--text-muted)" }, children: renderTimeData.hasData ? `${renderTimeData.value.toFixed(2)}ms` : "N/A" }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "stat-label", children: "Avg Render Time" })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "stat-card", children: [
@@ -7289,15 +7314,34 @@ function PerformanceTab({ issues, components, renders, tabId }) {
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "stat-label", children: "Slow Renders (>16ms)" })
       ] })
     ] }),
-    avgRenderTime === 0 && totalRenders > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "info-banner", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "💡" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
-        "Render timing requires React's ",
-        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Profiler" }),
-        " build or ",
-        /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "development mode" }),
-        ". In production, actualDuration may not be available."
-      ] })
+    !renderTimeData.hasData && totalRenders > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "info-banner", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+      "Render timing requires React's ",
+      /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Profiler" }),
+      " build or ",
+      /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "development mode" }),
+      ". In production, actualDuration may not be available."
+    ] }) }),
+    pageLoadMetrics && /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "section", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { children: "Page Load Metrics" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "stats-grid", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "stat-card", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "stat-value", style: { color: pageLoadMetrics.fcp ? getWebVitalColor("fcp", pageLoadMetrics.fcp) : void 0 }, children: formatMs(pageLoadMetrics.fcp) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "stat-label", children: "FCP" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "stat-card", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "stat-value", style: { color: pageLoadMetrics.lcp ? getWebVitalColor("lcp", pageLoadMetrics.lcp) : void 0 }, children: formatMs(pageLoadMetrics.lcp) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "stat-label", children: "LCP" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "stat-card", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "stat-value", style: { color: pageLoadMetrics.ttfb ? getWebVitalColor("ttfb", pageLoadMetrics.ttfb) : void 0 }, children: formatMs(pageLoadMetrics.ttfb) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "stat-label", children: "TTFB" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "stat-card", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "stat-value", children: formatMs(pageLoadMetrics.loadComplete) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "stat-label", children: "Load Time" })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "section-desc", style: { marginTop: "8px", fontSize: "11px" }, children: "FCP: First Contentful Paint | LCP: Largest Contentful Paint | TTFB: Time to First Byte" })
     ] }),
     filteredIssues.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "section", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { children: [
@@ -7310,7 +7354,7 @@ function PerformanceTab({ issues, components, renders, tabId }) {
     slowRenders.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "section", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { children: "🐌 Slowest Components" }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "section-desc", children: "Components exceeding 16ms frame budget (60fps target)" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "render-table", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "render-table slow-table", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Component" }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Max Time" }),
@@ -7333,7 +7377,7 @@ function PerformanceTab({ issues, components, renders, tabId }) {
     ] }),
     renderStats.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "section", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { children: "Top Re-rendering Components" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "render-table", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "render-table rerender-table", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Component" }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Renders" }),
@@ -7628,18 +7672,53 @@ function ReduxTab({ detected, state, actions, tabId }) {
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "empty-state", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "empty-icon", children: "🗄️" }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Redux not detected" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "hint", children: [
-          "Make sure your app uses Redux and the store is accessible.",
-          /* @__PURE__ */ jsxRuntimeExports.jsx("br", {}),
-          "Try exposing the store: ",
-          /* @__PURE__ */ jsxRuntimeExports.jsx("code", { children: "window.store = store" })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "hint", children: "Make sure your app uses Redux and the store is accessible via one of the methods below." })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "redux-setup-guide", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { children: "Setup Guide" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "setup-intro", children: "To enable Redux debugging, expose your store using one of these methods:" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "setup-method", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { children: "Option 1: window.store (Recommended)" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: "code-snippet", children: `// In your store configuration file
+const store = configureStore({ reducer: rootReducer });
+
+// Expose for debugging (development only)
+if (process.env.NODE_ENV === 'development') {
+  window.store = store;
+}
+
+export default store;` })
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detection-tips", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { children: "Detection methods:" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("ul", { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: "Redux DevTools Extension" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: "window.store / window.__REDUX_STORE__" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: "React-Redux Provider context" })
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "setup-method", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { children: "Option 2: window.__REDUX_STORE__" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: "code-snippet", children: `// Alternative naming convention
+if (process.env.NODE_ENV === 'development') {
+  window.__REDUX_STORE__ = store;
+}` })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "setup-method", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { children: "Option 3: Redux DevTools Extension" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "method-desc", children: "If you have the Redux DevTools browser extension installed, this debugger will automatically detect it." })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detection-status", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { children: "Detection Methods Checked:" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("ul", { className: "detection-checklist", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "check-icon", children: "✗" }),
+              " window.store"
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "check-icon", children: "✗" }),
+              " window.__REDUX_STORE__"
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "check-icon", children: "✗" }),
+              " Redux DevTools Extension"
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "check-icon", children: "✗" }),
+              " React-Redux Provider context"
+            ] })
           ] })
         ] })
       ] })
@@ -8043,12 +8122,20 @@ function ReduxTab({ detected, state, actions, tabId }) {
     ] })
   ] });
 }
-function formatBytes(bytes) {
+function formatBytes$1(bytes) {
+  if (bytes == null || isNaN(bytes) || !isFinite(bytes)) return "--";
   if (bytes === 0) return "0 B";
+  const absBytes = Math.abs(bytes);
   const k2 = 1024;
   const sizes = ["B", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k2));
-  return `${(bytes / Math.pow(k2, i)).toFixed(2)} ${sizes[i]}`;
+  const i = Math.floor(Math.log(absBytes) / Math.log(k2));
+  const value = bytes / Math.pow(k2, i);
+  return `${value.toFixed(1)} ${sizes[i]}`;
+}
+function formatGrowthRate(rate) {
+  if (rate == null || isNaN(rate) || !isFinite(rate)) return "--";
+  const prefix = rate >= 0 ? "+" : "";
+  return `${prefix}${formatBytes$1(rate)}/s`;
 }
 function MemoryTab({ report, tabId }) {
   const [isMonitoring, setIsMonitoring] = reactExports.useState(false);
@@ -8129,10 +8216,10 @@ function MemoryTab({ report, tabId }) {
         }
       )
     ] }),
-    report.warnings.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "memory-warnings", children: report.warnings.map((warning, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "memory-warning", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "memory-warnings-container", children: report.warnings.length > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "memory-warnings", children: report.warnings.map((warning, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "memory-warning", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "warning-icon", children: "⚠️" }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: warning })
-    ] }, i)) }),
+    ] }, i)) }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "memory-warnings-placeholder" }) }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "stats-grid", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "stat-card", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -8140,21 +8227,21 @@ function MemoryTab({ report, tabId }) {
           {
             className: "stat-value",
             style: { color: getUsageColor(report.current.usedJSHeapSize, report.current.jsHeapSizeLimit) },
-            children: formatBytes(report.current.usedJSHeapSize)
+            children: formatBytes$1(report.current.usedJSHeapSize)
           }
         ),
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "stat-label", children: "Used Heap" })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "stat-card", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "stat-value", children: formatBytes(report.current.totalJSHeapSize) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "stat-value", children: formatBytes$1(report.current.totalJSHeapSize) }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "stat-label", children: "Total Heap" })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "stat-card", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "stat-value", children: formatBytes(report.current.jsHeapSizeLimit) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "stat-value", children: formatBytes$1(report.current.jsHeapSizeLimit) }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "stat-label", children: "Heap Limit" })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "stat-card", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "stat-value", children: formatBytes(report.peakUsage) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "stat-value", children: formatBytes$1(report.peakUsage) }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "stat-label", children: "Peak Usage" })
       ] })
     ] }),
@@ -8186,19 +8273,15 @@ function MemoryTab({ report, tabId }) {
     /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "section", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { children: "Memory Growth Rate" }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "growth-rate-display", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
           "span",
           {
             className: "growth-rate-value",
             style: { color: getGrowthRateColor(report.growthRate) },
-            children: [
-              report.growthRate >= 0 ? "+" : "",
-              formatBytes(report.growthRate),
-              "/s"
-            ]
+            children: formatGrowthRate(report.growthRate)
           }
         ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "growth-rate-hint", children: report.growthRate > 1024 * 1024 ? "Rapid growth - possible memory leak" : report.growthRate < -512 * 1024 ? "Memory decreasing (GC running)" : "Normal" })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "growth-rate-hint", children: report.growthRate == null || isNaN(report.growthRate) ? "Collecting data..." : report.growthRate > 1024 * 1024 ? "Rapid growth - possible memory leak" : report.growthRate < -512 * 1024 ? "Memory decreasing (GC running)" : "Normal" })
       ] })
     ] }),
     chartData.length > 1 && /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "section", children: [
@@ -8252,6 +8335,7 @@ function MemoryTab({ report, tabId }) {
         ] })
       ] })
     ] }),
+    report.crashes && report.crashes.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(CrashLogSection, { crashes: report.crashes }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "section", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { children: "Memory Tips" }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "info-section", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("ul", { className: "tips-list", children: [
@@ -8264,13 +8348,702 @@ function MemoryTab({ report, tabId }) {
     ] })
   ] });
 }
+function CrashLogSection({ crashes }) {
+  const [expandedId, setExpandedId] = reactExports.useState(null);
+  const getCrashIcon = (type) => {
+    switch (type) {
+      case "js-error":
+        return "❌";
+      case "unhandled-rejection":
+        return "⚠️";
+      case "react-error":
+        return "🔴";
+      default:
+        return "❌";
+    }
+  };
+  const getCrashLabel = (type) => {
+    switch (type) {
+      case "js-error":
+        return "JS Error";
+      case "unhandled-rejection":
+        return "Promise Rejection";
+      case "react-error":
+        return "React Error";
+      default:
+        return "Error";
+    }
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "section", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { children: [
+      "Crash Log (",
+      crashes.length,
+      ")"
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "crash-list", children: crashes.slice().reverse().map((crash) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "crash-entry", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          className: "crash-header",
+          onClick: () => setExpandedId(expandedId === crash.id ? null : crash.id),
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "crash-icon", children: getCrashIcon(crash.type) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "crash-time", children: new Date(crash.timestamp).toLocaleTimeString() }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "crash-type-badge", children: getCrashLabel(crash.type) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "crash-message", children: crash.message.length > 80 ? crash.message.slice(0, 80) + "..." : crash.message }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "crash-expand", children: expandedId === crash.id ? "▼" : "▶" })
+          ]
+        }
+      ),
+      expandedId === crash.id && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "crash-details", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "crash-detail-row", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Message:" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: crash.message })
+        ] }),
+        crash.source && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "crash-detail-row", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Source:" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+            crash.source,
+            crash.lineno ? `:${crash.lineno}` : "",
+            crash.colno ? `:${crash.colno}` : ""
+          ] })
+        ] }),
+        crash.stack && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "crash-detail-row", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Stack:" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: "crash-stack", children: crash.stack })
+        ] }),
+        crash.componentStack && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "crash-detail-row", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Component Stack:" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: "crash-stack", children: crash.componentStack })
+        ] }),
+        crash.memorySnapshot && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "crash-detail-row", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Memory at crash:" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+            formatBytes$1(crash.memorySnapshot.usedJSHeapSize),
+            " / ",
+            formatBytes$1(crash.memorySnapshot.jsHeapSizeLimit),
+            "(",
+            (crash.memorySnapshot.usedJSHeapSize / crash.memorySnapshot.jsHeapSizeLimit * 100).toFixed(1),
+            "%)"
+          ] })
+        ] }),
+        crash.analysisHints && crash.analysisHints.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "crash-hints", children: crash.analysisHints.map((hint, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "crash-hint", children: [
+          "💡 ",
+          hint
+        ] }, i)) })
+      ] })
+    ] }, crash.id)) })
+  ] });
+}
+const EVENT_CONFIG = {
+  "render": { icon: "🔄", color: "var(--accent-blue)", label: "Render" },
+  "state-change": { icon: "📦", color: "#a855f7", label: "State" },
+  "effect": { icon: "⚡", color: "var(--accent-yellow)", label: "Effect" },
+  "error": { icon: "❌", color: "var(--accent-red)", label: "Error" },
+  "memory": { icon: "🧠", color: "var(--accent-green)", label: "Memory" }
+};
+function formatTime(timestamp) {
+  return new Date(timestamp).toLocaleTimeString("en-US", {
+    hour12: false,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    fractionalSecondDigits: 3
+  });
+}
+function formatBytes(bytes) {
+  if (bytes === 0) return "0 B";
+  const k2 = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k2));
+  return `${(bytes / Math.pow(k2, i)).toFixed(1)} ${sizes[i]}`;
+}
+function TimelineTab({ events, tabId, onClear }) {
+  const [filters, setFilters] = reactExports.useState({
+    "render": true,
+    "state-change": true,
+    "effect": true,
+    "error": true,
+    "memory": true
+  });
+  const [searchQuery, setSearchQuery] = reactExports.useState("");
+  const [expandedId, setExpandedId] = reactExports.useState(null);
+  const expandedIdRef = reactExports.useRef(null);
+  const listRef = reactExports.useRef(null);
+  const scrollPositionRef = reactExports.useRef(0);
+  reactExports.useEffect(() => {
+    expandedIdRef.current = expandedId;
+  }, [expandedId]);
+  const [selectedId, setSelectedId] = reactExports.useState(null);
+  const [correlatedIds, setCorrelatedIds] = reactExports.useState(/* @__PURE__ */ new Set());
+  const [correlationExplanation, setCorrelationExplanation] = reactExports.useState([]);
+  const [snapshots, setSnapshots] = reactExports.useState([]);
+  const [expandedSnapshotId, setExpandedSnapshotId] = reactExports.useState(null);
+  const [snapshotPanelOpen, setSnapshotPanelOpen] = reactExports.useState(true);
+  const fetchCorrelation = reactExports.useCallback((eventId) => {
+    chrome.runtime.sendMessage(
+      { type: "GET_CORRELATION", tabId, payload: { eventId } },
+      (response) => {
+        if ((response == null ? void 0 : response.success) && response.result) {
+          const result = response.result;
+          setCorrelatedIds(new Set(result.correlatedIds));
+          setCorrelationExplanation(result.explanation);
+        }
+      }
+    );
+  }, [tabId]);
+  const clearCorrelation = reactExports.useCallback(() => {
+    setCorrelatedIds(/* @__PURE__ */ new Set());
+    setCorrelationExplanation([]);
+    setSelectedId(null);
+  }, []);
+  const toggleFilter = reactExports.useCallback((type) => {
+    setFilters((prev) => ({ ...prev, [type]: !prev[type] }));
+  }, []);
+  const clearFilters = reactExports.useCallback(() => {
+    setFilters({
+      "render": true,
+      "state-change": true,
+      "effect": true,
+      "error": true,
+      "memory": true
+    });
+    setSearchQuery("");
+  }, []);
+  const createSnapshot = reactExports.useCallback(() => {
+    var _a;
+    const renderEvents = events.filter((e) => e.type === "render");
+    if (renderEvents.length === 0) {
+      return;
+    }
+    const snapshotEvents = renderEvents.map((e, index) => {
+      const payload = e.payload;
+      return {
+        order: index + 1,
+        componentName: payload.componentName,
+        trigger: payload.trigger,
+        duration: payload.duration ?? 0
+      };
+    });
+    const newSnapshot = {
+      id: ((_a = crypto.randomUUID) == null ? void 0 : _a.call(crypto)) ?? `snapshot-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      createdAt: Date.now(),
+      events: snapshotEvents
+    };
+    setSnapshots((prev) => [...prev, newSnapshot]);
+  }, [events]);
+  const exportSnapshot = reactExports.useCallback((snapshot) => {
+    const exportData = {
+      createdAt: new Date(snapshot.createdAt).toISOString(),
+      eventCount: snapshot.events.length,
+      events: snapshot.events
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `snapshot-${snapshot.createdAt}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
+  const deleteSnapshot = reactExports.useCallback((snapshotId) => {
+    setSnapshots((prev) => prev.filter((s) => s.id !== snapshotId));
+    if (expandedSnapshotId === snapshotId) {
+      setExpandedSnapshotId(null);
+    }
+  }, [expandedSnapshotId]);
+  const filteredEvents = reactExports.useMemo(() => {
+    return events.filter((e) => filters[e.type]).filter((e) => {
+      var _a, _b;
+      if (!searchQuery) return true;
+      const query = searchQuery.toLowerCase();
+      if (e.type === "render") {
+        const p2 = e.payload;
+        return p2.componentName.toLowerCase().includes(query);
+      }
+      if (e.type === "state-change") {
+        const p2 = e.payload;
+        return ((_a = p2.actionType) == null ? void 0 : _a.toLowerCase().includes(query)) || ((_b = p2.componentName) == null ? void 0 : _b.toLowerCase().includes(query));
+      }
+      if (e.type === "effect") {
+        const p2 = e.payload;
+        return p2.componentName.toLowerCase().includes(query);
+      }
+      if (e.type === "error") {
+        const p2 = e.payload;
+        return p2.message.toLowerCase().includes(query);
+      }
+      return true;
+    }).slice().reverse();
+  }, [events, filters, searchQuery]);
+  const eventCounts = reactExports.useMemo(() => {
+    const counts = {
+      "render": 0,
+      "state-change": 0,
+      "effect": 0,
+      "error": 0,
+      "memory": 0
+    };
+    events.forEach((e) => counts[e.type]++);
+    return counts;
+  }, [events]);
+  reactExports.useEffect(() => {
+    if (listRef.current && scrollPositionRef.current > 0) {
+      listRef.current.scrollTop = scrollPositionRef.current;
+    }
+  }, [filteredEvents.length]);
+  const handleScroll = reactExports.useCallback((e) => {
+    scrollPositionRef.current = e.currentTarget.scrollTop;
+  }, []);
+  const renderEventSummary = (event) => {
+    const config = EVENT_CONFIG[event.type];
+    switch (event.type) {
+      case "render": {
+        const p2 = event.payload;
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "event-summary", children: [
+          p2.renderOrder && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "render-order", children: [
+            "#",
+            p2.renderOrder
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: p2.componentName }),
+          p2.parentComponent && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "parent-component", children: [
+            "← ",
+            p2.parentComponent
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "event-trigger", style: { color: config.color }, children: p2.trigger }),
+          p2.duration !== void 0 && p2.duration > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "event-duration", children: [
+            p2.duration.toFixed(1),
+            "ms"
+          ] })
+        ] });
+      }
+      case "state-change": {
+        const p2 = event.payload;
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "event-summary", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: p2.componentName || "Unknown" }),
+          p2.hookIndex !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "hook-index", children: [
+            "useState #",
+            p2.hookIndex
+          ] }),
+          p2.isExtractable && p2.oldValue !== void 0 && p2.newValue !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "state-change-value", children: [
+            p2.oldValue,
+            " → ",
+            p2.newValue
+          ] }),
+          p2.actionType && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "action-type", children: p2.actionType })
+        ] });
+      }
+      case "effect": {
+        const p2 = event.payload;
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "event-summary", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: p2.componentName }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "effect-index", children: [
+            "#",
+            p2.effectIndex
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `event-effect-type ${p2.effectType}`, children: p2.effectType }),
+          p2.createFnPreview && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "effect-hint", title: p2.createFnPreview, children: p2.createFnPreview }),
+          p2.depsPreview && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "effect-deps", title: `Dependencies: ${p2.depsPreview}`, children: p2.depsPreview }),
+          p2.hasCleanup && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "effect-cleanup-badge", children: "cleanup" })
+        ] });
+      }
+      case "error": {
+        const p2 = event.payload;
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "event-summary event-error", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "error-type", children: p2.errorType }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "error-message", children: p2.message.length > 60 ? p2.message.slice(0, 60) + "..." : p2.message })
+        ] });
+      }
+      case "memory": {
+        const p2 = event.payload;
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "event-summary", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: formatBytes(p2.heapUsed) }),
+          p2.isSpike && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "memory-spike", children: "SPIKE" })
+        ] });
+      }
+      default:
+        return null;
+    }
+  };
+  const renderEventDetails = (event) => {
+    switch (event.type) {
+      case "render": {
+        const p2 = event.payload;
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "event-details", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Component:" }),
+            " ",
+            p2.componentName
+          ] }),
+          p2.renderOrder !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Render Order:" }),
+            " #",
+            p2.renderOrder,
+            " in batch"
+          ] }),
+          p2.parentComponent && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Parent:" }),
+            " ",
+            p2.parentComponent
+          ] }),
+          p2.componentPath && p2.componentPath.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Component Path:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "component-path", children: p2.componentPath.map((name, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+              i > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "path-separator", children: "→" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: `path-item ${i === p2.componentPath.length - 1 ? "current" : ""}`, children: name })
+            ] }, i)) })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Trigger:" }),
+            " ",
+            p2.trigger
+          ] }),
+          p2.changedKeys && p2.changedKeys.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Changed:" }),
+            " ",
+            p2.changedKeys.join(", ")
+          ] }),
+          p2.duration !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Duration:" }),
+            " ",
+            p2.duration.toFixed(2),
+            "ms"
+          ] }),
+          p2.batchId && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Batch ID:" }),
+            " ",
+            /* @__PURE__ */ jsxRuntimeExports.jsx("code", { children: p2.batchId })
+          ] })
+        ] });
+      }
+      case "state-change": {
+        const p2 = event.payload;
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "event-details", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Source:" }),
+            " ",
+            p2.source
+          ] }),
+          p2.componentName && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Component:" }),
+            " ",
+            p2.componentName
+          ] }),
+          p2.hookIndex !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Hook:" }),
+            " useState #",
+            p2.hookIndex
+          ] }),
+          p2.valueType && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Type:" }),
+            " ",
+            p2.valueType
+          ] }),
+          p2.oldValue !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Old Value:" }),
+            " ",
+            /* @__PURE__ */ jsxRuntimeExports.jsx("code", { children: p2.oldValue })
+          ] }),
+          p2.newValue !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "New Value:" }),
+            " ",
+            /* @__PURE__ */ jsxRuntimeExports.jsx("code", { children: p2.newValue })
+          ] }),
+          p2.actionType && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Action:" }),
+            " ",
+            p2.actionType
+          ] })
+        ] });
+      }
+      case "effect": {
+        const p2 = event.payload;
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "event-details", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Component:" }),
+            " ",
+            p2.componentName
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Type:" }),
+            " ",
+            p2.effectType === "run" ? "Effect Run" : "Cleanup"
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Effect Index:" }),
+            " useEffect #",
+            p2.effectIndex
+          ] }),
+          p2.createFnPreview && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Effect Contains:" }),
+            " ",
+            /* @__PURE__ */ jsxRuntimeExports.jsx("code", { children: p2.createFnPreview })
+          ] }),
+          p2.depsPreview && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Dependencies:" }),
+            " ",
+            /* @__PURE__ */ jsxRuntimeExports.jsx("code", { children: p2.depsPreview })
+          ] }),
+          p2.depCount !== void 0 && !p2.depsPreview && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Dependencies:" }),
+            " ",
+            p2.depCount === 0 ? "Empty array []" : `${p2.depCount} deps`
+          ] }),
+          p2.hasCleanup !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Has Cleanup:" }),
+            " ",
+            p2.hasCleanup ? "Yes" : "No"
+          ] }),
+          p2.effectTag && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Effect Tag:" }),
+            " ",
+            p2.effectTag
+          ] })
+        ] });
+      }
+      case "error": {
+        const p2 = event.payload;
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "event-details", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Type:" }),
+            " ",
+            p2.errorType
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Message:" }),
+            " ",
+            p2.message
+          ] }),
+          p2.source && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Source:" }),
+            " ",
+            p2.source,
+            ":",
+            p2.lineno
+          ] }),
+          p2.stack && /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: "error-stack", children: p2.stack }),
+          p2.componentStack && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Component Stack:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { className: "error-stack", children: p2.componentStack })
+          ] })
+        ] });
+      }
+      case "memory": {
+        const p2 = event.payload;
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "event-details", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Used:" }),
+            " ",
+            formatBytes(p2.heapUsed)
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Total:" }),
+            " ",
+            formatBytes(p2.heapTotal)
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Limit:" }),
+            " ",
+            formatBytes(p2.heapLimit)
+          ] }),
+          p2.growthRate !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Growth Rate:" }),
+            " ",
+            formatBytes(p2.growthRate),
+            "/s"
+          ] }),
+          p2.isSpike && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "detail-row warning", children: "Memory spike detected!" })
+        ] });
+      }
+      default:
+        return null;
+    }
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "tab-panel timeline-panel", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "tab-header", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "⏱️ Debug Timeline" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "tab-header-actions", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "event-count", children: [
+          events.length,
+          " events"
+        ] }),
+        events.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "clear-all-btn", onClick: onClear, children: "Clear All" })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "timeline-filters", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "filter-toggles", children: Object.keys(EVENT_CONFIG).map((type) => {
+        const config = EVENT_CONFIG[type];
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "button",
+          {
+            className: `filter-toggle ${filters[type] ? "active" : ""}`,
+            onClick: () => toggleFilter(type),
+            style: { borderColor: filters[type] ? config.color : "transparent" },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "filter-icon", children: config.icon }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "filter-label", children: config.label }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "filter-count", children: eventCounts[type] })
+            ]
+          },
+          type
+        );
+      }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "filter-search", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            type: "text",
+            placeholder: "Search events...",
+            value: searchQuery,
+            onChange: (e) => setSearchQuery(e.target.value),
+            className: "search-input"
+          }
+        ),
+        (searchQuery || !Object.values(filters).every((v2) => v2)) && /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "clear-filters-btn", onClick: clearFilters, children: "Clear" })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "snapshot-panel", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "snapshot-header", onClick: () => setSnapshotPanelOpen(!snapshotPanelOpen), children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "snapshot-toggle", children: snapshotPanelOpen ? "▼" : "▶" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "snapshot-title", children: [
+          "Snapshots (",
+          snapshots.length,
+          ")"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            className: "snapshot-create-btn",
+            onClick: (e) => {
+              e.stopPropagation();
+              createSnapshot();
+            },
+            disabled: events.filter((e) => e.type === "render").length === 0,
+            children: "Create Snapshot"
+          }
+        )
+      ] }),
+      snapshotPanelOpen && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "snapshot-content", children: snapshots.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "snapshot-empty", children: 'No snapshots yet. Click "Create Snapshot" to capture current render timeline.' }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "snapshot-list", children: snapshots.map((snapshot) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `snapshot-item ${expandedSnapshotId === snapshot.id ? "expanded" : ""}`, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: "snapshot-item-header",
+            onClick: () => setExpandedSnapshotId(expandedSnapshotId === snapshot.id ? null : snapshot.id),
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "snapshot-time", children: new Date(snapshot.createdAt).toLocaleTimeString() }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "snapshot-count", children: [
+                snapshot.events.length,
+                " renders"
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "snapshot-actions", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "button",
+                  {
+                    className: "snapshot-action-btn",
+                    onClick: (e) => {
+                      e.stopPropagation();
+                      exportSnapshot(snapshot);
+                    },
+                    title: "Export as JSON",
+                    children: "Export"
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "button",
+                  {
+                    className: "snapshot-action-btn delete",
+                    onClick: (e) => {
+                      e.stopPropagation();
+                      deleteSnapshot(snapshot.id);
+                    },
+                    title: "Delete snapshot",
+                    children: "Delete"
+                  }
+                )
+              ] })
+            ]
+          }
+        ),
+        expandedSnapshotId === snapshot.id && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "snapshot-details", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "snapshot-table", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "#" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Component" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Trigger" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("th", { children: "Duration" })
+          ] }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("tbody", { children: snapshot.events.map((event) => /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: event.order }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "component-name", children: event.componentName }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "trigger-badge", children: event.trigger }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { children: [
+              event.duration.toFixed(2),
+              "ms"
+            ] })
+          ] }, event.order)) })
+        ] }) })
+      ] }, snapshot.id)) }) })
+    ] }),
+    filteredEvents.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "empty-state", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "empty-icon", children: "⏱️" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: events.length === 0 ? "No events captured yet" : "No events match filters" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "hint", children: events.length === 0 ? "Interact with the page to see debug events." : "Try adjusting your filters." })
+    ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "timeline-list", ref: listRef, onScroll: handleScroll, children: filteredEvents.map((event) => {
+      const config = EVENT_CONFIG[event.type];
+      const isExpanded = expandedId === event.id;
+      const isSelected = selectedId === event.id;
+      const isCorrelated = correlatedIds.has(event.id);
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          className: `timeline-event ${isExpanded ? "expanded" : ""} ${isSelected ? "selected" : ""} ${isCorrelated ? "correlated" : ""}`,
+          style: { borderLeftColor: config.color },
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                className: "event-header",
+                onClick: () => {
+                  const newExpanded = isExpanded ? null : event.id;
+                  setExpandedId(newExpanded);
+                  if (newExpanded) {
+                    setSelectedId(event.id);
+                    fetchCorrelation(event.id);
+                  } else {
+                    clearCorrelation();
+                  }
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "event-icon", children: config.icon }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "event-time", children: formatTime(event.timestamp) }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "event-type", style: { color: config.color }, children: config.label }),
+                  renderEventSummary(event),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "event-expand", children: isExpanded ? "▼" : "▶" })
+                ]
+              }
+            ),
+            isExpanded && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+              renderEventDetails(event),
+              correlationExplanation.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "correlation-panel", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Related Events:" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "correlation-list", children: correlationExplanation.map((exp, i) => /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: exp }, i)) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "correlation-hint", children: "Highlighted events above are correlated with this event" })
+              ] })
+            ] })
+          ]
+        },
+        event.id
+      );
+    }) })
+  ] });
+}
 const TABS = [
-  { id: "ui-state", label: "UI & State", icon: "🎯" },
-  { id: "performance", label: "Performance", icon: "⚡" },
-  { id: "memory", label: "Memory", icon: "🧠" },
-  { id: "side-effects", label: "Side Effects", icon: "🔄" },
-  { id: "cls", label: "CLS", icon: "📐" },
-  { id: "redux", label: "Redux", icon: "🗄️" }
+  { id: "timeline", label: "Timeline" },
+  { id: "ui-state", label: "UI & State" },
+  { id: "performance", label: "Performance" },
+  { id: "memory", label: "Memory" },
+  { id: "side-effects", label: "Side Effects" },
+  { id: "cls", label: "CLS" },
+  { id: "redux", label: "Redux" }
 ];
 const createInitialState = () => ({
   reactDetected: false,
@@ -8283,48 +9056,81 @@ const createInitialState = () => ({
   clsReport: null,
   reduxState: null,
   reduxActions: [],
-  memoryReport: null
+  memoryReport: null,
+  pageLoadMetrics: null,
+  timelineEvents: []
 });
 function Panel() {
-  const [activeTab, setActiveTab] = reactExports.useState("ui-state");
+  const [activeTab, setActiveTab] = reactExports.useState("timeline");
   const [state, setState] = reactExports.useState(createInitialState);
   const [isLoading, setIsLoading] = reactExports.useState(true);
+  const [isNavigating, setIsNavigating] = reactExports.useState(false);
   const [extensionVersion] = reactExports.useState(() => chrome.runtime.getManifest().version);
+  const [isDebuggerEnabled, setIsDebuggerEnabled] = reactExports.useState(false);
   const tabId = chrome.devtools.inspectedWindow.tabId;
+  const timelineEventBatchRef = reactExports.useRef([]);
+  const timelineBatchTimeoutRef = reactExports.useRef(null);
+  const navigationTimeoutRef = reactExports.useRef(null);
   const fetchState = reactExports.useCallback(async () => {
     try {
-      const response = await chrome.runtime.sendMessage({
-        type: "GET_STATE",
-        tabId
-      });
-      if ((response == null ? void 0 : response.success) && response.state) {
+      const [stateResponse, debuggerResponse] = await Promise.all([
+        chrome.runtime.sendMessage({ type: "GET_STATE", tabId }),
+        chrome.runtime.sendMessage({ type: "GET_DEBUGGER_STATE", tabId })
+      ]);
+      if ((stateResponse == null ? void 0 : stateResponse.success) && stateResponse.state) {
         const parsedState = {
-          ...response.state,
-          renders: new Map(Object.entries(response.state.renders || {}))
+          ...stateResponse.state,
+          renders: new Map(Object.entries(stateResponse.state.renders || {}))
         };
         setState(parsedState);
+      }
+      if (debuggerResponse == null ? void 0 : debuggerResponse.success) {
+        setIsDebuggerEnabled(debuggerResponse.enabled);
       }
     } catch (error) {
       console.error("[React Debugger] Error fetching state:", error);
     } finally {
       setIsLoading(false);
+      setIsNavigating(false);
     }
   }, [tabId]);
+  const toggleDebugger = reactExports.useCallback(() => {
+    const newEnabled = !isDebuggerEnabled;
+    setIsDebuggerEnabled(newEnabled);
+    chrome.runtime.sendMessage({
+      type: newEnabled ? "ENABLE_DEBUGGER" : "DISABLE_DEBUGGER",
+      tabId
+    });
+  }, [tabId, isDebuggerEnabled]);
   reactExports.useEffect(() => {
     fetchState();
     const listener = (message) => {
+      var _a, _b, _c;
       if (message.tabId !== tabId) return;
       switch (message.type) {
+        case "PAGE_NAVIGATING":
+          setIsNavigating(true);
+          if (navigationTimeoutRef.current) {
+            clearTimeout(navigationTimeoutRef.current);
+          }
+          navigationTimeoutRef.current = window.setTimeout(() => {
+            setIsNavigating(false);
+            fetchState();
+          }, 5e3);
+          break;
         case "REACT_DETECTED":
-          setState((prev) => {
-            var _a, _b;
-            return {
-              ...prev,
-              reactDetected: true,
-              reactVersion: ((_a = message.payload) == null ? void 0 : _a.version) || null,
-              reactMode: ((_b = message.payload) == null ? void 0 : _b.mode) || null
-            };
+          if (navigationTimeoutRef.current) {
+            clearTimeout(navigationTimeoutRef.current);
+            navigationTimeoutRef.current = null;
+          }
+          setState({
+            ...createInitialState(),
+            reactDetected: true,
+            reactVersion: ((_a = message.payload) == null ? void 0 : _a.version) || null,
+            reactMode: ((_b = message.payload) == null ? void 0 : _b.mode) || null
           });
+          setIsLoading(false);
+          setIsNavigating(false);
           break;
         case "REDUX_DETECTED":
           setState((prev) => ({
@@ -8335,12 +9141,12 @@ function Panel() {
           break;
         case "FIBER_COMMIT":
           setState((prev) => {
-            var _a, _b, _c;
+            var _a2, _b2, _c2;
             return {
               ...prev,
-              components: ((_a = message.payload) == null ? void 0 : _a.components) || prev.components,
-              issues: ((_b = message.payload) == null ? void 0 : _b.issues) || prev.issues,
-              renders: new Map(Object.entries(((_c = message.payload) == null ? void 0 : _c.renders) || {}))
+              components: ((_a2 = message.payload) == null ? void 0 : _a2.components) || prev.components,
+              issues: ((_b2 = message.payload) == null ? void 0 : _b2.issues) || prev.issues,
+              renders: new Map(Object.entries(((_c2 = message.payload) == null ? void 0 : _c2.renders) || {}))
             };
           });
           break;
@@ -8378,8 +9184,8 @@ function Panel() {
           setState((prev) => {
             const exists = prev.issues.find(
               (i) => {
-                var _a, _b, _c, _d;
-                return i.type === message.payload.type && i.component === message.payload.component && ((_b = (_a = i.location) == null ? void 0 : _a.closureInfo) == null ? void 0 : _b.functionName) === ((_d = (_c = message.payload.location) == null ? void 0 : _c.closureInfo) == null ? void 0 : _d.functionName);
+                var _a2, _b2, _c2, _d;
+                return i.type === message.payload.type && i.component === message.payload.component && ((_b2 = (_a2 = i.location) == null ? void 0 : _a2.closureInfo) == null ? void 0 : _b2.functionName) === ((_d = (_c2 = message.payload.location) == null ? void 0 : _c2.closureInfo) == null ? void 0 : _d.functionName);
               }
             );
             if (exists) return prev;
@@ -8395,6 +9201,40 @@ function Panel() {
             memoryReport: message.payload
           }));
           break;
+        case "PAGE_LOAD_METRICS":
+          setState((prev) => ({
+            ...prev,
+            pageLoadMetrics: message.payload
+          }));
+          break;
+        case "CRASH_DETECTED":
+          setState((prev) => ({
+            ...prev,
+            memoryReport: prev.memoryReport ? {
+              ...prev.memoryReport,
+              crashes: [...prev.memoryReport.crashes, message.payload]
+            } : null
+          }));
+          break;
+        case "TIMELINE_EVENTS":
+          timelineEventBatchRef.current.push(...message.payload);
+          if (timelineBatchTimeoutRef.current) {
+            clearTimeout(timelineBatchTimeoutRef.current);
+          }
+          timelineBatchTimeoutRef.current = window.setTimeout(() => {
+            const batchedEvents = timelineEventBatchRef.current;
+            timelineEventBatchRef.current = [];
+            if (batchedEvents.length > 0) {
+              setState((prev) => ({
+                ...prev,
+                timelineEvents: [...prev.timelineEvents, ...batchedEvents].slice(-2e3)
+              }));
+            }
+          }, 200);
+          break;
+        case "DEBUGGER_STATE_CHANGED":
+          setIsDebuggerEnabled(((_c = message.payload) == null ? void 0 : _c.enabled) ?? false);
+          break;
       }
     };
     chrome.runtime.onMessage.addListener(listener);
@@ -8404,6 +9244,9 @@ function Panel() {
     chrome.runtime.sendMessage({ type: "CLEAR_ISSUES", tabId });
     setState((prev) => ({ ...prev, issues: [] }));
   }, [tabId]);
+  const clearTimeline = reactExports.useCallback(() => {
+    setState((prev) => ({ ...prev, timelineEvents: [] }));
+  }, []);
   const getIssueCount = (types) => {
     return state.issues.filter((i) => types.includes(i.type)).length;
   };
@@ -8427,6 +9270,12 @@ function Panel() {
       /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Loading..." })
     ] });
   }
+  if (isNavigating) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "panel-loading", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "spinner" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Page navigating..." })
+    ] });
+  }
   if (!state.reactDetected) {
     return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "panel-empty", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "empty-icon", children: "⚛️" }),
@@ -8438,6 +9287,8 @@ function Panel() {
   }
   const renderContent = () => {
     switch (activeTab) {
+      case "timeline":
+        return /* @__PURE__ */ jsxRuntimeExports.jsx(TimelineTab, { events: state.timelineEvents, tabId, onClear: clearTimeline });
       case "ui-state":
         return /* @__PURE__ */ jsxRuntimeExports.jsx(UIStateTab, { issues: state.issues, onClear: clearIssues });
       case "performance":
@@ -8447,7 +9298,8 @@ function Panel() {
             issues: state.issues,
             components: state.components,
             renders: state.renders,
-            tabId
+            tabId,
+            pageLoadMetrics: state.pageLoadMetrics
           }
         );
       case "memory":
@@ -8473,16 +9325,30 @@ function Panel() {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "panel", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("header", { className: "panel-header", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "logo", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "logo-icon", children: "⚛️" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("img", { src: "icons/icon48.png", className: "logo-icon", alt: "React Debugger" }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "logo-text", children: "React Debugger" }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "version", children: [
           "v",
           extensionVersion
         ] })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "header-badges", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "mode-badge mode-active", children: "Active" }),
-        state.reduxDetected && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "mode-badge mode-redux", children: "Redux" })
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "header-right", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "header-badges", children: [
+          isDebuggerEnabled ? /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "mode-badge mode-active", children: "Recording" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "mode-badge mode-paused", children: "Paused" }),
+          state.reduxDetected && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "mode-badge mode-redux", children: "Redux" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "button",
+          {
+            className: `debugger-toggle ${isDebuggerEnabled ? "enabled" : "disabled"}`,
+            onClick: toggleDebugger,
+            title: isDebuggerEnabled ? "Click to pause debugging" : "Click to start debugging",
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "toggle-track", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "toggle-thumb" }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "toggle-label", children: isDebuggerEnabled ? "ON" : "OFF" })
+            ]
+          }
+        )
       ] })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("nav", { className: "tab-nav", children: TABS.map((tab) => {
@@ -8493,7 +9359,6 @@ function Panel() {
           className: `tab-button ${activeTab === tab.id ? "active" : ""}`,
           onClick: () => setActiveTab(tab.id),
           children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "tab-icon", children: tab.icon }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "tab-label", children: tab.label }),
             badge !== void 0 && badge > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "tab-badge", children: badge })
           ]
@@ -8501,7 +9366,15 @@ function Panel() {
         tab.id
       );
     }) }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("main", { className: "tab-content", children: renderContent() })
+    /* @__PURE__ */ jsxRuntimeExports.jsx("main", { className: "tab-content", children: !isDebuggerEnabled && state.timelineEvents.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "debugger-disabled-placeholder", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "placeholder-icon", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("svg", { width: "48", height: "48", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.5", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("circle", { cx: "12", cy: "12", r: "10" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("polygon", { points: "10,8 16,12 10,16", fill: "currentColor", stroke: "none" })
+      ] }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "Debugger Paused" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Enable debugging to start capturing React renders, state changes, and performance data." }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "enable-btn", onClick: toggleDebugger, children: "Enable Debugging" })
+    ] }) : renderContent() })
   ] });
 }
 client.createRoot(document.getElementById("root")).render(

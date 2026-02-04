@@ -1,27 +1,28 @@
-import { useState, useEffect, useCallback } from 'react';
-import type { TabState } from '@/types';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import type { TabState, TimelineEvent } from '@/types';
 import { UIStateTab } from './tabs/UIStateTab';
 import { PerformanceTab } from './tabs/PerformanceTab';
 import { SideEffectsTab } from './tabs/SideEffectsTab';
 import { CLSTab } from './tabs/CLSTab';
 import { ReduxTab } from './tabs/ReduxTab';
 import { MemoryTab } from './tabs/MemoryTab';
+import { TimelineTab } from './tabs/TimelineTab';
 
-type TabId = 'ui-state' | 'performance' | 'side-effects' | 'cls' | 'redux' | 'memory';
+type TabId = 'timeline' | 'ui-state' | 'performance' | 'side-effects' | 'cls' | 'redux' | 'memory';
 
 interface TabConfig {
   id: TabId;
   label: string;
-  icon: string;
 }
 
 const TABS: TabConfig[] = [
-  { id: 'ui-state', label: 'UI & State', icon: '🎯' },
-  { id: 'performance', label: 'Performance', icon: '⚡' },
-  { id: 'memory', label: 'Memory', icon: '🧠' },
-  { id: 'side-effects', label: 'Side Effects', icon: '🔄' },
-  { id: 'cls', label: 'CLS', icon: '📐' },
-  { id: 'redux', label: 'Redux', icon: '🗄️' },
+  { id: 'timeline', label: 'Timeline' },
+  { id: 'ui-state', label: 'UI & State' },
+  { id: 'performance', label: 'Performance' },
+  { id: 'memory', label: 'Memory' },
+  { id: 'side-effects', label: 'Side Effects' },
+  { id: 'cls', label: 'CLS' },
+  { id: 'redux', label: 'Redux' },
 ];
 
 const createInitialState = (): TabState => ({
@@ -36,36 +37,58 @@ const createInitialState = (): TabState => ({
   reduxState: null,
   reduxActions: [],
   memoryReport: null,
+  pageLoadMetrics: null,
+  timelineEvents: [],
 });
 
 export function Panel() {
-  const [activeTab, setActiveTab] = useState<TabId>('ui-state');
+  const [activeTab, setActiveTab] = useState<TabId>('timeline');
   const [state, setState] = useState<TabState>(createInitialState);
   const [isLoading, setIsLoading] = useState(true);
+  const [isNavigating, setIsNavigating] = useState(false);
   const [extensionVersion] = useState(() => chrome.runtime.getManifest().version);
+  const [isDebuggerEnabled, setIsDebuggerEnabled] = useState(false);
 
   const tabId = chrome.devtools.inspectedWindow.tabId;
+  
+  const timelineEventBatchRef = useRef<TimelineEvent[]>([]);
+  const timelineBatchTimeoutRef = useRef<number | null>(null);
+  const navigationTimeoutRef = useRef<number | null>(null);
 
   const fetchState = useCallback(async () => {
     try {
-      const response = await chrome.runtime.sendMessage({
-        type: 'GET_STATE',
-        tabId,
-      });
+      const [stateResponse, debuggerResponse] = await Promise.all([
+        chrome.runtime.sendMessage({ type: 'GET_STATE', tabId }),
+        chrome.runtime.sendMessage({ type: 'GET_DEBUGGER_STATE', tabId }),
+      ]);
 
-      if (response?.success && response.state) {
+      if (stateResponse?.success && stateResponse.state) {
         const parsedState = {
-          ...response.state,
-          renders: new Map(Object.entries(response.state.renders || {})),
+          ...stateResponse.state,
+          renders: new Map(Object.entries(stateResponse.state.renders || {})),
         };
         setState(parsedState);
+      }
+      
+      if (debuggerResponse?.success) {
+        setIsDebuggerEnabled(debuggerResponse.enabled);
       }
     } catch (error) {
       console.error('[React Debugger] Error fetching state:', error);
     } finally {
       setIsLoading(false);
+      setIsNavigating(false);
     }
   }, [tabId]);
+
+  const toggleDebugger = useCallback(() => {
+    const newEnabled = !isDebuggerEnabled;
+    setIsDebuggerEnabled(newEnabled);
+    chrome.runtime.sendMessage({
+      type: newEnabled ? 'ENABLE_DEBUGGER' : 'DISABLE_DEBUGGER',
+      tabId,
+    });
+  }, [tabId, isDebuggerEnabled]);
 
   useEffect(() => {
     fetchState();
@@ -74,13 +97,30 @@ export function Panel() {
       if (message.tabId !== tabId) return;
 
       switch (message.type) {
+        case 'PAGE_NAVIGATING':
+          setIsNavigating(true);
+          if (navigationTimeoutRef.current) {
+            clearTimeout(navigationTimeoutRef.current);
+          }
+          navigationTimeoutRef.current = window.setTimeout(() => {
+            setIsNavigating(false);
+            fetchState();
+          }, 5000);
+          break;
+
         case 'REACT_DETECTED':
-          setState(prev => ({
-            ...prev,
+          if (navigationTimeoutRef.current) {
+            clearTimeout(navigationTimeoutRef.current);
+            navigationTimeoutRef.current = null;
+          }
+          setState({
+            ...createInitialState(),
             reactDetected: true,
             reactVersion: message.payload?.version || null,
             reactMode: message.payload?.mode || null,
-          }));
+          });
+          setIsLoading(false);
+          setIsNavigating(false);
           break;
 
         case 'REDUX_DETECTED':
@@ -156,6 +196,47 @@ export function Panel() {
             memoryReport: message.payload,
           }));
           break;
+
+        case 'PAGE_LOAD_METRICS':
+          setState(prev => ({
+            ...prev,
+            pageLoadMetrics: message.payload,
+          }));
+          break;
+
+        case 'CRASH_DETECTED':
+          setState(prev => ({
+            ...prev,
+            memoryReport: prev.memoryReport ? {
+              ...prev.memoryReport,
+              crashes: [...prev.memoryReport.crashes, message.payload],
+            } : null,
+          }));
+          break;
+
+        case 'TIMELINE_EVENTS':
+          timelineEventBatchRef.current.push(...(message.payload as TimelineEvent[]));
+          
+          if (timelineBatchTimeoutRef.current) {
+            clearTimeout(timelineBatchTimeoutRef.current);
+          }
+          
+          timelineBatchTimeoutRef.current = window.setTimeout(() => {
+            const batchedEvents = timelineEventBatchRef.current;
+            timelineEventBatchRef.current = [];
+            
+            if (batchedEvents.length > 0) {
+              setState(prev => ({
+                ...prev,
+                timelineEvents: [...prev.timelineEvents, ...batchedEvents].slice(-2000),
+              }));
+            }
+          }, 200);
+          break;
+          
+        case 'DEBUGGER_STATE_CHANGED':
+          setIsDebuggerEnabled(message.payload?.enabled ?? false);
+          break;
       }
     };
 
@@ -167,6 +248,10 @@ export function Panel() {
     chrome.runtime.sendMessage({ type: 'CLEAR_ISSUES', tabId });
     setState(prev => ({ ...prev, issues: [] }));
   }, [tabId]);
+
+  const clearTimeline = useCallback(() => {
+    setState(prev => ({ ...prev, timelineEvents: [] }));
+  }, []);
 
   const getIssueCount = (types: string[]): number => {
     return state.issues.filter(i => types.includes(i.type)).length;
@@ -196,6 +281,15 @@ export function Panel() {
     );
   }
 
+  if (isNavigating) {
+    return (
+      <div className="panel-loading">
+        <div className="spinner"></div>
+        <p>Page navigating...</p>
+      </div>
+    );
+  }
+
   if (!state.reactDetected) {
     return (
       <div className="panel-empty">
@@ -212,6 +306,8 @@ export function Panel() {
 
   const renderContent = () => {
     switch (activeTab) {
+      case 'timeline':
+        return <TimelineTab events={state.timelineEvents} tabId={tabId} onClear={clearTimeline} />;
       case 'ui-state':
         return <UIStateTab issues={state.issues} onClear={clearIssues} />;
       case 'performance':
@@ -221,6 +317,7 @@ export function Panel() {
             components={state.components}
             renders={state.renders}
             tabId={tabId}
+            pageLoadMetrics={state.pageLoadMetrics}
           />
         );
       case 'memory':
@@ -247,15 +344,31 @@ export function Panel() {
     <div className="panel">
       <header className="panel-header">
         <div className="logo">
-          <span className="logo-icon">⚛️</span>
+          <img src="icons/icon48.png" className="logo-icon" alt="React Debugger" />
           <span className="logo-text">React Debugger</span>
           <span className="version">v{extensionVersion}</span>
         </div>
-        <div className="header-badges">
-          <span className="mode-badge mode-active">Active</span>
-          {state.reduxDetected && (
-            <span className="mode-badge mode-redux">Redux</span>
-          )}
+        <div className="header-right">
+          <div className="header-badges">
+            {isDebuggerEnabled ? (
+              <span className="mode-badge mode-active">Recording</span>
+            ) : (
+              <span className="mode-badge mode-paused">Paused</span>
+            )}
+            {state.reduxDetected && (
+              <span className="mode-badge mode-redux">Redux</span>
+            )}
+          </div>
+          <button 
+            className={`debugger-toggle ${isDebuggerEnabled ? 'enabled' : 'disabled'}`}
+            onClick={toggleDebugger}
+            title={isDebuggerEnabled ? 'Click to pause debugging' : 'Click to start debugging'}
+          >
+            <span className="toggle-track">
+              <span className="toggle-thumb" />
+            </span>
+            <span className="toggle-label">{isDebuggerEnabled ? 'ON' : 'OFF'}</span>
+          </button>
         </div>
       </header>
 
@@ -268,7 +381,6 @@ export function Panel() {
               className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
               onClick={() => setActiveTab(tab.id)}
             >
-              <span className="tab-icon">{tab.icon}</span>
               <span className="tab-label">{tab.label}</span>
               {badge !== undefined && badge > 0 && (
                 <span className="tab-badge">{badge}</span>
@@ -279,7 +391,23 @@ export function Panel() {
       </nav>
 
       <main className="tab-content">
-        {renderContent()}
+        {!isDebuggerEnabled && state.timelineEvents.length === 0 ? (
+          <div className="debugger-disabled-placeholder">
+            <div className="placeholder-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <circle cx="12" cy="12" r="10" />
+                <polygon points="10,8 16,12 10,16" fill="currentColor" stroke="none" />
+              </svg>
+            </div>
+            <h2>Debugger Paused</h2>
+            <p>Enable debugging to start capturing React renders, state changes, and performance data.</p>
+            <button className="enable-btn" onClick={toggleDebugger}>
+              Enable Debugging
+            </button>
+          </div>
+        ) : (
+          renderContent()
+        )}
       </main>
     </div>
   );

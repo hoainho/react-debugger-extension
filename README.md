@@ -224,6 +224,21 @@ react-debugger-extension/
 
 ---
 
+## 📚 Documentation
+
+For a comprehensive debugging guide covering all tabs, metrics, and debugging strategies for developers at every skill level, see:
+
+**[DEBUGGING-GUIDE.md](./DEBUGGING-GUIDE.md)**
+
+The guide includes:
+- Detailed explanation of each tab and its metrics
+- Debugging workflows for Fresher, Mid-level, and Senior developers
+- Common issues and their fixes with code examples
+- Best practices for Performance, Memory, State Management, and Layout Stability
+- Quick reference tables for thresholds and color coding
+
+---
+
 ## 📄 License
 
 MIT License - Copyright (c) 2025 NhoNH

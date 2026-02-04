@@ -6,6 +6,8 @@
   let isEnabled = true;
   let isInitialized = false;
   let extensionContextValid = true;
+  let debuggerEnabled = false;
+  let clsObserver = null;
   function sendToPage(type, payload) {
     if (!extensionContextValid) return;
     try {
@@ -74,17 +76,82 @@
     });
     chrome.runtime.onMessage.addListener((message) => {
       if (!extensionContextValid) return;
+      if (message.type === "ENABLE_DEBUGGER") {
+        debuggerEnabled = true;
+        sendToPage(message.type, message.payload);
+        initCLSObserver();
+        return;
+      }
+      if (message.type === "DISABLE_DEBUGGER") {
+        debuggerEnabled = false;
+        sendToPage(message.type, message.payload);
+        stopCLSObserver();
+        return;
+      }
       sendToPage(message.type, message.payload);
     });
-    initCLSObserver();
+    capturePageLoadMetrics();
     console.log("[React Debugger] Content script loaded");
   }
   let clsValue = 0;
+  let pageMetricsSent = false;
+  function capturePageLoadMetrics() {
+    if (pageMetricsSent) return;
+    const collectAndSend = () => {
+      if (pageMetricsSent) return;
+      pageMetricsSent = true;
+      const metrics = {
+        fcp: null,
+        lcp: null,
+        ttfb: null,
+        domContentLoaded: null,
+        loadComplete: null,
+        timestamp: Date.now()
+      };
+      const navEntries = performance.getEntriesByType("navigation");
+      if (navEntries.length > 0) {
+        const nav = navEntries[0];
+        metrics.ttfb = Math.round(nav.responseStart - nav.requestStart);
+        metrics.domContentLoaded = Math.round(nav.domContentLoadedEventEnd - nav.startTime);
+        metrics.loadComplete = Math.round(nav.loadEventEnd - nav.startTime);
+      }
+      const paintEntries = performance.getEntriesByType("paint");
+      const fcpEntry = paintEntries.find((e) => e.name === "first-contentful-paint");
+      if (fcpEntry) {
+        metrics.fcp = Math.round(fcpEntry.startTime);
+      }
+      safeSendMessage({ type: "PAGE_LOAD_METRICS", payload: metrics });
+      if ("PerformanceObserver" in window) {
+        try {
+          const lcpObserver = new PerformanceObserver((list) => {
+            const entries = list.getEntries();
+            if (entries.length > 0) {
+              const lastEntry = entries[entries.length - 1];
+              metrics.lcp = Math.round(lastEntry.startTime);
+              safeSendMessage({ type: "PAGE_LOAD_METRICS", payload: metrics });
+              lcpObserver.disconnect();
+            }
+          });
+          lcpObserver.observe({ type: "largest-contentful-paint", buffered: true });
+          setTimeout(() => lcpObserver.disconnect(), 1e4);
+        } catch {
+        }
+      }
+    };
+    if (document.readyState === "complete") {
+      setTimeout(collectAndSend, 100);
+    } else {
+      window.addEventListener("load", () => setTimeout(collectAndSend, 100), { once: true });
+    }
+  }
   function initCLSObserver() {
+    if (!debuggerEnabled) return;
     if (!("PerformanceObserver" in window)) return;
+    if (clsObserver) return;
     const supportedTypes = PerformanceObserver.supportedEntryTypes || [];
     if (!supportedTypes.includes("layout-shift")) return;
-    const observer = new PerformanceObserver((list) => {
+    clsObserver = new PerformanceObserver((list) => {
+      if (!debuggerEnabled) return;
       for (const entry of list.getEntries()) {
         const layoutShift = entry;
         if (layoutShift.hadRecentInput) continue;
@@ -107,7 +174,13 @@
         });
       }
     });
-    observer.observe({ type: "layout-shift", buffered: true });
+    clsObserver.observe({ type: "layout-shift", buffered: true });
+  }
+  function stopCLSObserver() {
+    if (clsObserver) {
+      clsObserver.disconnect();
+      clsObserver = null;
+    }
   }
   init();
 })();

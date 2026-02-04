@@ -5,10 +5,34 @@
   const CONTENT_SOURCE = 'REACT_DEBUGGER_CONTENT';
   const DEBUG = false;
   
+  // Global debugger enable/disable flag (default: OFF for performance)
+  let debuggerEnabled = false;
+  
   let extensionAlive = true;
   let messageQueue: Array<{type: string; payload?: unknown}> = [];
   let flushTimeout: number | null = null;
-  const MESSAGE_THROTTLE_MS = 50;
+  
+  let messageCount = 0;
+  let lastCountReset = Date.now();
+  let currentThrottle = 100;
+  const MAX_BATCH_SIZE = 100;
+  
+  function getAdaptiveThrottle(): number {
+    const now = Date.now();
+    if (now - lastCountReset > 1000) {
+      const rate = messageCount;
+      messageCount = 0;
+      lastCountReset = now;
+      
+      if (rate < 5) currentThrottle = 200;
+      else if (rate < 20) currentThrottle = 100;
+      else currentThrottle = 50;
+      
+      if (DEBUG) log('Adaptive throttle:', currentThrottle, 'ms (rate:', rate, '/s)');
+    }
+    messageCount++;
+    return currentThrottle;
+  }
 
   function log(...args: unknown[]): void {
     if (DEBUG) console.log('[React Debugger]', ...args);
@@ -20,9 +44,14 @@
       return;
     }
     
-    const messages = messageQueue;
+    let messages = messageQueue;
     messageQueue = [];
     flushTimeout = null;
+    
+    if (messages.length > MAX_BATCH_SIZE) {
+      if (DEBUG) log('Batch size exceeded:', messages.length, '- truncating to', MAX_BATCH_SIZE);
+      messages = messages.slice(-MAX_BATCH_SIZE);
+    }
     
     for (const msg of messages) {
       try {
@@ -37,7 +66,24 @@
   function sendFromPage(type: string, payload?: unknown): void {
     if (!extensionAlive) return;
     
-    const criticalMessages = ['REACT_DETECTED', 'REDUX_DETECTED', 'REDUX_STATE_CHANGE'];
+    const alwaysAllowedMessages = [
+      'DEBUGGER_STATE_CHANGED', 
+      'REACT_DETECTED',
+      'REDUX_DETECTED',
+      'REDUX_STATE_CHANGE',
+      'REDUX_OVERRIDES_CLEARED'
+    ];
+    if (!debuggerEnabled && !alwaysAllowedMessages.includes(type)) {
+      return;
+    }
+    
+    const criticalMessages = [
+      'REACT_DETECTED', 
+      'REDUX_DETECTED', 
+      'REDUX_STATE_CHANGE', 
+      'DEBUGGER_STATE_CHANGED',
+      'REDUX_OVERRIDES_CLEARED'
+    ];
     if (criticalMessages.includes(type)) {
       try {
         window.postMessage({ source: PAGE_SOURCE, type, payload }, '*');
@@ -50,7 +96,7 @@
     messageQueue.push({ type, payload });
     
     if (!flushTimeout) {
-      flushTimeout = window.setTimeout(flushMessages, MESSAGE_THROTTLE_MS);
+      flushTimeout = window.setTimeout(flushMessages, getAdaptiveThrottle());
     }
     
     if (DEBUG && (type === 'REDUX_DETECTED' || type === 'REACT_DETECTED')) {
@@ -70,8 +116,30 @@
     return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
 
+  let lastTimestamp = 0;
+  let timestampCounter = 0;
+  
+  function getUniqueTimestamp(): number {
+    const now = Date.now();
+    if (now === lastTimestamp) {
+      timestampCounter++;
+    } else {
+      timestampCounter = 0;
+      lastTimestamp = now;
+    }
+    return now + (timestampCounter * 0.001);
+  }
+
+  function scheduleIdleWork(callback: () => void, timeoutMs = 500): void {
+    if ('requestIdleCallback' in window) {
+      (window as any).requestIdleCallback(callback, { timeout: timeoutMs });
+    } else {
+      setTimeout(callback, 0);
+    }
+  }
+
   function sanitizeValue(value: unknown, depth = 0): unknown {
-    if (depth > 5) return '[Max depth]';
+    if (depth > 5) return '[Object depth exceeded]';
     if (value === null) return null;
     if (value === undefined) return undefined;
     
@@ -147,11 +215,64 @@
     SimpleMemoComponent: 15,
   };
 
+  const FIBER_FLAGS = {
+    NoFlags: 0,
+    PerformedWork: 1,
+    Placement: 2,
+    Update: 4,
+    PlacementAndUpdate: 6,
+    Deletion: 8,
+    ChildDeletion: 16,
+    ContentReset: 32,
+    Callback: 64,
+    Ref: 128,
+    Passive: 512,
+    PassiveUnmountPendingDev: 8192,
+    PassiveStatic: 2097152,
+  };
+  
+  const lastEffectStates = new Map<string, Map<number, { hasEffect: boolean; hasDestroy: boolean }>>();
 
+  function didFiberRender(fiber: FiberNode): boolean {
+    const alternate = fiber.alternate;
+    
+    if (!alternate) return true;
+    
+    const flags = (fiber as any).flags ?? (fiber as any).effectTag ?? 0;
+    if (flags & (FIBER_FLAGS.PerformedWork | FIBER_FLAGS.Update | FIBER_FLAGS.Placement | FIBER_FLAGS.Passive)) {
+      return true;
+    }
+    
+    if ((fiber as any).actualDuration > 0) {
+      return true;
+    }
+    
+    const lanes = (fiber as any).lanes ?? 0;
+    if (lanes !== 0) {
+      return true;
+    }
+    
+    if (fiber.memoizedProps !== alternate.memoizedProps) return true;
+    if (fiber.memoizedState !== alternate.memoizedState) return true;
+    
+    const currentContext = (fiber as any).dependencies?.firstContext;
+    const alternateContext = (alternate as any).dependencies?.firstContext;
+    if (currentContext !== alternateContext) return true;
+    
+    if (fiber.type !== alternate.type) return true;
+    
+    return false;
+  }
 
   const renderCounts = new Map<string, number>();
   const lastRenderTimes = new Map<string, number>();
+  const recentRenderTimestamps = new Map<string, number[]>();
   const reportedEffectIssues = new Set<string>();
+  const reportedExcessiveRerenders = new Set<string>();
+  const reportedSlowRenders = new Set<string>();
+  
+  const EXCESSIVE_RENDER_THRESHOLD = 10;
+  const EXCESSIVE_RENDER_WINDOW_MS = 1000;
   
   interface ClosureTracker {
     componentName: string;
@@ -387,9 +508,22 @@
            tag === FIBER_TAGS.SimpleMemoComponent;
   }
 
+  const pathCache = new Map<FiberNode, string[]>();
+  const PATH_CACHE_LIMIT = 500;
+  
+  function clearPathCache(): void {
+    pathCache.clear();
+  }
+  
   function getComponentPath(fiber: FiberNode | null): string[] {
+    if (!fiber) return [];
+    
+    if (pathCache.has(fiber)) {
+      return pathCache.get(fiber)!;
+    }
+    
     const path: string[] = [];
-    let current = fiber;
+    let current: FiberNode | null = fiber;
     let depth = 0;
     
     while (current && depth < 10) {
@@ -399,6 +533,12 @@
       current = current.return;
       depth++;
     }
+    
+    if (pathCache.size >= PATH_CACHE_LIMIT) {
+      const firstKey = pathCache.keys().next().value;
+      if (firstKey) pathCache.delete(firstKey);
+    }
+    pathCache.set(fiber, path);
     
     return path;
   }
@@ -580,6 +720,256 @@
     });
   }
 
+  interface EffectChangeInfo {
+    type: 'run' | 'cleanup';
+    effectIndex: number;
+    depCount?: number;
+    hasCleanup: boolean;
+    effectTag: string;
+    depsPreview?: string;
+    createFnPreview?: string;
+  }
+
+  function getEffectTagName(tag: number): string {
+    const tags: string[] = [];
+    if (tag & EFFECT_HAS_EFFECT) tags.push('HasEffect');
+    if (tag & EFFECT_PASSIVE) tags.push('Passive');
+    if (tags.length === 0) return 'None';
+    return tags.join('+');
+  }
+
+  function extractEffectPreview(effect: EffectHook): { depsPreview?: string; createFnPreview?: string } {
+    const result: { depsPreview?: string; createFnPreview?: string } = {};
+    
+    if (effect.deps) {
+      const depNames = effect.deps.map((dep, i) => {
+        if (dep === null) return 'null';
+        if (dep === undefined) return 'undefined';
+        if (typeof dep === 'function') return `fn${i}`;
+        if (typeof dep === 'object') return `obj${i}`;
+        if (typeof dep === 'string') return `"${dep.slice(0, 10)}${dep.length > 10 ? '...' : ''}"`;
+        return String(dep);
+      });
+      result.depsPreview = `[${depNames.join(', ')}]`;
+    } else if (effect.deps === null) {
+      result.depsPreview = '[]';
+    }
+    
+    if (effect.create) {
+      const fnStr = effect.create.toString();
+      
+      const hints: string[] = [];
+      if (/fetch\s*\(/i.test(fnStr)) hints.push('fetch');
+      if (/setInterval\s*\(/i.test(fnStr)) hints.push('setInterval');
+      if (/setTimeout\s*\(/i.test(fnStr)) hints.push('setTimeout');
+      if (/addEventListener\s*\(/i.test(fnStr)) hints.push('addEventListener');
+      if (/subscribe\s*\(/i.test(fnStr)) hints.push('subscribe');
+      if (/\.on\s*\(/i.test(fnStr)) hints.push('event listener');
+      
+      if (hints.length > 0) {
+        result.createFnPreview = hints.join(', ');
+      } else {
+        const firstLine = fnStr.split('\n')[0].slice(0, 50);
+        result.createFnPreview = firstLine.length < fnStr.length ? firstLine + '...' : firstLine;
+      }
+    }
+    
+    return result;
+  }
+
+  function detectEffectChanges(fiber: FiberNode): EffectChangeInfo[] {
+    if (!isUserComponent(fiber)) return [];
+    
+    const componentName = getComponentName(fiber);
+    const fiberId = `${componentName}_${getComponentPath(fiber).join('/')}`;
+    const effects = getEffectsFromFiber(fiber);
+    const changes: EffectChangeInfo[] = [];
+    
+    if (!lastEffectStates.has(fiberId)) {
+      lastEffectStates.set(fiberId, new Map());
+    }
+    const prevStates = lastEffectStates.get(fiberId)!;
+    
+    effects.forEach((effect, index) => {
+      const hasEffect = (effect.tag & EFFECT_HAS_EFFECT) !== 0;
+      const hasDestroy = effect.destroy !== undefined && effect.destroy !== null;
+      const depCount = effect.deps?.length;
+      const effectTag = getEffectTagName(effect.tag);
+      const prevState = prevStates.get(index);
+      const { depsPreview, createFnPreview } = extractEffectPreview(effect);
+      
+      if (!prevState) {
+        if (hasEffect) {
+          changes.push({ 
+            type: 'run', 
+            effectIndex: index, 
+            depCount, 
+            hasCleanup: hasDestroy,
+            effectTag,
+            depsPreview,
+            createFnPreview,
+          });
+        }
+      } else {
+        if (hasEffect && !prevState.hasEffect) {
+          changes.push({ 
+            type: 'run', 
+            effectIndex: index, 
+            depCount, 
+            hasCleanup: hasDestroy,
+            effectTag,
+            depsPreview,
+            createFnPreview,
+          });
+        }
+        if (hasDestroy && !prevState.hasDestroy && prevState.hasEffect) {
+          changes.push({ 
+            type: 'cleanup', 
+            effectIndex: index, 
+            depCount, 
+            hasCleanup: true,
+            effectTag,
+            depsPreview,
+            createFnPreview,
+          });
+        }
+      }
+      
+      prevStates.set(index, { hasEffect, hasDestroy });
+    });
+    
+    return changes;
+  }
+
+  interface LocalStateChangeInfo {
+    componentName: string;
+    hookIndex: number;
+    oldValue?: string;
+    newValue?: string;
+    valueType: string;
+    isExtractable: boolean;
+  }
+
+  function serializeValueForDisplay(value: unknown, maxLength = 200): string {
+    if (value === null) return 'null';
+    if (value === undefined) return 'undefined';
+    
+    const type = typeof value;
+    if (type === 'string') {
+      const str = value as string;
+      if (str.length > maxLength) return `"${str.slice(0, maxLength)}..."`;
+      return `"${str}"`;
+    }
+    if (type === 'number' || type === 'boolean') {
+      return String(value);
+    }
+    if (type === 'function') {
+      return `[Function: ${(value as Function).name || 'anonymous'}]`;
+    }
+    
+    if (Array.isArray(value)) {
+      if (value.length === 0) return '[]';
+      try {
+        const preview = JSON.stringify(value);
+        if (preview.length <= maxLength) return preview;
+        const items = value.slice(0, 5).map(item => serializeValueForDisplay(item, 30));
+        const suffix = value.length > 5 ? `, ... (${value.length} items)` : '';
+        return `[${items.join(', ')}${suffix}]`;
+      } catch {
+        return `Array(${value.length})`;
+      }
+    }
+    
+    if (type === 'object') {
+      const obj = value as Record<string, unknown>;
+      if ((obj as any).$$typeof) return '[React Element]';
+      if (obj instanceof HTMLElement) return `[HTMLElement: ${obj.tagName}]`;
+      if (obj instanceof Date) return obj.toISOString();
+      if (obj instanceof RegExp) return obj.toString();
+      if (obj instanceof Map) return `Map(${obj.size})`;
+      if (obj instanceof Set) return `Set(${obj.size})`;
+      if (obj instanceof Error) return `Error: ${obj.message}`;
+      
+      try {
+        const preview = JSON.stringify(obj);
+        if (preview.length <= maxLength) return preview;
+        const keys = Object.keys(obj).slice(0, 5);
+        const items = keys.map(k => {
+          const v = serializeValueForDisplay(obj[k], 30);
+          return `${k}: ${v}`;
+        });
+        const suffix = Object.keys(obj).length > 5 ? ', ...' : '';
+        return `{${items.join(', ')}${suffix}}`;
+      } catch {
+        return '[Object]';
+      }
+    }
+    
+    return String(value);
+  }
+
+  function extractScalarValue(value: unknown): { str: string; isExtractable: boolean } {
+    if (value === null) return { str: 'null', isExtractable: true };
+    if (value === undefined) return { str: 'undefined', isExtractable: true };
+    
+    const type = typeof value;
+    if (type === 'string' || type === 'number' || type === 'boolean') {
+      return { str: serializeValueForDisplay(value), isExtractable: true };
+    }
+    if (type === 'function') {
+      return { str: serializeValueForDisplay(value), isExtractable: false };
+    }
+    
+    return { str: serializeValueForDisplay(value), isExtractable: true };
+  }
+
+  function detectLocalStateChanges(fiber: FiberNode): LocalStateChangeInfo[] {
+    if (!isUserComponent(fiber)) return [];
+    
+    const alternate = fiber.alternate;
+    if (!alternate) return [];
+    
+    const componentName = getComponentName(fiber);
+    const changes: LocalStateChangeInfo[] = [];
+    
+    let currentHook: HookNode | null = fiber.memoizedState;
+    let alternateHook: HookNode | null = alternate.memoizedState;
+    
+    let hookIndex = 0;
+    const maxHooks = 50;
+    
+    while (currentHook && alternateHook && hookIndex < maxHooks) {
+      const isEffectHook = currentHook.memoizedState && 
+        typeof currentHook.memoizedState === 'object' &&
+        ('create' in currentHook.memoizedState || 'destroy' in currentHook.memoizedState);
+      
+      if (!isEffectHook) {
+        const prevValue = alternateHook.memoizedState;
+        const currValue = currentHook.memoizedState;
+        
+        if (prevValue !== currValue) {
+          const oldExtracted = extractScalarValue(prevValue);
+          const newExtracted = extractScalarValue(currValue);
+          
+          changes.push({
+            componentName,
+            hookIndex,
+            oldValue: oldExtracted.str,
+            newValue: newExtracted.str,
+            valueType: typeof currValue,
+            isExtractable: oldExtracted.isExtractable && newExtracted.isExtractable,
+          });
+        }
+      }
+      
+      currentHook = currentHook.next;
+      alternateHook = alternateHook.next;
+      hookIndex++;
+    }
+    
+    return changes;
+  }
+
   function checkListKeys(fiber: FiberNode, issues: any[]): void {
     if (fiber.tag !== FIBER_TAGS.Fragment && fiber.tag !== FIBER_TAGS.HostComponent) return;
     
@@ -705,91 +1095,219 @@
     return { type: 'parent' };
   }
 
+  let batchCounter = 0;
+  
+  function getParentComponentName(fiber: FiberNode | null): string | undefined {
+    let parent = fiber?.return;
+    while (parent) {
+      if (isUserComponent(parent)) {
+        return getComponentName(parent);
+      }
+      parent = parent.return;
+    }
+    return undefined;
+  }
+  
   function analyzeFiberTree(root: FiberRoot): void {
     const fiber = root.current;
-    const issues: any[] = [];
     const components: any[] = [];
     const renders: any[] = [];
+    const effectEvents: Array<{ componentName: string } & EffectChangeInfo> = [];
+    const localStateChanges: LocalStateChangeInfo[] = [];
+    const renderData: Array<{ fiberId: string; componentName: string; node: FiberNode; rendersInLastSecond: number; actualDuration: number }> = [];
+    
+    const batchId = `batch_${++batchCounter}_${Date.now()}`;
+    let renderOrder = 0;
 
     traverseFiber(fiber, (node, path) => {
       const componentName = getComponentName(node);
       const fiberId = `${componentName}_${path}`;
 
       if (isUserComponent(node)) {
-        const count = (renderCounts.get(fiberId) || 0) + 1;
-        renderCounts.set(fiberId, count);
-        lastRenderTimes.set(fiberId, Date.now());
-        
-        const componentPathKey = `${componentName}_${getComponentPath(node).join('/')}`;
+        const componentPath = getComponentPath(node);
+        const componentPathKey = `${componentName}_${componentPath.join('/')}`;
         const currentRenderId = (componentRenderIds.get(componentPathKey) || 0) + 1;
         componentRenderIds.set(componentPathKey, currentRenderId);
 
-        const renderChange = detectRenderChanges(node);
-
-        components.push({
-          id: fiberId,
-          name: componentName,
-          path,
-          props: sanitizeValue(node.memoizedProps),
-          state: sanitizeValue(node.memoizedState),
-          renderCount: count,
-          lastRenderTime: Date.now(),
-          children: [],
-        });
-
-        const actualDuration = (node as any).actualDuration ?? 0;
-        const selfBaseDuration = (node as any).selfBaseDuration ?? 0;
-        
-        renders.push({
-          componentId: fiberId,
-          componentName,
-          duration: actualDuration,
-          selfDuration: selfBaseDuration,
-          reason: renderChange,
-        });
-
-        const now = Date.now();
-        const lastTime = lastRenderTimes.get(fiberId) || 0;
-        if (now - lastTime < 1000 && count > 5) {
-          const exists = issues.find(i => i.type === 'EXCESSIVE_RERENDERS' && i.component === componentName);
-          if (!exists) {
-            issues.push({
-              id: generateId(),
-              type: 'EXCESSIVE_RERENDERS',
-              severity: 'warning',
-              component: componentName,
-              message: `Rendered ${count} times in less than 1 second`,
-              suggestion: 'Consider using React.memo()',
-              timestamp: now,
-            });
-          }
+        const effectChanges = detectEffectChanges(node);
+        for (const change of effectChanges) {
+          effectEvents.push({ componentName, ...change });
         }
         
-        if (actualDuration > 16) {
-          const exists = issues.find(i => i.type === 'SLOW_RENDER' && i.component === componentName);
-          if (!exists) {
-            issues.push({
-              id: generateId(),
-              type: 'SLOW_RENDER',
-              severity: actualDuration > 50 ? 'error' : 'warning',
-              component: componentName,
-              message: `Render took ${actualDuration.toFixed(2)}ms (budget: 16ms for 60fps)`,
-              suggestion: 'Consider memoization, code splitting, or optimizing expensive computations',
-              timestamp: now,
-              location: {
-                componentName,
-                componentPath: getComponentPath(node),
-              },
-            });
-          }
+        const stateChanges = detectLocalStateChanges(node);
+        localStateChanges.push(...stateChanges);
+
+        const actuallyRendered = didFiberRender(node);
+        
+        if (actuallyRendered) {
+          const now = Date.now();
+          renderOrder++;
+          
+          const count = (renderCounts.get(fiberId) || 0) + 1;
+          renderCounts.set(fiberId, count);
+          lastRenderTimes.set(fiberId, now);
+          
+          let timestamps = recentRenderTimestamps.get(fiberId) || [];
+          timestamps.push(now);
+          timestamps = timestamps.filter(t => now - t < EXCESSIVE_RENDER_WINDOW_MS);
+          recentRenderTimestamps.set(fiberId, timestamps);
+
+          const renderChange = detectRenderChanges(node);
+          const actualDuration = (node as any).actualDuration ?? 0;
+          const selfBaseDuration = (node as any).selfBaseDuration ?? 0;
+          const parentComponent = getParentComponentName(node);
+
+          components.push({
+            id: fiberId,
+            name: componentName,
+            path,
+            props: sanitizeValue(node.memoizedProps),
+            state: sanitizeValue(node.memoizedState),
+            renderCount: count,
+            lastRenderTime: now,
+            children: [],
+          });
+
+          renders.push({
+            componentId: fiberId,
+            componentName,
+            duration: actualDuration,
+            selfDuration: selfBaseDuration,
+            reason: renderChange,
+            renderOrder,
+            parentComponent,
+            componentPath,
+            batchId,
+          });
+
+          renderData.push({
+            fiberId,
+            componentName,
+            node,
+            rendersInLastSecond: timestamps.length,
+            actualDuration,
+          });
         }
       }
+    });
 
+    const renderTimelineEvents = renders.map(r => ({
+      id: generateId(),
+      timestamp: getUniqueTimestamp(),
+      type: 'render' as const,
+      payload: {
+        componentName: r.componentName,
+        componentId: r.componentId,
+        trigger: r.reason.type,
+        changedKeys: r.reason.changedKeys,
+        duration: r.duration,
+        renderOrder: r.renderOrder,
+        parentComponent: r.parentComponent,
+        componentPath: r.componentPath,
+        batchId: r.batchId,
+      },
+    }));
+    
+    const effectTimelineEvents = effectEvents.map(e => ({
+      id: generateId(),
+      timestamp: getUniqueTimestamp(),
+      type: 'effect' as const,
+      payload: {
+        componentName: e.componentName,
+        effectType: e.type,
+        effectIndex: e.effectIndex,
+        depCount: e.depCount,
+        hasCleanup: e.hasCleanup,
+        effectTag: e.effectTag,
+        depsPreview: e.depsPreview,
+        createFnPreview: e.createFnPreview,
+      },
+    }));
+    
+    const localStateTimelineEvents = localStateChanges.map(s => ({
+      id: generateId(),
+      timestamp: getUniqueTimestamp(),
+      type: 'state-change' as const,
+      payload: {
+        source: 'local' as const,
+        componentName: s.componentName,
+        hookIndex: s.hookIndex,
+        oldValue: s.oldValue,
+        newValue: s.newValue,
+        valueType: s.valueType,
+        isExtractable: s.isExtractable,
+      },
+    }));
+    
+    const timelineEvents = [...renderTimelineEvents, ...effectTimelineEvents, ...localStateTimelineEvents];
+    
+    if (timelineEvents.length > 0) {
+      sendFromPage('TIMELINE_EVENTS', timelineEvents);
+    }
+
+    scheduleIdleWork(() => {
+      if (!debuggerEnabled) return;
+      analyzeIssuesDeferred(fiber, renderData, components, renders);
+    }, 500);
+  }
+
+  function analyzeIssuesDeferred(
+    fiber: FiberNode,
+    renderData: Array<{ fiberId: string; componentName: string; node: FiberNode; rendersInLastSecond: number; actualDuration: number }>,
+    components: any[],
+    renders: any[]
+  ): void {
+    const issues: any[] = [];
+
+    for (const data of renderData) {
+      const { fiberId, componentName, node, rendersInLastSecond, actualDuration } = data;
+      const now = Date.now();
+
+      if (rendersInLastSecond >= EXCESSIVE_RENDER_THRESHOLD) {
+        const issueKey = `excessive_${fiberId}`;
+        if (!reportedExcessiveRerenders.has(issueKey)) {
+          reportedExcessiveRerenders.add(issueKey);
+        }
+        issues.push({
+          id: issueKey,
+          type: 'EXCESSIVE_RERENDERS',
+          severity: 'warning',
+          component: componentName,
+          message: `Rendered ${rendersInLastSecond} times in less than 1 second`,
+          suggestion: 'Consider using React.memo() to prevent unnecessary re-renders when props haven\'t changed',
+          timestamp: now,
+          renderCount: rendersInLastSecond,
+        });
+      }
+      
+      if (actualDuration > 16) {
+        if (!reportedSlowRenders.has(fiberId)) {
+          reportedSlowRenders.add(fiberId);
+          issues.push({
+            id: generateId(),
+            type: 'SLOW_RENDER',
+            severity: actualDuration > 50 ? 'error' : 'warning',
+            component: componentName,
+            message: `Render took ${actualDuration.toFixed(2)}ms (budget: 16ms for 60fps)`,
+            suggestion: 'Consider memoization, code splitting, or optimizing expensive computations',
+            timestamp: now,
+            location: {
+              componentName,
+              componentPath: getComponentPath(node),
+            },
+          });
+        }
+      }
+    }
+
+    traverseFiber(fiber, (node) => {
       checkListKeys(node, issues);
       checkEffectHooks(node, issues);
     });
 
-    sendFromPage('FIBER_COMMIT', { components, issues, renders, timestamp: Date.now() });
+    if (issues.length > 0 || components.length > 0) {
+      sendFromPage('FIBER_COMMIT', { components, issues, renders, timestamp: getUniqueTimestamp() });
+    }
   }
 
   function detectReactVersion(): string {
@@ -880,14 +1398,20 @@
     };
     
     hook.onCommitFiberRoot = function(rendererID: number, root: FiberRoot, priorityLevel?: unknown, didError?: boolean) {
+      if (typeof originalOnCommitFiberRoot === 'function') {
+        originalOnCommitFiberRoot.call(this, rendererID, root, priorityLevel, didError);
+      }
+      
+      if (!debuggerEnabled) return;
+      
       scheduleAnalyze(root);
       
       if (scanEnabled) {
         try {
-          traverseFiber(root.current, (node) => {
-            if (isUserComponent(node)) {
+          traverseFiber(root.current, (node, path) => {
+            if (isUserComponent(node) && didFiberRender(node)) {
               const componentName = getComponentName(node);
-              const fiberId = `${componentName}_scan`;
+              const fiberId = `${componentName}_${path}`;
               const count = renderCounts.get(fiberId) || 1;
               flashRenderOverlay(node, componentName, count);
             }
@@ -895,10 +1419,6 @@
         } catch (e) {
           if (DEBUG) console.error('[React Debugger] Scan error:', e);
         }
-      }
-      
-      if (typeof originalOnCommitFiberRoot === 'function') {
-        originalOnCommitFiberRoot.call(this, rendererID, root, priorityLevel, didError);
       }
     };
     
@@ -908,6 +1428,107 @@
         mode: detectReactMode(),
       });
     }
+  }
+
+  function findReactRoots(): FiberRoot[] {
+    const roots: FiberRoot[] = [];
+    
+    const allElements = document.querySelectorAll('*');
+    for (const element of allElements) {
+      try {
+        const keys = Object.keys(element);
+        const fiberKey = keys.find(key => 
+          key.startsWith('__reactContainer$') || 
+          key.startsWith('__reactFiber$')
+        );
+        
+        if (fiberKey) {
+          let fiber = (element as any)[fiberKey];
+          let maxDepth = 100;
+          
+          while (fiber && maxDepth > 0) {
+            if (fiber.stateNode && fiber.stateNode.current) {
+              const root = fiber.stateNode as FiberRoot;
+              if (!roots.includes(root)) {
+                roots.push(root);
+              }
+              break;
+            }
+            if (fiber.tag === FIBER_TAGS.HostRoot && fiber.stateNode) {
+              const root = fiber.stateNode as FiberRoot;
+              if (!roots.includes(root)) {
+                roots.push(root);
+              }
+              break;
+            }
+            fiber = fiber.return;
+            maxDepth--;
+          }
+          
+          if (roots.length > 0) break;
+        }
+      } catch (e) {
+        continue;
+      }
+    }
+    
+    return roots;
+  }
+  
+  function forceReanalyze(): void {
+    if (!debuggerEnabled) return;
+    
+    const doAnalyze = () => {
+      if (!debuggerEnabled) return;
+      
+      const roots = findReactRoots();
+      let analyzed = false;
+      
+      if (roots.length > 0) {
+        for (const root of roots) {
+          try {
+            if (root?.current) {
+              analyzeFiberTree(root);
+              analyzed = true;
+            }
+          } catch (e) {
+            log('Force reanalyze error:', e);
+          }
+        }
+      }
+      
+      if (!analyzed) {
+        const hook = (window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__;
+        if (hook?.renderers) {
+          hook.renderers.forEach((renderer: any) => {
+            try {
+              if (renderer?.getFiberRoots) {
+                const fiberRoots = renderer.getFiberRoots(renderer);
+                fiberRoots?.forEach((root: FiberRoot) => {
+                  if (root?.current) {
+                    analyzeFiberTree(root);
+                    analyzed = true;
+                  }
+                });
+              }
+            } catch (e) {
+              log('Renderer fallback error:', e);
+            }
+          });
+        }
+      }
+      
+      if (reduxStore) {
+        try {
+          sendFromPage('REDUX_STATE_CHANGE', deepSanitizeState(reduxStore.getState()));
+        } catch (e) {
+          log('Redux state snapshot error:', e);
+        }
+      }
+    };
+    
+    scheduleIdleWork(doAnalyze, 100);
+    setTimeout(doAnalyze, 200);
   }
 
   function isReduxStore(obj: any): boolean {
@@ -932,25 +1553,12 @@
 
   function findStoreInReactFiber(): any {
     try {
-      // Try multiple root element selectors
       const rootSelectors = ['#root', '#app', '#__next', '[data-reactroot]', '#react-root', '.react-root'];
       let rootEl: Element | null = null;
       
       for (const selector of rootSelectors) {
         rootEl = document.querySelector(selector);
         if (rootEl) break;
-      }
-      
-      if (!rootEl) {
-        // Try to find any element with React fiber
-        const allElements = document.querySelectorAll('*');
-        for (const el of allElements) {
-          const keys = Object.keys(el);
-          if (keys.some(k => k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$'))) {
-            rootEl = el;
-            break;
-          }
-        }
       }
       
       if (!rootEl) return null;
@@ -961,7 +1569,7 @@
       if (!fiberKey) return null;
       
       let fiber = (rootEl as any)[fiberKey];
-      let maxDepth = 100;
+      let maxDepth = 50;
       const visited = new Set();
       
       while (fiber && maxDepth > 0) {
@@ -1142,9 +1750,8 @@
     return null;
   }
 
-  // Deep sanitize for full state tree
-  function deepSanitizeState(value: unknown, depth = 0, maxDepth = 15): unknown {
-    if (depth > maxDepth) return '[Max depth exceeded]';
+  function deepSanitizeState(value: unknown, depth = 0, maxDepth = 5): unknown {
+    if (depth > maxDepth) return '[Object depth exceeded]';
     if (value === null) return null;
     if (value === undefined) return undefined;
     
@@ -1220,10 +1827,15 @@
   let stateChangeTimeout: number | null = null;
   const STATE_CHANGE_DEBOUNCE = 100;
 
+  let reduxHookInstalled = false;
+  
   function installReduxHook(): void {
+    if (reduxHookInstalled) return;
+    reduxHookInstalled = true;
+    
     let attempts = 0;
-    const maxAttempts = 20;
-    const checkInterval = 1000;
+    const maxAttempts = 3;
+    const checkInterval = 500;
     
     const setupStore = (store: any) => {
       if (!store || reduxStore === store) return;
@@ -1245,12 +1857,24 @@
           
           const result = originalDispatch!.call(store, action);
           
-          sendFromPage('REDUX_ACTION', {
-            id: generateId(),
-            type: action.type || 'UNKNOWN',
-            payload: sanitizeValue(action, 0),
-            timestamp: Date.now(),
-          });
+          if (debuggerEnabled) {
+            sendFromPage('REDUX_ACTION', {
+              id: generateId(),
+              type: action.type || 'UNKNOWN',
+              payload: sanitizeValue(action, 0),
+              timestamp: getUniqueTimestamp(),
+            });
+            
+            sendFromPage('TIMELINE_EVENTS', [{
+              id: generateId(),
+              timestamp: getUniqueTimestamp(),
+              type: 'state-change',
+              payload: {
+                source: 'redux',
+                actionType: action.type || 'UNKNOWN',
+              },
+            }]);
+          }
           
           return result;
         };
@@ -1408,6 +2032,7 @@
       if (attempts >= maxAttempts) {
         clearInterval(check);
         reduxSearchStopped = true;
+        log('Redux store detection stopped after', maxAttempts, 'attempts');
       }
     }, checkInterval);
     
@@ -1639,8 +2264,11 @@
     };
   }
 
+  let lastMemoryUsage = 0;
+  const MEMORY_SPIKE_THRESHOLD = 0.15;
+  
   function startMemoryMonitoring(): void {
-    if (memoryMonitoringEnabled) return;
+    if (!debuggerEnabled || memoryMonitoringEnabled) return;
     
     const snapshot = getMemorySnapshot();
     if (!snapshot) {
@@ -1649,6 +2277,7 @@
     }
     
     memoryMonitoringEnabled = true;
+    lastMemoryUsage = snapshot.usedJSHeapSize;
     
     sendFromPage('MEMORY_SNAPSHOT', {
       ...snapshot,
@@ -1658,10 +2287,33 @@
     memoryMonitorInterval = window.setInterval(() => {
       const snap = getMemorySnapshot();
       if (snap) {
+        const timestamp = getUniqueTimestamp();
+        const growthRate = lastMemoryUsage > 0 
+          ? (snap.usedJSHeapSize - lastMemoryUsage) / lastMemoryUsage 
+          : 0;
+        const isSpike = growthRate > MEMORY_SPIKE_THRESHOLD;
+        
         sendFromPage('MEMORY_SNAPSHOT', {
           ...snap,
-          timestamp: Date.now(),
+          timestamp,
         });
+        
+        if (isSpike || snap.usedJSHeapSize / snap.jsHeapSizeLimit > 0.8) {
+          sendFromPage('TIMELINE_EVENTS', [{
+            id: generateId(),
+            timestamp,
+            type: 'memory',
+            payload: {
+              heapUsed: snap.usedJSHeapSize,
+              heapTotal: snap.totalJSHeapSize,
+              heapLimit: snap.jsHeapSizeLimit,
+              isSpike,
+              growthRate,
+            },
+          }]);
+        }
+        
+        lastMemoryUsage = snap.usedJSHeapSize;
       }
     }, MEMORY_SAMPLE_INTERVAL);
     
@@ -1680,12 +2332,125 @@
     log('Memory monitoring stopped');
   }
 
+  function stopAllMonitoring(): void {
+    stopMemoryMonitoring();
+    toggleScan(false);
+    reduxSearchStopped = true;
+    messageQueue = [];
+    if (flushTimeout) {
+      clearTimeout(flushTimeout);
+      flushTimeout = null;
+    }
+    clearPathCache();
+    log('All monitoring stopped');
+  }
+
   (window as any).__REACT_DEBUGGER_MEMORY__ = {
     start: startMemoryMonitoring,
     stop: stopMemoryMonitoring,
     getSnapshot: getMemorySnapshot,
     isMonitoring: () => memoryMonitoringEnabled,
   };
+
+  function installErrorHandlers(): void {
+    const originalOnError = window.onerror;
+    
+    window.onerror = function(message, source, lineno, colno, error) {
+      if (source?.includes('react-debugger') || source?.includes('chrome-extension')) {
+        return originalOnError?.apply(window, arguments as any);
+      }
+      
+      const memorySnapshot = getMemorySnapshot();
+      const analysisHints: string[] = [];
+      
+      if (memorySnapshot) {
+        const usagePercent = memorySnapshot.usedJSHeapSize / memorySnapshot.jsHeapSizeLimit;
+        if (usagePercent > 0.8) {
+          analysisHints.push('High memory usage detected at crash time');
+        }
+      }
+      
+      const crashId = generateId();
+      const crashTimestamp = getUniqueTimestamp();
+      
+      sendFromPage('CRASH_DETECTED', {
+        id: crashId,
+        timestamp: crashTimestamp,
+        type: 'js-error',
+        message: String(message),
+        stack: error?.stack?.slice(0, 5000),
+        source,
+        lineno,
+        colno,
+        memorySnapshot: memorySnapshot ? {
+          timestamp: crashTimestamp,
+          usedJSHeapSize: memorySnapshot.usedJSHeapSize,
+          totalJSHeapSize: memorySnapshot.totalJSHeapSize,
+          jsHeapSizeLimit: memorySnapshot.jsHeapSizeLimit,
+        } : undefined,
+        analysisHints,
+      });
+      
+      sendFromPage('TIMELINE_EVENTS', [{
+        id: crashId,
+        timestamp: crashTimestamp,
+        type: 'error',
+        payload: {
+          errorType: 'js-error',
+          message: String(message),
+          stack: error?.stack?.slice(0, 2000),
+          source,
+          lineno,
+        },
+      }]);
+      
+      return originalOnError?.apply(window, arguments as any);
+    };
+    
+    window.addEventListener('unhandledrejection', (event) => {
+      const reason = event.reason;
+      const memorySnapshot = getMemorySnapshot();
+      const analysisHints: string[] = [];
+      
+      if (memorySnapshot) {
+        const usagePercent = memorySnapshot.usedJSHeapSize / memorySnapshot.jsHeapSizeLimit;
+        if (usagePercent > 0.8) {
+          analysisHints.push('High memory usage detected at crash time');
+        }
+      }
+      
+      const rejectId = generateId();
+      const rejectTimestamp = getUniqueTimestamp();
+      
+      sendFromPage('CRASH_DETECTED', {
+        id: rejectId,
+        timestamp: rejectTimestamp,
+        type: 'unhandled-rejection',
+        message: reason?.message || String(reason),
+        stack: reason?.stack?.slice(0, 5000),
+        memorySnapshot: memorySnapshot ? {
+          timestamp: rejectTimestamp,
+          usedJSHeapSize: memorySnapshot.usedJSHeapSize,
+          totalJSHeapSize: memorySnapshot.totalJSHeapSize,
+          jsHeapSizeLimit: memorySnapshot.jsHeapSizeLimit,
+        } : undefined,
+        analysisHints,
+      });
+      
+      sendFromPage('TIMELINE_EVENTS', [{
+        id: rejectId,
+        timestamp: rejectTimestamp,
+        type: 'error',
+        payload: {
+          errorType: 'unhandled-rejection',
+          message: reason?.message || String(reason),
+          stack: reason?.stack?.slice(0, 2000),
+        },
+      }]);
+    });
+    
+    log('Error handlers installed');
+  }
 
   listenFromContent((message) => {
     if (message.type === 'DISPATCH_REDUX_ACTION') {
@@ -1797,12 +2562,42 @@
     if (message.type === 'STOP_MEMORY_MONITORING') {
       stopMemoryMonitoring();
     }
+    
+    if (message.type === 'ENABLE_DEBUGGER') {
+      debuggerEnabled = true;
+      installReduxHook();
+      forceReanalyze();
+      sendFromPage('DEBUGGER_STATE_CHANGED', { enabled: true });
+      log('Debugger enabled');
+    }
+    
+    if (message.type === 'DISABLE_DEBUGGER') {
+      debuggerEnabled = false;
+      stopAllMonitoring();
+      sendFromPage('DEBUGGER_STATE_CHANGED', { enabled: false });
+      log('Debugger disabled');
+    }
+    
+    if (message.type === 'GET_DEBUGGER_STATE') {
+      sendFromPage('DEBUGGER_STATE_CHANGED', { enabled: debuggerEnabled });
+    }
   });
 
   installReactHook();
   installReduxHook();
+  installErrorHandlers();
   
   (window as any).__REACT_DEBUGGER_ENABLE_CLOSURE_TRACKING__ = _installClosureTracking;
+
+  setTimeout(() => {
+    const hook = (window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__;
+    if (hook?.renderers?.size > 0) {
+      sendFromPage('REACT_DETECTED', {
+        version: detectReactVersion(),
+        mode: detectReactMode(),
+      });
+    }
+  }, 500);
 
   console.log('[React Debugger] Inject script loaded');
 })();

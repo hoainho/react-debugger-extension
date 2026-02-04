@@ -89,6 +89,116 @@ export interface MemoryReport {
   growthRate: number;
   peakUsage: number;
   warnings: string[];
+  crashes: CrashEntry[];
+}
+
+// ============================================
+// Page Load Metrics
+// ============================================
+
+export interface PageLoadMetrics {
+  fcp: number | null;           // First Contentful Paint (ms)
+  lcp: number | null;           // Largest Contentful Paint (ms)
+  ttfb: number | null;          // Time to First Byte (ms)
+  domContentLoaded: number | null;
+  loadComplete: number | null;
+  timestamp: number;
+}
+
+// ============================================
+// Crash Detection
+// ============================================
+
+export type CrashType = 'js-error' | 'unhandled-rejection' | 'react-error';
+
+export interface CrashEntry {
+  id: string;
+  timestamp: number;
+  type: CrashType;
+  message: string;
+  stack?: string;
+  componentStack?: string;
+  source?: string;
+  lineno?: number;
+  colno?: number;
+  memorySnapshot?: MemorySnapshot;
+  analysisHints: string[];
+}
+
+// ============================================
+// Timeline Events
+// ============================================
+
+export type TimelineEventType = 'render' | 'state-change' | 'effect' | 'error' | 'memory';
+
+export interface RenderEventPayload {
+  componentName: string;
+  componentId: string;
+  trigger: 'props' | 'state' | 'context' | 'parent' | 'mount';
+  changedKeys?: string[];
+  duration?: number;
+  renderOrder?: number;
+  parentComponent?: string;
+  componentPath?: string[];
+  batchId?: string;
+}
+
+export interface StateChangeEventPayload {
+  source: 'redux' | 'local';
+  actionType?: string;
+  componentName?: string;
+  hookIndex?: number;
+  oldValue?: string;
+  newValue?: string;
+  valueType?: string;
+  isExtractable?: boolean;
+}
+
+export interface EffectEventPayload {
+  componentName: string;
+  effectType: 'run' | 'cleanup';
+  effectIndex: number;
+  depCount?: number;
+  hasCleanup?: boolean;
+  effectTag?: string;
+  depsPreview?: string;
+  createFnPreview?: string;
+}
+
+export interface ErrorEventPayload {
+  errorType: CrashType;
+  message: string;
+  stack?: string;
+  componentStack?: string;
+  source?: string;
+  lineno?: number;
+}
+
+export interface MemoryEventPayload {
+  heapUsed: number;
+  heapTotal: number;
+  heapLimit: number;
+  isSpike: boolean;
+  growthRate?: number;
+}
+
+export type TimelineEventPayload = 
+  | RenderEventPayload 
+  | StateChangeEventPayload 
+  | EffectEventPayload 
+  | ErrorEventPayload 
+  | MemoryEventPayload;
+
+export interface TimelineEvent {
+  id: string;
+  timestamp: number;
+  type: TimelineEventType;
+  payload: TimelineEventPayload;
+}
+
+export interface CorrelationResult {
+  correlatedIds: string[];
+  explanation: string[];
 }
 
 export interface TriggerReason {
@@ -143,6 +253,8 @@ export interface TabState {
   reduxState: unknown;
   reduxActions: ReduxAction[];
   memoryReport: MemoryReport | null;
+  pageLoadMetrics: PageLoadMetrics | null;
+  timelineEvents: TimelineEvent[];
 }
 
 export type MessageType =
@@ -169,7 +281,17 @@ export type MessageType =
   | 'CLEAR_ISSUES'
   | 'MEMORY_SNAPSHOT'
   | 'START_MEMORY_MONITORING'
-  | 'STOP_MEMORY_MONITORING';
+  | 'STOP_MEMORY_MONITORING'
+  | 'PAGE_LOAD_METRICS'
+  | 'CRASH_DETECTED'
+  | 'TIMELINE_EVENTS'
+  | 'GET_CORRELATION'
+  | 'CORRELATION_RESULT'
+  | 'ENABLE_DEBUGGER'
+  | 'DISABLE_DEBUGGER'
+  | 'GET_DEBUGGER_STATE'
+  | 'DEBUGGER_STATE_CHANGED'
+  | 'PAGE_NAVIGATING';
 
 export interface Message<T = unknown> {
   type: MessageType;

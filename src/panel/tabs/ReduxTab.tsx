@@ -49,16 +49,50 @@ export function ReduxTab({ detected, state, actions, tabId }: ReduxTabProps) {
           <span className="empty-icon">🗄️</span>
           <p>Redux not detected</p>
           <p className="hint">
-            Make sure your app uses Redux and the store is accessible.
-            <br />
-            Try exposing the store: <code>window.store = store</code>
+            Make sure your app uses Redux and the store is accessible via one of the methods below.
           </p>
-          <div className="detection-tips">
-            <h4>Detection methods:</h4>
-            <ul>
-              <li>Redux DevTools Extension</li>
-              <li>window.store / window.__REDUX_STORE__</li>
-              <li>React-Redux Provider context</li>
+        </div>
+        <div className="redux-setup-guide">
+          <h3>Setup Guide</h3>
+          <p className="setup-intro">
+            To enable Redux debugging, expose your store using one of these methods:
+          </p>
+          
+          <div className="setup-method">
+            <h4>Option 1: window.store (Recommended)</h4>
+            <pre className="code-snippet">{`// In your store configuration file
+const store = configureStore({ reducer: rootReducer });
+
+// Expose for debugging (development only)
+if (process.env.NODE_ENV === 'development') {
+  window.store = store;
+}
+
+export default store;`}</pre>
+          </div>
+          
+          <div className="setup-method">
+            <h4>Option 2: window.__REDUX_STORE__</h4>
+            <pre className="code-snippet">{`// Alternative naming convention
+if (process.env.NODE_ENV === 'development') {
+  window.__REDUX_STORE__ = store;
+}`}</pre>
+          </div>
+          
+          <div className="setup-method">
+            <h4>Option 3: Redux DevTools Extension</h4>
+            <p className="method-desc">
+              If you have the Redux DevTools browser extension installed, this debugger will automatically detect it.
+            </p>
+          </div>
+          
+          <div className="detection-status">
+            <h4>Detection Methods Checked:</h4>
+            <ul className="detection-checklist">
+              <li><span className="check-icon">✗</span> window.store</li>
+              <li><span className="check-icon">✗</span> window.__REDUX_STORE__</li>
+              <li><span className="check-icon">✗</span> Redux DevTools Extension</li>
+              <li><span className="check-icon">✗</span> React-Redux Provider context</li>
             </ul>
           </div>
         </div>
