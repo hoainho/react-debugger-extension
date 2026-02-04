@@ -1,17 +1,28 @@
 import { useState, useEffect, useMemo } from 'react';
-import type { MemoryReport } from '@/types';
+import type { MemoryReport, CrashEntry } from '@/types';
 
 interface MemoryTabProps {
   report: MemoryReport | null;
   tabId: number;
 }
 
-function formatBytes(bytes: number): string {
+function formatBytes(bytes: number | null | undefined): string {
+  if (bytes == null || isNaN(bytes) || !isFinite(bytes)) return '--';
   if (bytes === 0) return '0 B';
+  
+  const absBytes = Math.abs(bytes);
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
+  const i = Math.floor(Math.log(absBytes) / Math.log(k));
+  const value = bytes / Math.pow(k, i);
+  
+  return `${value.toFixed(1)} ${sizes[i]}`;
+}
+
+function formatGrowthRate(rate: number | null | undefined): string {
+  if (rate == null || isNaN(rate) || !isFinite(rate)) return '--';
+  const prefix = rate >= 0 ? '+' : '';
+  return `${prefix}${formatBytes(rate)}/s`;
 }
 
 export function MemoryTab({ report, tabId }: MemoryTabProps) {
@@ -104,16 +115,20 @@ export function MemoryTab({ report, tabId }: MemoryTabProps) {
         </button>
       </div>
 
-      {report.warnings.length > 0 && (
-        <div className="memory-warnings">
-          {report.warnings.map((warning, i) => (
-            <div key={i} className="memory-warning">
-              <span className="warning-icon">⚠️</span>
-              <span>{warning}</span>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="memory-warnings-container">
+        {report.warnings.length > 0 ? (
+          <div className="memory-warnings">
+            {report.warnings.map((warning, i) => (
+              <div key={i} className="memory-warning">
+                <span className="warning-icon">⚠️</span>
+                <span>{warning}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="memory-warnings-placeholder" />
+        )}
+      </div>
 
       <div className="stats-grid">
         <div className="stat-card">
@@ -167,14 +182,16 @@ export function MemoryTab({ report, tabId }: MemoryTabProps) {
             className="growth-rate-value"
             style={{ color: getGrowthRateColor(report.growthRate) }}
           >
-            {report.growthRate >= 0 ? '+' : ''}{formatBytes(report.growthRate)}/s
+            {formatGrowthRate(report.growthRate)}
           </span>
           <span className="growth-rate-hint">
-            {report.growthRate > 1024 * 1024 
-              ? 'Rapid growth - possible memory leak' 
-              : report.growthRate < -512 * 1024
-                ? 'Memory decreasing (GC running)'
-                : 'Normal'}
+            {report.growthRate == null || isNaN(report.growthRate)
+              ? 'Collecting data...'
+              : report.growthRate > 1024 * 1024 
+                ? 'Rapid growth - possible memory leak' 
+                : report.growthRate < -512 * 1024
+                  ? 'Memory decreasing (GC running)'
+                  : 'Normal'}
           </span>
         </div>
       </section>
@@ -223,6 +240,10 @@ export function MemoryTab({ report, tabId }: MemoryTabProps) {
         </section>
       )}
 
+      {report.crashes && report.crashes.length > 0 && (
+        <CrashLogSection crashes={report.crashes} />
+      )}
+
       <section className="section">
         <h3>Memory Tips</h3>
         <div className="info-section">
@@ -236,5 +257,101 @@ export function MemoryTab({ report, tabId }: MemoryTabProps) {
         </div>
       </section>
     </div>
+  );
+}
+
+function CrashLogSection({ crashes }: { crashes: CrashEntry[] }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const getCrashIcon = (type: CrashEntry['type']) => {
+    switch (type) {
+      case 'js-error': return '❌';
+      case 'unhandled-rejection': return '⚠️';
+      case 'react-error': return '🔴';
+      default: return '❌';
+    }
+  };
+
+  const getCrashLabel = (type: CrashEntry['type']) => {
+    switch (type) {
+      case 'js-error': return 'JS Error';
+      case 'unhandled-rejection': return 'Promise Rejection';
+      case 'react-error': return 'React Error';
+      default: return 'Error';
+    }
+  };
+
+  return (
+    <section className="section">
+      <h3>Crash Log ({crashes.length})</h3>
+      <div className="crash-list">
+        {crashes.slice().reverse().map(crash => (
+          <div key={crash.id} className="crash-entry">
+            <div 
+              className="crash-header"
+              onClick={() => setExpandedId(expandedId === crash.id ? null : crash.id)}
+            >
+              <span className="crash-icon">{getCrashIcon(crash.type)}</span>
+              <span className="crash-time">
+                {new Date(crash.timestamp).toLocaleTimeString()}
+              </span>
+              <span className="crash-type-badge">{getCrashLabel(crash.type)}</span>
+              <span className="crash-message">
+                {crash.message.length > 80 ? crash.message.slice(0, 80) + '...' : crash.message}
+              </span>
+              <span className="crash-expand">{expandedId === crash.id ? '▼' : '▶'}</span>
+            </div>
+            
+            {expandedId === crash.id && (
+              <div className="crash-details">
+                <div className="crash-detail-row">
+                  <strong>Message:</strong>
+                  <span>{crash.message}</span>
+                </div>
+                
+                {crash.source && (
+                  <div className="crash-detail-row">
+                    <strong>Source:</strong>
+                    <span>{crash.source}{crash.lineno ? `:${crash.lineno}` : ''}{crash.colno ? `:${crash.colno}` : ''}</span>
+                  </div>
+                )}
+                
+                {crash.stack && (
+                  <div className="crash-detail-row">
+                    <strong>Stack:</strong>
+                    <pre className="crash-stack">{crash.stack}</pre>
+                  </div>
+                )}
+                
+                {crash.componentStack && (
+                  <div className="crash-detail-row">
+                    <strong>Component Stack:</strong>
+                    <pre className="crash-stack">{crash.componentStack}</pre>
+                  </div>
+                )}
+                
+                {crash.memorySnapshot && (
+                  <div className="crash-detail-row">
+                    <strong>Memory at crash:</strong>
+                    <span>
+                      {formatBytes(crash.memorySnapshot.usedJSHeapSize)} / {formatBytes(crash.memorySnapshot.jsHeapSizeLimit)}
+                      ({((crash.memorySnapshot.usedJSHeapSize / crash.memorySnapshot.jsHeapSizeLimit) * 100).toFixed(1)}%)
+                    </span>
+                  </div>
+                )}
+                
+                {crash.analysisHints && crash.analysisHints.length > 0 && (
+                  <div className="crash-hints">
+                    {crash.analysisHints.map((hint, i) => (
+                      <div key={i} className="crash-hint">💡 {hint}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }

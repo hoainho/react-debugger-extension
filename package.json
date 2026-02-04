@@ -10,19 +10,28 @@
     "build": "vite build --mode production",
     "build:dev": "vite build --mode development",
     "clean": "rm -rf dist",
-    "package": "npm run build && cd dist && zip -r ../react-debugger.zip ."
+    "package": "npm run build && cd dist && zip -r ../react-debugger.zip .",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/chrome": "^0.0.268",
+    "@types/jsdom": "^27.0.0",
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.2.1",
+    "jsdom": "^28.0.0",
     "sharp": "^0.34.5",
     "typescript": "^5.3.3",
-    "vite": "^5.0.12"
+    "vite": "^5.0.12",
+    "vitest": "^4.0.18"
   },
   "dependencies": {
+    "opencode-antigravity-auth": "^1.4.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   }

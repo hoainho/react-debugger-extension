@@ -1,6 +1,35 @@
 (function() {
   "use strict";
   const tabStates = /* @__PURE__ */ new Map();
+  const debuggerEnabledStates = /* @__PURE__ */ new Map();
+  async function getDebuggerState(tabId) {
+    if (debuggerEnabledStates.has(tabId)) {
+      return debuggerEnabledStates.get(tabId);
+    }
+    try {
+      const result = await chrome.storage.session.get(`debugger_enabled_${tabId}`);
+      const enabled = result[`debugger_enabled_${tabId}`] ?? false;
+      debuggerEnabledStates.set(tabId, enabled);
+      return enabled;
+    } catch {
+      return false;
+    }
+  }
+  async function setDebuggerState(tabId, enabled) {
+    debuggerEnabledStates.set(tabId, enabled);
+    try {
+      await chrome.storage.session.set({ [`debugger_enabled_${tabId}`]: enabled });
+    } catch (e) {
+      console.error("[React Debugger] Failed to save debugger state:", e);
+    }
+  }
+  async function clearDebuggerState(tabId) {
+    debuggerEnabledStates.delete(tabId);
+    try {
+      await chrome.storage.session.remove(`debugger_enabled_${tabId}`);
+    } catch {
+    }
+  }
   function createInitialState() {
     return {
       reactDetected: false,
@@ -13,7 +42,9 @@
       clsReport: null,
       reduxState: null,
       reduxActions: [],
-      memoryReport: null
+      memoryReport: null,
+      pageLoadMetrics: null,
+      timelineEvents: []
     };
   }
   function getOrCreateState(tabId) {
@@ -39,10 +70,19 @@
     switch (message.type) {
       case "REACT_DETECTED": {
         const payload = message.payload;
-        state.reactDetected = true;
-        state.reactVersion = payload.version;
-        state.reactMode = payload.mode;
+        const freshState = createInitialState();
+        freshState.reactDetected = true;
+        freshState.reactVersion = payload.version;
+        freshState.reactMode = payload.mode;
+        tabStates.set(tabId, freshState);
         broadcastToPanel(tabId, "REACT_DETECTED", payload);
+        getDebuggerState(tabId).then((wasEnabled) => {
+          if (wasEnabled) {
+            chrome.tabs.sendMessage(tabId, { type: "ENABLE_DEBUGGER" }).catch(() => {
+            });
+            broadcastToPanel(tabId, "DEBUGGER_STATE_CHANGED", { enabled: true });
+          }
+        });
         break;
       }
       case "REDUX_DETECTED": {
@@ -55,10 +95,12 @@
         const payload = message.payload;
         state.components = payload.components;
         for (const issue of payload.issues) {
-          const existing = state.issues.find(
+          const existingIndex = state.issues.findIndex(
             (i) => i.type === issue.type && i.component === issue.component
           );
-          if (!existing) {
+          if (existingIndex >= 0) {
+            state.issues[existingIndex] = issue;
+          } else {
             state.issues.push(issue);
           }
         }
@@ -227,6 +269,24 @@
         broadcastToPanel(tabId, "CLEAR_ISSUES", null);
         break;
       }
+      case "ENABLE_DEBUGGER": {
+        setDebuggerState(tabId, true);
+        chrome.tabs.sendMessage(tabId, { type: "ENABLE_DEBUGGER" });
+        broadcastToPanel(tabId, "DEBUGGER_STATE_CHANGED", { enabled: true });
+        break;
+      }
+      case "DISABLE_DEBUGGER": {
+        setDebuggerState(tabId, false);
+        chrome.tabs.sendMessage(tabId, { type: "DISABLE_DEBUGGER" });
+        broadcastToPanel(tabId, "DEBUGGER_STATE_CHANGED", { enabled: false });
+        break;
+      }
+      case "GET_DEBUGGER_STATE": {
+        getDebuggerState(tabId).then((enabled) => {
+          sendResponse({ success: true, enabled });
+        });
+        return true;
+      }
       case "MEMORY_SNAPSHOT": {
         const snapshot = message.payload;
         if (!state.memoryReport) {
@@ -235,38 +295,40 @@
             history: [],
             growthRate: 0,
             peakUsage: 0,
-            warnings: []
+            warnings: [],
+            crashes: []
           };
         }
-        state.memoryReport.current = snapshot;
-        state.memoryReport.history.push(snapshot);
-        if (state.memoryReport.history.length > 60) {
-          state.memoryReport.history.shift();
+        const report = state.memoryReport;
+        report.current = snapshot;
+        report.history.push(snapshot);
+        if (report.history.length > 60) {
+          report.history.shift();
         }
-        if (snapshot.usedJSHeapSize > state.memoryReport.peakUsage) {
-          state.memoryReport.peakUsage = snapshot.usedJSHeapSize;
+        if (snapshot.usedJSHeapSize > report.peakUsage) {
+          report.peakUsage = snapshot.usedJSHeapSize;
         }
-        if (state.memoryReport.history.length >= 2) {
-          const history = state.memoryReport.history;
+        if (report.history.length >= 2) {
+          const history = report.history;
           const oldSnapshot = history[0];
           const newSnapshot = history[history.length - 1];
           const timeDiff = (newSnapshot.timestamp - oldSnapshot.timestamp) / 1e3;
           if (timeDiff > 0) {
             const memoryDiff = newSnapshot.usedJSHeapSize - oldSnapshot.usedJSHeapSize;
-            state.memoryReport.growthRate = memoryDiff / timeDiff;
+            report.growthRate = memoryDiff / timeDiff;
           }
         }
-        state.memoryReport.warnings = [];
+        report.warnings = [];
         const usagePercent = snapshot.usedJSHeapSize / snapshot.jsHeapSizeLimit;
         if (usagePercent > 0.9) {
-          state.memoryReport.warnings.push("Critical: Memory usage above 90%");
+          report.warnings.push("Critical: Memory usage above 90%");
         } else if (usagePercent > 0.7) {
-          state.memoryReport.warnings.push("Warning: Memory usage above 70%");
+          report.warnings.push("Warning: Memory usage above 70%");
         }
-        if (state.memoryReport.growthRate > 1024 * 1024) {
-          state.memoryReport.warnings.push("Warning: Rapid memory growth detected (>1MB/s)");
+        if (report.growthRate > 1024 * 1024) {
+          report.warnings.push("Warning: Rapid memory growth detected (>1MB/s)");
         }
-        broadcastToPanel(tabId, "MEMORY_SNAPSHOT", state.memoryReport);
+        broadcastToPanel(tabId, "MEMORY_SNAPSHOT", report);
         break;
       }
       case "START_MEMORY_MONITORING": {
@@ -277,8 +339,134 @@
         chrome.tabs.sendMessage(tabId, { type: "STOP_MEMORY_MONITORING" });
         break;
       }
+      case "PAGE_LOAD_METRICS": {
+        const metrics = message.payload;
+        state.pageLoadMetrics = metrics;
+        broadcastToPanel(tabId, "PAGE_LOAD_METRICS", metrics);
+        break;
+      }
+      case "CRASH_DETECTED": {
+        const crash = message.payload;
+        if (!state.memoryReport) {
+          state.memoryReport = {
+            current: null,
+            history: [],
+            growthRate: 0,
+            peakUsage: 0,
+            warnings: [],
+            crashes: []
+          };
+        }
+        state.memoryReport.crashes.push(crash);
+        if (state.memoryReport.crashes.length > 50) {
+          state.memoryReport.crashes.shift();
+        }
+        broadcastToPanel(tabId, "CRASH_DETECTED", crash);
+        break;
+      }
+      case "TIMELINE_EVENTS": {
+        const events = message.payload;
+        state.timelineEvents.push(...events);
+        if (state.timelineEvents.length > 2e3) {
+          state.timelineEvents = state.timelineEvents.slice(-2e3);
+        }
+        broadcastToPanel(tabId, "TIMELINE_EVENTS", events);
+        break;
+      }
+      case "GET_CORRELATION": {
+        const { eventId } = message.payload;
+        const result = correlateEvent(eventId, state.timelineEvents);
+        sendResponse({ success: true, result });
+        return true;
+      }
     }
   });
+  function correlateEvent(eventId, events) {
+    const selectedEvent = events.find((e) => e.id === eventId);
+    if (!selectedEvent) {
+      return { correlatedIds: [], explanation: [] };
+    }
+    const correlatedIds = [];
+    const explanation = [];
+    switch (selectedEvent.type) {
+      case "render": {
+        const stateChanges = findEventsBefore(events, selectedEvent.timestamp, 500, "state-change");
+        if (stateChanges.length > 0) {
+          correlatedIds.push(...stateChanges.map((e) => e.id));
+          explanation.push(`Possibly triggered by ${stateChanges.length} state change(s)`);
+        }
+        const parentRenders = findEventsBefore(events, selectedEvent.timestamp, 100, "render").filter((e) => e.id !== eventId);
+        if (parentRenders.length > 0) {
+          correlatedIds.push(...parentRenders.map((e) => e.id));
+          explanation.push(`${parentRenders.length} sibling/parent render(s) in same batch`);
+        }
+        break;
+      }
+      case "state-change": {
+        const subsequentRenders = findEventsAfter(events, selectedEvent.timestamp, 500, "render");
+        if (subsequentRenders.length > 0) {
+          correlatedIds.push(...subsequentRenders.map((e) => e.id));
+          explanation.push(`Triggered ${subsequentRenders.length} render(s)`);
+        }
+        break;
+      }
+      case "error": {
+        const precedingEvents = findEventsBefore(events, selectedEvent.timestamp, 1e3);
+        correlatedIds.push(...precedingEvents.map((e) => e.id));
+        if (precedingEvents.length > 0) {
+          explanation.push(`${precedingEvents.length} events within 1s before error`);
+        }
+        const memorySpike = precedingEvents.find(
+          (e) => e.type === "memory" && e.payload.isSpike
+        );
+        if (memorySpike) {
+          explanation.push("⚠️ Memory spike detected before error");
+        }
+        const recentRenders = precedingEvents.filter((e) => e.type === "render");
+        if (recentRenders.length > 10) {
+          explanation.push(`⚠️ ${recentRenders.length} renders before error (possible infinite loop)`);
+        }
+        break;
+      }
+      case "memory": {
+        const payload = selectedEvent.payload;
+        if (payload.isSpike) {
+          const precedingRenders = findEventsBefore(events, selectedEvent.timestamp, 2e3, "render");
+          if (precedingRenders.length > 0) {
+            correlatedIds.push(...precedingRenders.map((e) => e.id));
+            explanation.push(`${precedingRenders.length} render(s) before memory spike`);
+          }
+          const stateChanges = findEventsBefore(events, selectedEvent.timestamp, 2e3, "state-change");
+          if (stateChanges.length > 0) {
+            correlatedIds.push(...stateChanges.map((e) => e.id));
+            explanation.push(`${stateChanges.length} state change(s) before spike`);
+          }
+        }
+        break;
+      }
+      case "effect": {
+        const triggeringRender = findEventsBefore(events, selectedEvent.timestamp, 100, "render").slice(-1)[0];
+        if (triggeringRender) {
+          correlatedIds.push(triggeringRender.id);
+          explanation.push("Triggered by preceding render");
+        }
+        break;
+      }
+    }
+    return { correlatedIds, explanation };
+  }
+  function findEventsBefore(events, timestamp, windowMs, type) {
+    const startTime = timestamp - windowMs;
+    return events.filter(
+      (e) => e.timestamp >= startTime && e.timestamp < timestamp && (!type || e.type === type)
+    );
+  }
+  function findEventsAfter(events, timestamp, windowMs, type) {
+    const endTime = timestamp + windowMs;
+    return events.filter(
+      (e) => e.timestamp > timestamp && e.timestamp <= endTime && e.type === type
+    );
+  }
   function broadcastToPanel(tabId, type, payload) {
     chrome.runtime.sendMessage({
       type,
@@ -289,10 +477,11 @@
   }
   chrome.tabs.onRemoved.addListener((tabId) => {
     tabStates.delete(tabId);
+    clearDebuggerState(tabId);
   });
   chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
     if (changeInfo.status === "loading") {
-      tabStates.set(tabId, createInitialState());
+      broadcastToPanel(tabId, "PAGE_NAVIGATING", { tabId });
     }
   });
   console.log("[React Debugger] Background service worker started");

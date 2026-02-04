@@ -85,6 +85,9 @@ export function IssueCard({ issue }: IssueCardProps) {
   const severity = SEVERITY_CONFIG[issue.severity];
   const info = ISSUE_INFO[issue.type] || { title: issue.type, why: '' };
   const location = issue.location;
+  
+  const renderCountMatch = issue.message.match(/Rendered (\d+) times/);
+  const renderCount = renderCountMatch ? parseInt(renderCountMatch[1], 10) : null;
 
   return (
     <div
@@ -114,6 +117,11 @@ export function IssueCard({ issue }: IssueCardProps) {
             <span className="issue-component">
               in <strong>{issue.component}</strong>
             </span>
+            {renderCount !== null && (
+              <span className="render-count-badge" title="Renders in last second">
+                {renderCount}×
+              </span>
+            )}
             {location?.componentPath && location.componentPath.length > 1 && (
               <span className="component-path">
                 ({location.componentPath.join(' → ')})
