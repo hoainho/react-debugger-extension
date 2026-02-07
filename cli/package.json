@@ -1,0 +1,41 @@
+{
+  "name": "react-debugger",
+  "version": "1.0.0",
+  "description": "Advanced debugging & performance optimization tool for ReactJS applications - Chrome Extension",
+  "author": "NhoNH",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "react-debugger": "./bin/cli.js"
+  },
+  "files": [
+    "bin/",
+    "src/"
+  ],
+  "keywords": [
+    "react",
+    "debugger",
+    "devtools",
+    "chrome-extension",
+    "performance",
+    "redux",
+    "profiler",
+    "developer-tools"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nhonh/react-debugger-extension"
+  },
+  "homepage": "https://github.com/nhonh/react-debugger-extension#readme",
+  "bugs": {
+    "url": "https://github.com/nhonh/react-debugger-extension/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.9.1",
+    "picocolors": "^1.1.1",
+    "decompress": "^4.2.1"
+  }
+}
