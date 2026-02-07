@@ -70,11 +70,12 @@
     switch (message.type) {
       case "REACT_DETECTED": {
         const payload = message.payload;
-        const freshState = createInitialState();
-        freshState.reactDetected = true;
-        freshState.reactVersion = payload.version;
-        freshState.reactMode = payload.mode;
-        tabStates.set(tabId, freshState);
+        state.reactDetected = true;
+        state.reactVersion = payload.version;
+        state.reactMode = payload.mode;
+        state.reduxDetected = false;
+        state.reduxState = null;
+        state.reduxActions = [];
         broadcastToPanel(tabId, "REACT_DETECTED", payload);
         getDebuggerState(tabId).then((wasEnabled) => {
           if (wasEnabled) {
@@ -478,11 +479,6 @@
   chrome.tabs.onRemoved.addListener((tabId) => {
     tabStates.delete(tabId);
     clearDebuggerState(tabId);
-  });
-  chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-    if (changeInfo.status === "loading") {
-      broadcastToPanel(tabId, "PAGE_NAVIGATING", { tabId });
-    }
   });
   console.log("[React Debugger] Background service worker started");
 })();

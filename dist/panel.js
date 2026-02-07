@@ -8440,7 +8440,8 @@ const EVENT_CONFIG = {
   "state-change": { icon: "📦", color: "#a855f7", label: "State" },
   "effect": { icon: "⚡", color: "var(--accent-yellow)", label: "Effect" },
   "error": { icon: "❌", color: "var(--accent-red)", label: "Error" },
-  "memory": { icon: "🧠", color: "var(--accent-green)", label: "Memory" }
+  "memory": { icon: "🧠", color: "var(--accent-green)", label: "Memory" },
+  "context-change": { icon: "🔗", color: "#f97316", label: "Context" }
 };
 function formatTime(timestamp) {
   return new Date(timestamp).toLocaleTimeString("en-US", {
@@ -8464,7 +8465,8 @@ function TimelineTab({ events, tabId, onClear }) {
     "state-change": true,
     "effect": true,
     "error": true,
-    "memory": true
+    "memory": true,
+    "context-change": true
   });
   const [searchQuery, setSearchQuery] = reactExports.useState("");
   const [expandedId, setExpandedId] = reactExports.useState(null);
@@ -8506,7 +8508,8 @@ function TimelineTab({ events, tabId, onClear }) {
       "state-change": true,
       "effect": true,
       "error": true,
-      "memory": true
+      "memory": true,
+      "context-change": true
     });
     setSearchQuery("");
   }, []);
@@ -8582,7 +8585,8 @@ function TimelineTab({ events, tabId, onClear }) {
       "state-change": 0,
       "effect": 0,
       "error": 0,
-      "memory": 0
+      "memory": 0,
+      "context-change": 0
     };
     events.forEach((e) => counts[e.type]++);
     return counts;
@@ -8605,12 +8609,14 @@ function TimelineTab({ events, tabId, onClear }) {
             "#",
             p2.renderOrder
           ] }),
+          p2.fiberDepth !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "fiber-depth", title: `Depth: ${p2.fiberDepth}`, children: "·".repeat(Math.min(p2.fiberDepth, 5)) }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: p2.componentName }),
           p2.parentComponent && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "parent-component", children: [
             "← ",
             p2.parentComponent
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "event-trigger", style: { color: config.color }, children: p2.trigger }),
+          p2.renderReasonSummary && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "render-reason-summary", title: p2.renderReasonSummary, children: p2.renderReasonSummary }),
           p2.duration !== void 0 && p2.duration > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "event-duration", children: [
             p2.duration.toFixed(1),
             "ms"
@@ -8621,10 +8627,10 @@ function TimelineTab({ events, tabId, onClear }) {
         const p2 = event.payload;
         return /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "event-summary", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: p2.componentName || "Unknown" }),
-          p2.hookIndex !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "hook-index", children: [
+          p2.stateName ? /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "state-name", children: p2.stateName }) : p2.hookIndex !== void 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "hook-index", children: [
             "useState #",
             p2.hookIndex
-          ] }),
+          ] }) : null,
           p2.isExtractable && p2.oldValue !== void 0 && p2.newValue !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "state-change-value", children: [
             p2.oldValue,
             " → ",
@@ -8661,6 +8667,14 @@ function TimelineTab({ events, tabId, onClear }) {
           p2.isSpike && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "memory-spike", children: "SPIKE" })
         ] });
       }
+      case "context-change": {
+        const p2 = event.payload;
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "event-summary", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: p2.componentName }),
+          p2.contextType && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "context-type", children: p2.contextType }),
+          p2.changedKeys && p2.changedKeys.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "context-changed-keys", children: p2.changedKeys.join(", ") })
+        ] });
+      }
       default:
         return null;
     }
@@ -8674,6 +8688,11 @@ function TimelineTab({ events, tabId, onClear }) {
             /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Component:" }),
             " ",
             p2.componentName
+          ] }),
+          p2.fiberDepth !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Tree Depth:" }),
+            " ",
+            p2.fiberDepth
           ] }),
           p2.renderOrder !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Render Order:" }),
@@ -8698,7 +8717,36 @@ function TimelineTab({ events, tabId, onClear }) {
             " ",
             p2.trigger
           ] }),
-          p2.changedKeys && p2.changedKeys.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+          p2.renderReasonSummary && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row render-reason-box", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Why Rendered:" }),
+            " ",
+            p2.renderReasonSummary
+          ] }),
+          p2.propsChanges && p2.propsChanges.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Props Changes:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "changes-list", children: p2.propsChanges.map((change, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "change-item", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "change-key", children: [
+                change.key,
+                ":"
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("code", { className: "change-old", children: change.oldValue }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "change-arrow", children: "→" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("code", { className: "change-new", children: change.newValue })
+            ] }, i)) })
+          ] }),
+          p2.stateChanges && p2.stateChanges.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "State Changes:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "changes-list", children: p2.stateChanges.map((change, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "change-item", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "change-key", children: [
+                change.key,
+                ":"
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("code", { className: "change-old", children: change.oldValue }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "change-arrow", children: "→" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("code", { className: "change-new", children: change.newValue })
+            ] }, i)) })
+          ] }),
+          p2.changedKeys && p2.changedKeys.length > 0 && !p2.propsChanges && !p2.stateChanges && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Changed:" }),
             " ",
             p2.changedKeys.join(", ")
@@ -8729,8 +8777,13 @@ function TimelineTab({ events, tabId, onClear }) {
             " ",
             p2.componentName
           ] }),
+          p2.stateName && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "State Variable:" }),
+            " ",
+            /* @__PURE__ */ jsxRuntimeExports.jsx("code", { children: p2.stateName })
+          ] }),
           p2.hookIndex !== void 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Hook:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Hook Index:" }),
             " useState #",
             p2.hookIndex
           ] }),
@@ -8853,6 +8906,26 @@ function TimelineTab({ events, tabId, onClear }) {
             "/s"
           ] }),
           p2.isSpike && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "detail-row warning", children: "Memory spike detected!" })
+        ] });
+      }
+      case "context-change": {
+        const p2 = event.payload;
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "event-details", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Component:" }),
+            " ",
+            p2.componentName
+          ] }),
+          p2.contextType && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Context Provider:" }),
+            " ",
+            p2.contextType
+          ] }),
+          p2.changedKeys && p2.changedKeys.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "detail-row", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Changed Keys:" }),
+            " ",
+            p2.changedKeys.join(", ")
+          ] })
         ] });
       }
       default:
@@ -9036,6 +9109,28 @@ function TimelineTab({ events, tabId, onClear }) {
     }) })
   ] });
 }
+function isExtensionContextValid() {
+  var _a;
+  try {
+    return !!((_a = chrome.runtime) == null ? void 0 : _a.id);
+  } catch {
+    return false;
+  }
+}
+async function safeSendMessage(message) {
+  var _a;
+  if (!isExtensionContextValid()) {
+    return null;
+  }
+  try {
+    return await chrome.runtime.sendMessage(message);
+  } catch (error) {
+    if ((_a = error == null ? void 0 : error.message) == null ? void 0 : _a.includes("Extension context invalidated")) {
+      return null;
+    }
+    throw error;
+  }
+}
 const TABS = [
   { id: "timeline", label: "Timeline" },
   { id: "ui-state", label: "UI & State" },
@@ -9064,19 +9159,26 @@ function Panel() {
   const [activeTab, setActiveTab] = reactExports.useState("timeline");
   const [state, setState] = reactExports.useState(createInitialState);
   const [isLoading, setIsLoading] = reactExports.useState(true);
-  const [isNavigating, setIsNavigating] = reactExports.useState(false);
   const [extensionVersion] = reactExports.useState(() => chrome.runtime.getManifest().version);
   const [isDebuggerEnabled, setIsDebuggerEnabled] = reactExports.useState(false);
   const tabId = chrome.devtools.inspectedWindow.tabId;
   const timelineEventBatchRef = reactExports.useRef([]);
   const timelineBatchTimeoutRef = reactExports.useRef(null);
-  const navigationTimeoutRef = reactExports.useRef(null);
   const fetchState = reactExports.useCallback(async () => {
+    var _a;
+    if (!isExtensionContextValid()) {
+      setIsLoading(false);
+      return;
+    }
     try {
       const [stateResponse, debuggerResponse] = await Promise.all([
-        chrome.runtime.sendMessage({ type: "GET_STATE", tabId }),
-        chrome.runtime.sendMessage({ type: "GET_DEBUGGER_STATE", tabId })
+        safeSendMessage({ type: "GET_STATE", tabId }),
+        safeSendMessage({ type: "GET_DEBUGGER_STATE", tabId })
       ]);
+      if (!isExtensionContextValid()) {
+        setIsLoading(false);
+        return;
+      }
       if ((stateResponse == null ? void 0 : stateResponse.success) && stateResponse.state) {
         const parsedState = {
           ...stateResponse.state,
@@ -9085,19 +9187,21 @@ function Panel() {
         setState(parsedState);
       }
       if (debuggerResponse == null ? void 0 : debuggerResponse.success) {
-        setIsDebuggerEnabled(debuggerResponse.enabled);
+        setIsDebuggerEnabled(debuggerResponse.enabled ?? false);
       }
     } catch (error) {
-      console.error("[React Debugger] Error fetching state:", error);
+      if (!((_a = error == null ? void 0 : error.message) == null ? void 0 : _a.includes("Extension context invalidated"))) {
+        console.error("[React Debugger] Error fetching state:", error);
+      }
     } finally {
       setIsLoading(false);
-      setIsNavigating(false);
     }
   }, [tabId]);
   const toggleDebugger = reactExports.useCallback(() => {
+    if (!isExtensionContextValid()) return;
     const newEnabled = !isDebuggerEnabled;
     setIsDebuggerEnabled(newEnabled);
-    chrome.runtime.sendMessage({
+    safeSendMessage({
       type: newEnabled ? "ENABLE_DEBUGGER" : "DISABLE_DEBUGGER",
       tabId
     });
@@ -9105,32 +9209,24 @@ function Panel() {
   reactExports.useEffect(() => {
     fetchState();
     const listener = (message) => {
-      var _a, _b, _c;
+      var _a;
+      if (!isExtensionContextValid()) return;
       if (message.tabId !== tabId) return;
       switch (message.type) {
-        case "PAGE_NAVIGATING":
-          setIsNavigating(true);
-          if (navigationTimeoutRef.current) {
-            clearTimeout(navigationTimeoutRef.current);
-          }
-          navigationTimeoutRef.current = window.setTimeout(() => {
-            setIsNavigating(false);
-            fetchState();
-          }, 5e3);
-          break;
         case "REACT_DETECTED":
-          if (navigationTimeoutRef.current) {
-            clearTimeout(navigationTimeoutRef.current);
-            navigationTimeoutRef.current = null;
-          }
-          setState({
-            ...createInitialState(),
-            reactDetected: true,
-            reactVersion: ((_a = message.payload) == null ? void 0 : _a.version) || null,
-            reactMode: ((_b = message.payload) == null ? void 0 : _b.mode) || null
+          setState((prev) => {
+            var _a2, _b;
+            return {
+              ...prev,
+              reactDetected: true,
+              reactVersion: ((_a2 = message.payload) == null ? void 0 : _a2.version) || null,
+              reactMode: ((_b = message.payload) == null ? void 0 : _b.mode) || null,
+              reduxDetected: false,
+              reduxState: null,
+              reduxActions: []
+            };
           });
           setIsLoading(false);
-          setIsNavigating(false);
           break;
         case "REDUX_DETECTED":
           setState((prev) => ({
@@ -9141,12 +9237,12 @@ function Panel() {
           break;
         case "FIBER_COMMIT":
           setState((prev) => {
-            var _a2, _b2, _c2;
+            var _a2, _b, _c;
             return {
               ...prev,
               components: ((_a2 = message.payload) == null ? void 0 : _a2.components) || prev.components,
-              issues: ((_b2 = message.payload) == null ? void 0 : _b2.issues) || prev.issues,
-              renders: new Map(Object.entries(((_c2 = message.payload) == null ? void 0 : _c2.renders) || {}))
+              issues: ((_b = message.payload) == null ? void 0 : _b.issues) || prev.issues,
+              renders: new Map(Object.entries(((_c = message.payload) == null ? void 0 : _c.renders) || {}))
             };
           });
           break;
@@ -9184,8 +9280,8 @@ function Panel() {
           setState((prev) => {
             const exists = prev.issues.find(
               (i) => {
-                var _a2, _b2, _c2, _d;
-                return i.type === message.payload.type && i.component === message.payload.component && ((_b2 = (_a2 = i.location) == null ? void 0 : _a2.closureInfo) == null ? void 0 : _b2.functionName) === ((_d = (_c2 = message.payload.location) == null ? void 0 : _c2.closureInfo) == null ? void 0 : _d.functionName);
+                var _a2, _b, _c, _d;
+                return i.type === message.payload.type && i.component === message.payload.component && ((_b = (_a2 = i.location) == null ? void 0 : _a2.closureInfo) == null ? void 0 : _b.functionName) === ((_d = (_c = message.payload.location) == null ? void 0 : _c.closureInfo) == null ? void 0 : _d.functionName);
               }
             );
             if (exists) return prev;
@@ -9233,15 +9329,21 @@ function Panel() {
           }, 200);
           break;
         case "DEBUGGER_STATE_CHANGED":
-          setIsDebuggerEnabled(((_c = message.payload) == null ? void 0 : _c.enabled) ?? false);
+          setIsDebuggerEnabled(((_a = message.payload) == null ? void 0 : _a.enabled) ?? false);
           break;
       }
     };
-    chrome.runtime.onMessage.addListener(listener);
-    return () => chrome.runtime.onMessage.removeListener(listener);
+    if (isExtensionContextValid()) {
+      chrome.runtime.onMessage.addListener(listener);
+    }
+    return () => {
+      if (isExtensionContextValid()) {
+        chrome.runtime.onMessage.removeListener(listener);
+      }
+    };
   }, [tabId, fetchState]);
   const clearIssues = reactExports.useCallback(() => {
-    chrome.runtime.sendMessage({ type: "CLEAR_ISSUES", tabId });
+    safeSendMessage({ type: "CLEAR_ISSUES", tabId });
     setState((prev) => ({ ...prev, issues: [] }));
   }, [tabId]);
   const clearTimeline = reactExports.useCallback(() => {
@@ -9268,12 +9370,6 @@ function Panel() {
     return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "panel-loading", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "spinner" }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Loading..." })
-    ] });
-  }
-  if (isNavigating) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "panel-loading", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "spinner" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Page navigating..." })
     ] });
   }
   if (!state.reactDetected) {

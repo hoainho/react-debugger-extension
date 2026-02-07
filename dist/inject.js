@@ -624,6 +624,29 @@
       });
       return changes;
     }
+    function tryInferStateName(fiber, hookIndex) {
+      try {
+        const componentType = fiber.type;
+        if (!componentType) return void 0;
+        let sourceCode;
+        if (typeof componentType === "function") {
+          sourceCode = componentType.toString();
+        }
+        if (!sourceCode) return void 0;
+        const useStatePattern = /(?:const|let|var)\s*\[\s*(\w+)\s*,\s*set\w*\s*\]\s*=\s*(?:React\.)?useState/g;
+        const matches = [];
+        let match;
+        while ((match = useStatePattern.exec(sourceCode)) !== null) {
+          matches.push(match[1]);
+        }
+        if (matches[hookIndex]) {
+          return matches[hookIndex];
+        }
+        return void 0;
+      } catch {
+        return void 0;
+      }
+    }
     function serializeValueForDisplay(value, maxLength = 200) {
       if (value === null) return "null";
       if (value === void 0) return "undefined";
@@ -697,6 +720,7 @@
       let currentHook = fiber.memoizedState;
       let alternateHook = alternate.memoizedState;
       let hookIndex = 0;
+      let useStateIndex = 0;
       const maxHooks = 50;
       while (currentHook && alternateHook && hookIndex < maxHooks) {
         const isEffectHook = currentHook.memoizedState && typeof currentHook.memoizedState === "object" && ("create" in currentHook.memoizedState || "destroy" in currentHook.memoizedState);
@@ -706,19 +730,76 @@
           if (prevValue !== currValue) {
             const oldExtracted = extractScalarValue(prevValue);
             const newExtracted = extractScalarValue(currValue);
+            const inferredName = tryInferStateName(fiber, useStateIndex);
             changes.push({
               componentName,
               hookIndex,
               oldValue: oldExtracted.str,
               newValue: newExtracted.str,
               valueType: typeof currValue,
-              isExtractable: oldExtracted.isExtractable && newExtracted.isExtractable
+              isExtractable: oldExtracted.isExtractable && newExtracted.isExtractable,
+              stateName: inferredName
             });
           }
+          useStateIndex++;
         }
         currentHook = currentHook.next;
         alternateHook = alternateHook.next;
         hookIndex++;
+      }
+      return changes;
+    }
+    const previousContextValues = /* @__PURE__ */ new WeakMap();
+    function getContextDisplayName(context) {
+      var _a, _b;
+      if (!context) return void 0;
+      if (context.displayName) return context.displayName;
+      if ((_b = (_a = context.Provider) == null ? void 0 : _a._context) == null ? void 0 : _b.displayName) return context.Provider._context.displayName;
+      if (context._currentValue !== void 0 && typeof context._currentValue === "object" && context._currentValue !== null) {
+        const keys = Object.keys(context._currentValue);
+        if (keys.length > 0 && keys.length <= 3) {
+          return `Context(${keys.join(", ")})`;
+        }
+      }
+      return "Context";
+    }
+    function detectContextChanges(fiber) {
+      if (!isUserComponent(fiber)) return [];
+      const alternate = fiber.alternate;
+      if (!alternate) return [];
+      const componentName = getComponentName(fiber);
+      const changes = [];
+      const deps = fiber.dependencies;
+      const altDeps = alternate.dependencies;
+      if (!(deps == null ? void 0 : deps.firstContext) && !(altDeps == null ? void 0 : altDeps.firstContext)) return [];
+      let contextDep = deps == null ? void 0 : deps.firstContext;
+      let altContextDep = altDeps == null ? void 0 : altDeps.firstContext;
+      while (contextDep || altContextDep) {
+        const context = (contextDep == null ? void 0 : contextDep.context) || (altContextDep == null ? void 0 : altContextDep.context);
+        if (context) {
+          const currentValue = context._currentValue ?? context._currentValue2;
+          const prevValue = previousContextValues.get(context);
+          if (prevValue !== void 0 && currentValue !== prevValue) {
+            const contextType = getContextDisplayName(context);
+            const changedKeys = [];
+            if (typeof prevValue === "object" && prevValue !== null && typeof currentValue === "object" && currentValue !== null) {
+              const allKeys = /* @__PURE__ */ new Set([...Object.keys(prevValue), ...Object.keys(currentValue)]);
+              for (const key of allKeys) {
+                if (prevValue[key] !== currentValue[key]) {
+                  changedKeys.push(key);
+                }
+              }
+            }
+            changes.push({
+              componentName,
+              contextType,
+              changedKeys: changedKeys.length > 0 ? changedKeys : void 0
+            });
+          }
+          previousContextValues.set(context, currentValue);
+        }
+        contextDep = (contextDep == null ? void 0 : contextDep.next) || null;
+        altContextDep = (altContextDep == null ? void 0 : altContextDep.next) || null;
       }
       return changes;
     }
@@ -791,44 +872,119 @@
     }
     function detectRenderChanges(node) {
       const alternate = node.alternate;
-      if (!alternate) return { type: "mount" };
+      if (!alternate) {
+        return { type: "mount", renderReasonSummary: "Initial mount" };
+      }
       const prevProps = alternate.memoizedProps;
       const nextProps = node.memoizedProps;
       const prevState = alternate.memoizedState;
       const nextState = node.memoizedState;
       const changedProps = [];
+      const propsChanges = [];
       const changedState = [];
+      const stateChanges = [];
       if (prevProps && nextProps) {
         const allKeys = /* @__PURE__ */ new Set([...Object.keys(prevProps || {}), ...Object.keys(nextProps || {})]);
         for (const key of allKeys) {
           if (key === "children") continue;
           if (prevProps[key] !== nextProps[key]) {
             changedProps.push(key);
+            if (propsChanges.length < 5) {
+              const oldExtracted = extractScalarValue(prevProps[key]);
+              const newExtracted = extractScalarValue(nextProps[key]);
+              propsChanges.push({
+                key,
+                oldValue: oldExtracted.str,
+                newValue: newExtracted.str
+              });
+            }
           }
         }
       }
       if (prevState !== nextState) {
-        if (typeof prevState === "object" && typeof nextState === "object") {
+        if (typeof prevState === "object" && typeof nextState === "object" && prevState !== null && nextState !== null) {
           const allStateKeys = /* @__PURE__ */ new Set([...Object.keys(prevState || {}), ...Object.keys(nextState || {})]);
           for (const key of allStateKeys) {
             if ((prevState == null ? void 0 : prevState[key]) !== (nextState == null ? void 0 : nextState[key])) {
               changedState.push(key);
+              if (stateChanges.length < 5) {
+                const oldExtracted = extractScalarValue(prevState == null ? void 0 : prevState[key]);
+                const newExtracted = extractScalarValue(nextState == null ? void 0 : nextState[key]);
+                stateChanges.push({
+                  key,
+                  oldValue: oldExtracted.str,
+                  newValue: newExtracted.str
+                });
+              }
             }
           }
         } else {
           changedState.push("state");
+          if (stateChanges.length < 5) {
+            const oldExtracted = extractScalarValue(prevState);
+            const newExtracted = extractScalarValue(nextState);
+            stateChanges.push({
+              key: "state",
+              oldValue: oldExtracted.str,
+              newValue: newExtracted.str
+            });
+          }
         }
       }
+      const buildSummary = () => {
+        const parts = [];
+        if (changedProps.length > 0) {
+          const propsList = changedProps.slice(0, 3).join(", ");
+          const suffix = changedProps.length > 3 ? ` (+${changedProps.length - 3} more)` : "";
+          parts.push(`Props: ${propsList}${suffix}`);
+        }
+        if (changedState.length > 0) {
+          const stateList = changedState.slice(0, 3).join(", ");
+          const suffix = changedState.length > 3 ? ` (+${changedState.length - 3} more)` : "";
+          parts.push(`State: ${stateList}${suffix}`);
+        }
+        if (parts.length === 0) {
+          return "Parent re-rendered";
+        }
+        return parts.join(" | ");
+      };
       if (changedProps.length > 0 && changedState.length > 0) {
-        return { type: "props+state", changedKeys: [...changedProps, ...changedState] };
+        return {
+          type: "props+state",
+          changedKeys: [...changedProps, ...changedState],
+          propsChanges,
+          stateChanges,
+          renderReasonSummary: buildSummary()
+        };
       }
       if (changedProps.length > 0) {
-        return { type: "props", changedKeys: changedProps };
+        return {
+          type: "props",
+          changedKeys: changedProps,
+          propsChanges,
+          renderReasonSummary: buildSummary()
+        };
       }
       if (changedState.length > 0) {
-        return { type: "state", changedKeys: changedState };
+        return {
+          type: "state",
+          changedKeys: changedState,
+          stateChanges,
+          renderReasonSummary: buildSummary()
+        };
       }
-      return { type: "parent" };
+      return { type: "parent", renderReasonSummary: "Parent re-rendered" };
+    }
+    function getFiberDepth(fiber) {
+      let depth = 0;
+      let current = fiber == null ? void 0 : fiber.return;
+      while (current) {
+        if (isUserComponent(current)) {
+          depth++;
+        }
+        current = current.return;
+      }
+      return depth;
     }
     let batchCounter = 0;
     function getParentComponentName(fiber) {
@@ -847,6 +1003,7 @@
       const renders = [];
       const effectEvents = [];
       const localStateChanges = [];
+      const contextChanges = [];
       const renderData = [];
       const batchId = `batch_${++batchCounter}_${Date.now()}`;
       let renderOrder = 0;
@@ -864,6 +1021,8 @@
           }
           const stateChanges = detectLocalStateChanges(node);
           localStateChanges.push(...stateChanges);
+          const ctxChanges = detectContextChanges(node);
+          contextChanges.push(...ctxChanges);
           const actuallyRendered = didFiberRender(node);
           if (actuallyRendered) {
             const now = Date.now();
@@ -898,7 +1057,8 @@
               renderOrder,
               parentComponent,
               componentPath,
-              batchId
+              batchId,
+              fiberDepth: getFiberDepth(node)
             });
             renderData.push({
               fiberId,
@@ -923,7 +1083,11 @@
           renderOrder: r.renderOrder,
           parentComponent: r.parentComponent,
           componentPath: r.componentPath,
-          batchId: r.batchId
+          batchId: r.batchId,
+          fiberDepth: r.fiberDepth,
+          propsChanges: r.reason.propsChanges,
+          stateChanges: r.reason.stateChanges,
+          renderReasonSummary: r.reason.renderReasonSummary
         }
       }));
       const effectTimelineEvents = effectEvents.map((e) => ({
@@ -952,10 +1116,21 @@
           oldValue: s.oldValue,
           newValue: s.newValue,
           valueType: s.valueType,
-          isExtractable: s.isExtractable
+          isExtractable: s.isExtractable,
+          stateName: s.stateName
         }
       }));
-      const timelineEvents = [...renderTimelineEvents, ...effectTimelineEvents, ...localStateTimelineEvents];
+      const contextTimelineEvents = contextChanges.map((c) => ({
+        id: generateId(),
+        timestamp: getUniqueTimestamp(),
+        type: "context-change",
+        payload: {
+          componentName: c.componentName,
+          contextType: c.contextType,
+          changedKeys: c.changedKeys
+        }
+      }));
+      const timelineEvents = [...renderTimelineEvents, ...effectTimelineEvents, ...localStateTimelineEvents, ...contextTimelineEvents];
       if (timelineEvents.length > 0) {
         sendFromPage("TIMELINE_EVENTS", timelineEvents);
       }
@@ -1214,48 +1389,111 @@
       }
       return false;
     }
-    function findStoreInReactFiber() {
-      var _a, _b, _c, _d;
-      try {
-        const rootSelectors = ["#root", "#app", "#__next", "[data-reactroot]", "#react-root", ".react-root"];
-        let rootEl = null;
-        for (const selector of rootSelectors) {
-          rootEl = document.querySelector(selector);
-          if (rootEl) break;
+    function extractStoreFromFiber(fiber) {
+      var _a, _b, _c, _d, _e, _f;
+      if (!fiber) return null;
+      const memoizedState = fiber.memoizedState;
+      if ((memoizedState == null ? void 0 : memoizedState.store) && isReduxStore(memoizedState.store)) {
+        return memoizedState.store;
+      }
+      if (((_a = memoizedState == null ? void 0 : memoizedState.memoizedState) == null ? void 0 : _a.store) && isReduxStore(memoizedState.memoizedState.store)) {
+        return memoizedState.memoizedState.store;
+      }
+      const memoizedProps = fiber.memoizedProps;
+      if ((memoizedProps == null ? void 0 : memoizedProps.store) && isReduxStore(memoizedProps.store)) {
+        return memoizedProps.store;
+      }
+      if (((_b = memoizedProps == null ? void 0 : memoizedProps.value) == null ? void 0 : _b.store) && isReduxStore(memoizedProps.value.store)) {
+        return memoizedProps.value.store;
+      }
+      if ((memoizedProps == null ? void 0 : memoizedProps.value) && isReduxStore(memoizedProps.value)) {
+        return memoizedProps.value;
+      }
+      if (((_c = fiber.type) == null ? void 0 : _c.displayName) === "Provider" || ((_d = fiber.type) == null ? void 0 : _d.name) === "Provider") {
+        if ((memoizedProps == null ? void 0 : memoizedProps.store) && isReduxStore(memoizedProps.store)) {
+          return memoizedProps.store;
         }
-        if (!rootEl) return null;
-        const fiberKey = Object.keys(rootEl).find(
-          (key) => key.startsWith("__reactFiber$") || key.startsWith("__reactInternalInstance$")
-        );
-        if (!fiberKey) return null;
-        let fiber = rootEl[fiberKey];
-        let maxDepth = 50;
+      }
+      if (((_f = (_e = memoizedProps == null ? void 0 : memoizedProps.children) == null ? void 0 : _e.props) == null ? void 0 : _f.store) && isReduxStore(memoizedProps.children.props.store)) {
+        return memoizedProps.children.props.store;
+      }
+      const pendingProps = fiber.pendingProps;
+      if ((pendingProps == null ? void 0 : pendingProps.store) && isReduxStore(pendingProps.store)) {
+        return pendingProps.store;
+      }
+      return null;
+    }
+    function traverseFiberForStore(fiber, visited, maxDepth) {
+      if (!fiber || maxDepth <= 0 || visited.has(fiber)) return null;
+      visited.add(fiber);
+      const store = extractStoreFromFiber(fiber);
+      if (store) return store;
+      if (fiber.child) {
+        const childStore = traverseFiberForStore(fiber.child, visited, maxDepth - 1);
+        if (childStore) return childStore;
+      }
+      if (fiber.sibling) {
+        const siblingStore = traverseFiberForStore(fiber.sibling, visited, maxDepth - 1);
+        if (siblingStore) return siblingStore;
+      }
+      return null;
+    }
+    function findStoreInReactFiber() {
+      var _a;
+      try {
+        const rootSelectors = ["#root", "#app", "#__next", "[data-reactroot]", "#react-root", ".react-root", "#___gatsby", "main", "body"];
+        let fiber = null;
+        for (const selector of rootSelectors) {
+          const el = document.querySelector(selector);
+          if (!el) continue;
+          const keys = Object.keys(el);
+          const fiberKey = keys.find(
+            (key) => key.startsWith("__reactContainer$") || key.startsWith("__reactFiber$") || key.startsWith("__reactInternalInstance$")
+          );
+          if (fiberKey) {
+            fiber = el[fiberKey];
+            if ((_a = fiber == null ? void 0 : fiber.stateNode) == null ? void 0 : _a.current) {
+              fiber = fiber.stateNode.current;
+            } else if (fiber == null ? void 0 : fiber.current) {
+              fiber = fiber.current;
+            }
+            break;
+          }
+        }
+        if (!fiber) {
+          const allElements = document.querySelectorAll("*");
+          for (const el of allElements) {
+            const keys = Object.keys(el);
+            const fiberKey = keys.find(
+              (key) => key.startsWith("__reactContainer$") || key.startsWith("__reactFiber$")
+            );
+            if (fiberKey) {
+              fiber = el[fiberKey];
+              break;
+            }
+          }
+        }
+        if (!fiber) return null;
+        let rootFiber = fiber;
+        let maxUp = 100;
+        while (rootFiber.return && maxUp > 0) {
+          rootFiber = rootFiber.return;
+          maxUp--;
+        }
         const visited = /* @__PURE__ */ new Set();
-        while (fiber && maxDepth > 0) {
-          if (visited.has(fiber)) break;
-          visited.add(fiber);
-          const memoizedState = fiber.memoizedState;
-          if ((memoizedState == null ? void 0 : memoizedState.store) && isReduxStore(memoizedState.store)) {
-            return memoizedState.store;
-          }
-          if (((_a = memoizedState == null ? void 0 : memoizedState.memoizedState) == null ? void 0 : _a.store) && isReduxStore(memoizedState.memoizedState.store)) {
-            return memoizedState.memoizedState.store;
-          }
-          const memoizedProps = fiber.memoizedProps;
-          if ((memoizedProps == null ? void 0 : memoizedProps.store) && isReduxStore(memoizedProps.store)) {
-            return memoizedProps.store;
-          }
-          if (((_b = memoizedProps == null ? void 0 : memoizedProps.value) == null ? void 0 : _b.store) && isReduxStore(memoizedProps.value.store)) {
-            return memoizedProps.value.store;
-          }
-          if ((memoizedProps == null ? void 0 : memoizedProps.value) && isReduxStore(memoizedProps.value)) {
-            return memoizedProps.value;
-          }
-          if (((_d = (_c = memoizedProps == null ? void 0 : memoizedProps.children) == null ? void 0 : _c.props) == null ? void 0 : _d.store) && isReduxStore(memoizedProps.children.props.store)) {
-            return memoizedProps.children.props.store;
-          }
-          fiber = fiber.return;
-          maxDepth--;
+        const store = traverseFiberForStore(rootFiber, visited, 200);
+        if (store) {
+          log("Found Redux store in React Fiber tree");
+          return store;
+        }
+        let currentFiber = fiber;
+        let depth = 100;
+        while (currentFiber && depth > 0) {
+          if (visited.has(currentFiber)) break;
+          const store2 = extractStoreFromFiber(currentFiber);
+          if (store2) return store2;
+          currentFiber = currentFiber.return;
+          depth--;
         }
       } catch (e) {
         console.debug("[React Debugger] Error finding store in fiber:", e);
@@ -1288,19 +1526,132 @@
       }
       return null;
     }
+    let reduxDevToolsState = null;
+    let reduxDevToolsMessageListenerInstalled = false;
+    function setupReduxDevToolsMessageListener() {
+      if (reduxDevToolsMessageListenerInstalled) return;
+      reduxDevToolsMessageListenerInstalled = true;
+      window.addEventListener("message", (event) => {
+        if (!event.data || typeof event.data !== "object") return;
+        const validSources = ["@devtools-page", "@devtools-extension", "@redux-devtools-extension"];
+        if (!validSources.includes(event.data.source)) return;
+        const { type, state, payload } = event.data;
+        const stateUpdateTypes = ["STATE", "ACTION", "INIT_INSTANCE", "DISPATCH", "START", "INIT"];
+        if (stateUpdateTypes.includes(type)) {
+          const stateData = state || (payload == null ? void 0 : payload.state) || payload;
+          if (stateData && !reduxStore) {
+            try {
+              const parsedState = typeof stateData === "string" ? JSON.parse(stateData) : stateData;
+              if (parsedState && typeof parsedState === "object") {
+                reduxDevToolsState = parsedState;
+                log("Received Redux state from DevTools message:", type);
+                const proxyStore = createReduxDevToolsProxyStore(parsedState);
+                if (proxyStore) {
+                  setupReduxStore(proxyStore);
+                }
+              }
+            } catch (e) {
+            }
+          }
+        }
+      });
+    }
+    function createReduxDevToolsProxyStore(initialState) {
+      var _a;
+      const win = window;
+      if (!((_a = win.__REDUX_DEVTOOLS_EXTENSION__) == null ? void 0 : _a.connect)) {
+        return null;
+      }
+      try {
+        const connection = win.__REDUX_DEVTOOLS_EXTENSION__.connect({
+          name: "React Debugger Proxy",
+          features: { jump: false, skip: false, dispatch: true }
+        });
+        let currentState = initialState;
+        const subscribers = [];
+        connection.subscribe((message) => {
+          if (message.type === "DISPATCH" && message.state) {
+            try {
+              currentState = typeof message.state === "string" ? JSON.parse(message.state) : message.state;
+              subscribers.forEach((fn) => fn());
+            } catch (e) {
+              log("Failed to update state from DevTools:", e);
+            }
+          }
+        });
+        connection.init(initialState);
+        const proxyStore = {
+          getState: () => currentState,
+          dispatch: (action) => {
+            if (connection.send) {
+              connection.send(action, currentState);
+            }
+            return action;
+          },
+          subscribe: (listener) => {
+            subscribers.push(listener);
+            return () => {
+              const index = subscribers.indexOf(listener);
+              if (index > -1) subscribers.splice(index, 1);
+            };
+          },
+          replaceReducer: () => {
+          },
+          ["@@observable"]: () => ({
+            subscribe: (observer) => {
+              const unsubscribe = proxyStore.subscribe(() => {
+                if (observer.next) observer.next(currentState);
+              });
+              return { unsubscribe };
+            }
+          }),
+          __isProxyStore: true,
+          __devToolsConnection: connection
+        };
+        log("Created Redux DevTools proxy store");
+        return proxyStore;
+      } catch (e) {
+        return null;
+      }
+    }
     function findStoreInReduxDevTools() {
       const win = window;
       if (win.__REDUX_DEVTOOLS_EXTENSION__) {
         const ext = win.__REDUX_DEVTOOLS_EXTENSION__;
         if (ext._stores && ext._stores.length > 0) {
-          return ext._stores[0];
+          for (const store of ext._stores) {
+            if (isReduxStore(store)) return store;
+          }
         }
         if (ext._connections) {
           for (const conn of Object.values(ext._connections)) {
             if ((conn == null ? void 0 : conn.store) && isReduxStore(conn.store)) {
               return conn.store;
             }
+            if ((conn == null ? void 0 : conn.init) && (conn == null ? void 0 : conn.subscribe)) {
+              const connAny = conn;
+              if (connAny._store && isReduxStore(connAny._store)) {
+                return connAny._store;
+              }
+            }
           }
+        }
+        if (ext.stores) {
+          for (const store of Object.values(ext.stores)) {
+            if (isReduxStore(store)) return store;
+          }
+        }
+        if (ext.instances) {
+          for (const instance of Object.values(ext.instances)) {
+            const inst = instance;
+            if ((inst == null ? void 0 : inst.store) && isReduxStore(inst.store)) {
+              return inst.store;
+            }
+          }
+        }
+        if (reduxDevToolsState && !reduxStore) {
+          const proxyStore = createReduxDevToolsProxyStore(reduxDevToolsState);
+          if (proxyStore) return proxyStore;
         }
       }
       if (win.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__) {
@@ -1308,19 +1659,32 @@
         if (compose._store && isReduxStore(compose._store)) {
           return compose._store;
         }
+        if (compose.store && isReduxStore(compose.store)) {
+          return compose.store;
+        }
+      }
+      if (win.__REDUX_DEVTOOLS_STORE__) {
+        if (isReduxStore(win.__REDUX_DEVTOOLS_STORE__)) {
+          return win.__REDUX_DEVTOOLS_STORE__;
+        }
       }
       return null;
     }
     function findReduxStore() {
       const win = window;
       const directCandidates = [
-        { name: "__REDUX_STORE__", value: win.__REDUX_STORE__ },
         { name: "store", value: win.store },
+        { name: "__REDUX_STORE__", value: win.__REDUX_STORE__ },
         { name: "__store__", value: win.__store__ },
         { name: "reduxStore", value: win.reduxStore },
         { name: "__STORE__", value: win.__STORE__ },
         { name: "appStore", value: win.appStore },
-        { name: "rootStore", value: win.rootStore }
+        { name: "rootStore", value: win.rootStore },
+        { name: "__store", value: win.__store },
+        { name: "_store", value: win._store },
+        { name: "Store", value: win.Store },
+        { name: "myStore", value: win.myStore },
+        { name: "globalStore", value: win.globalStore }
       ];
       for (const { name, value } of directCandidates) {
         if (value) {
@@ -1423,172 +1787,170 @@
     let stateChangeTimeout = null;
     const STATE_CHANGE_DEBOUNCE = 100;
     let reduxHookInstalled = false;
-    function installReduxHook() {
-      if (reduxHookInstalled) return;
-      reduxHookInstalled = true;
-      let attempts = 0;
-      const maxAttempts = 3;
-      const checkInterval = 500;
-      const setupStore = (store) => {
-        if (!store || reduxStore === store) return;
-        reduxStore = store;
-        reduxSearchStopped = true;
-        try {
-          const initialState = deepSanitizeState(store.getState());
-          console.log("[React Debugger] Redux store connected");
-          sendFromPage("REDUX_DETECTED", initialState);
-          originalDispatch = store.dispatch;
-          store.dispatch = function(action) {
-            var _a;
-            if ((_a = action.type) == null ? void 0 : _a.startsWith("@@REACT_DEBUGGER/")) {
-              return originalDispatch.call(store, action);
-            }
-            const result = originalDispatch.call(store, action);
-            if (debuggerEnabled) {
-              sendFromPage("REDUX_ACTION", {
-                id: generateId(),
-                type: action.type || "UNKNOWN",
-                payload: sanitizeValue(action, 0),
-                timestamp: getUniqueTimestamp()
-              });
-              sendFromPage("TIMELINE_EVENTS", [{
-                id: generateId(),
-                timestamp: getUniqueTimestamp(),
-                type: "state-change",
-                payload: {
-                  source: "redux",
-                  actionType: action.type || "UNKNOWN"
-                }
-              }]);
-            }
-            return result;
-          };
-          store.subscribe(() => {
-            if (stateChangeTimeout) {
-              clearTimeout(stateChangeTimeout);
-            }
-            stateChangeTimeout = window.setTimeout(() => {
-              try {
-                sendFromPage("REDUX_STATE_CHANGE", deepSanitizeState(store.getState()));
-              } catch (e) {
-                console.debug("[React Debugger] Error sending state change:", e);
-              }
-              stateChangeTimeout = null;
-            }, STATE_CHANGE_DEBOUNCE);
-          });
-          window.__REACT_DEBUGGER_DISPATCH__ = (action) => {
+    let reduxCheckInterval = null;
+    function restartReduxSearch() {
+      reduxSearchStopped = false;
+      if (reduxStore) return;
+      const store = findReduxStore();
+      if (store) {
+        setupReduxStore(store);
+        return;
+      }
+      startReduxPolling();
+    }
+    function setupReduxStore(store) {
+      if (!store || reduxStore === store) return;
+      reduxStore = store;
+      reduxSearchStopped = true;
+      if (reduxCheckInterval) {
+        clearInterval(reduxCheckInterval);
+        reduxCheckInterval = null;
+      }
+      try {
+        const initialState = deepSanitizeState(store.getState());
+        console.log("[React Debugger] Redux store connected");
+        sendFromPage("REDUX_DETECTED", initialState);
+        originalDispatch = store.dispatch;
+        store.dispatch = function(action) {
+          var _a;
+          if ((_a = action.type) == null ? void 0 : _a.startsWith("@@REACT_DEBUGGER/")) {
             return originalDispatch.call(store, action);
-          };
-          window.__REACT_DEBUGGER_STORE__ = store;
-          window.__REACT_DEBUGGER_GET_STATE__ = () => store.getState();
-          let injectedState = null;
-          if (typeof store.replaceReducer === "function") {
-            try {
-              const createInjectorReducer = (baseReducer) => {
-                return (state, action) => {
-                  if (injectedState !== null) {
-                    const newState = injectedState;
-                    injectedState = null;
-                    return newState;
-                  }
-                  if (baseReducer) {
-                    return baseReducer(state, action);
-                  }
-                  return state;
-                };
-              };
-              const originalReplaceReducer = store.replaceReducer.bind(store);
-              store.replaceReducer = (nextReducer) => {
-                return originalReplaceReducer(createInjectorReducer(nextReducer));
-              };
-              originalReplaceReducer(createInjectorReducer(null));
-              log("Redux state injection ready");
-            } catch (e) {
-              log("replaceReducer setup failed:", e);
-            }
           }
-          const getNestedValue = (obj, path) => {
-            let current = obj;
-            for (const key of path) {
-              if (current == null) return void 0;
-              current = current[key];
-            }
-            return current;
-          };
-          window.__REACT_DEBUGGER_SET_STATE__ = (path, value) => {
-            try {
-              const currentState = store.getState();
-              const pathKey = path.join(".");
-              if (!stateOverrides.has(pathKey)) {
-                const originalValue = getNestedValue(currentState, path);
-                stateOverrides.set(pathKey, { path, originalValue, currentValue: value, timestamp: Date.now() });
-              } else {
-                const existing = stateOverrides.get(pathKey);
-                existing.currentValue = value;
-                existing.timestamp = Date.now();
+          const result = originalDispatch.call(store, action);
+          if (debuggerEnabled) {
+            sendFromPage("REDUX_ACTION", {
+              id: generateId(),
+              type: action.type || "UNKNOWN",
+              payload: sanitizeValue(action, 0),
+              timestamp: getUniqueTimestamp()
+            });
+            sendFromPage("TIMELINE_EVENTS", [{
+              id: generateId(),
+              timestamp: getUniqueTimestamp(),
+              type: "state-change",
+              payload: {
+                source: "redux",
+                actionType: action.type || "UNKNOWN"
               }
-              const newState = setNestedValue(currentState, path, value);
-              injectedState = newState;
-              originalDispatch.call(store, { type: "@@REACT_DEBUGGER/INJECT_STATE" });
-              setTimeout(() => {
-                sendFromPage("REDUX_STATE_CHANGE", deepSanitizeState(store.getState()));
-              }, 10);
-              log("State updated at path:", pathKey);
-            } catch (e) {
-              console.error("[React Debugger] Set state error:", e);
-            }
-          };
-          window.__REACT_DEBUGGER_CLEAR_OVERRIDES__ = () => {
+            }]);
+          }
+          return result;
+        };
+        store.subscribe(() => {
+          if (stateChangeTimeout) {
+            clearTimeout(stateChangeTimeout);
+          }
+          stateChangeTimeout = window.setTimeout(() => {
             try {
-              if (stateOverrides.size === 0) {
-                sendFromPage("REDUX_OVERRIDES_CLEARED", null);
-                return;
-              }
-              let currentState = store.getState();
-              stateOverrides.forEach((data) => {
-                currentState = setNestedValue(currentState, data.path, data.originalValue);
-              });
-              injectedState = currentState;
-              originalDispatch.call(store, { type: "@@REACT_DEBUGGER/INJECT_STATE" });
-              stateOverrides.clear();
-              setTimeout(() => {
-                sendFromPage("REDUX_STATE_CHANGE", deepSanitizeState(store.getState()));
-                sendFromPage("REDUX_OVERRIDES_CLEARED", null);
-              }, 10);
-              log("All overrides cleared, state restored");
+              sendFromPage("REDUX_STATE_CHANGE", deepSanitizeState(store.getState()));
             } catch (e) {
-              console.error("[React Debugger] Clear overrides error:", e);
+              console.debug("[React Debugger] Error sending state change:", e);
             }
-          };
-          window.__REACT_DEBUGGER_GET_OVERRIDES__ = () => {
-            return Array.from(stateOverrides.entries()).map(([key, data]) => ({
-              path: key,
-              value: data.value,
-              timestamp: data.timestamp
-            }));
-          };
-        } catch (e) {
-          console.error("[React Debugger] Error setting up Redux hook:", e);
-          reduxStore = null;
+            stateChangeTimeout = null;
+          }, STATE_CHANGE_DEBOUNCE);
+        });
+        window.__REACT_DEBUGGER_DISPATCH__ = (action) => {
+          return originalDispatch.call(store, action);
+        };
+        window.__REACT_DEBUGGER_STORE__ = store;
+        window.__REACT_DEBUGGER_GET_STATE__ = () => store.getState();
+        let injectedState = null;
+        if (typeof store.replaceReducer === "function") {
+          try {
+            const createInjectorReducer = (baseReducer) => {
+              return (state, action) => {
+                if (injectedState !== null) {
+                  const newState = injectedState;
+                  injectedState = null;
+                  return newState;
+                }
+                if (baseReducer) {
+                  return baseReducer(state, action);
+                }
+                return state;
+              };
+            };
+            const originalReplaceReducer = store.replaceReducer.bind(store);
+            store.replaceReducer = (nextReducer) => {
+              return originalReplaceReducer(createInjectorReducer(nextReducer));
+            };
+            originalReplaceReducer(createInjectorReducer(null));
+            log("Redux state injection ready");
+          } catch (e) {
+            log("replaceReducer setup failed:", e);
+          }
         }
-      };
-      const check = setInterval(() => {
+        window.__REACT_DEBUGGER_SET_STATE__ = (path, value) => {
+          try {
+            const currentState = store.getState();
+            const newState = setNestedValue(currentState, path, value);
+            stateOverrides.set(path.join("."), { path, value });
+            injectedState = newState;
+            originalDispatch.call(store, { type: "@@REACT_DEBUGGER/SET_STATE" });
+            sendFromPage("REDUX_STATE_CHANGE", deepSanitizeState(store.getState()));
+          } catch (e) {
+            console.error("[React Debugger] Set state error:", e);
+          }
+        };
+        window.__REACT_DEBUGGER_CLEAR_OVERRIDES__ = () => {
+          try {
+            if (stateOverrides.size === 0) return;
+            stateOverrides.clear();
+            sendFromPage("REDUX_STATE_CHANGE", deepSanitizeState(store.getState()));
+            sendFromPage("REDUX_OVERRIDES_CLEARED", null);
+          } catch (e) {
+            console.error("[React Debugger] Clear overrides error:", e);
+          }
+        };
+        window.__REACT_DEBUGGER_RESET_STATE__ = () => {
+          try {
+            stateOverrides.clear();
+            sendFromPage("REDUX_STATE_CHANGE", deepSanitizeState(store.getState()));
+            sendFromPage("REDUX_OVERRIDES_CLEARED", null);
+          } catch (e) {
+            console.error("[React Debugger] Reset state error:", e);
+          }
+        };
+      } catch (e) {
+        console.error("[React Debugger] Error setting up Redux hook:", e);
+        reduxStore = null;
+      }
+    }
+    function startReduxPolling() {
+      if (reduxCheckInterval) return;
+      let attempts = 0;
+      const maxAttempts = 20;
+      const checkInterval = 1e3;
+      reduxCheckInterval = window.setInterval(() => {
         attempts++;
         if (reduxSearchStopped || reduxStore) {
-          clearInterval(check);
+          if (reduxCheckInterval) {
+            clearInterval(reduxCheckInterval);
+            reduxCheckInterval = null;
+          }
           return;
         }
         const store = findReduxStore();
         if (store) {
-          clearInterval(check);
-          setupStore(store);
+          if (reduxCheckInterval) {
+            clearInterval(reduxCheckInterval);
+            reduxCheckInterval = null;
+          }
+          setupReduxStore(store);
           return;
         }
         if (attempts >= maxAttempts) {
-          clearInterval(check);
-          reduxSearchStopped = true;
+          if (reduxCheckInterval) {
+            clearInterval(reduxCheckInterval);
+            reduxCheckInterval = null;
+          }
         }
       }, checkInterval);
+    }
+    function installReduxHook() {
+      if (reduxHookInstalled) return;
+      reduxHookInstalled = true;
+      setupReduxDevToolsMessageListener();
       const win = window;
       if (typeof win.__REDUX_DEVTOOLS_EXTENSION__ !== "undefined") {
         const originalConnect = win.__REDUX_DEVTOOLS_EXTENSION__.connect;
@@ -1598,7 +1960,7 @@
             setTimeout(() => {
               if (!reduxStore && !reduxSearchStopped) {
                 const store = findReduxStore();
-                if (store) setupStore(store);
+                if (store) setupReduxStore(store);
               }
             }, 500);
             return devTools;
@@ -1609,7 +1971,7 @@
         const originalCreateStore = win.Redux.createStore;
         win.Redux.createStore = function(...args) {
           const store = originalCreateStore.apply(this, args);
-          setTimeout(() => setupStore(store), 100);
+          setTimeout(() => setupReduxStore(store), 100);
           return store;
         };
       }
@@ -1618,9 +1980,13 @@
         setTimeout(() => {
           if (!reduxStore && !reduxSearchStopped) {
             const store = findReduxStore();
-            if (store) setupStore(store);
+            if (store) {
+              setupReduxStore(store);
+            } else {
+              startReduxPolling();
+            }
           }
-        }, 2e3);
+        }, 1e3);
       };
       if (document.readyState === "complete") {
         onReady();
@@ -2032,6 +2398,7 @@
       if (message.type === "ENABLE_DEBUGGER") {
         debuggerEnabled = true;
         installReduxHook();
+        restartReduxSearch();
         forceReanalyze();
         sendFromPage("DEBUGGER_STATE_CHANGED", { enabled: true });
       }

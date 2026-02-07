@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import type { TimelineEvent, TimelineEventType, RenderEventPayload, StateChangeEventPayload, EffectEventPayload, ErrorEventPayload, MemoryEventPayload, CorrelationResult } from '@/types';
+import type { TimelineEvent, TimelineEventType, RenderEventPayload, StateChangeEventPayload, EffectEventPayload, ErrorEventPayload, MemoryEventPayload, CorrelationResult, ContextChangeEventPayload } from '@/types';
 
 interface TimelineTabProps {
   events: TimelineEvent[];
@@ -28,6 +28,7 @@ const EVENT_CONFIG: Record<TimelineEventType, { icon: string; color: string; lab
   'effect': { icon: '⚡', color: 'var(--accent-yellow)', label: 'Effect' },
   'error': { icon: '❌', color: 'var(--accent-red)', label: 'Error' },
   'memory': { icon: '🧠', color: 'var(--accent-green)', label: 'Memory' },
+  'context-change': { icon: '🔗', color: '#f97316', label: 'Context' },
 };
 
 function formatTime(timestamp: number): string {
@@ -55,6 +56,7 @@ export function TimelineTab({ events, tabId, onClear }: TimelineTabProps) {
     'effect': true,
     'error': true,
     'memory': true,
+    'context-change': true,
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -102,6 +104,7 @@ export function TimelineTab({ events, tabId, onClear }: TimelineTabProps) {
       'effect': true,
       'error': true,
       'memory': true,
+      'context-change': true,
     });
     setSearchQuery('');
   }, []);
@@ -188,6 +191,7 @@ export function TimelineTab({ events, tabId, onClear }: TimelineTabProps) {
       'effect': 0,
       'error': 0,
       'memory': 0,
+      'context-change': 0,
     };
     events.forEach(e => counts[e.type]++);
     return counts;
@@ -214,6 +218,9 @@ export function TimelineTab({ events, tabId, onClear }: TimelineTabProps) {
             {p.renderOrder && (
               <span className="render-order">#{p.renderOrder}</span>
             )}
+            {p.fiberDepth !== undefined && (
+              <span className="fiber-depth" title={`Depth: ${p.fiberDepth}`}>{'·'.repeat(Math.min(p.fiberDepth, 5))}</span>
+            )}
             <strong>{p.componentName}</strong>
             {p.parentComponent && (
               <span className="parent-component">← {p.parentComponent}</span>
@@ -221,6 +228,11 @@ export function TimelineTab({ events, tabId, onClear }: TimelineTabProps) {
             <span className="event-trigger" style={{ color: config.color }}>
               {p.trigger}
             </span>
+            {p.renderReasonSummary && (
+              <span className="render-reason-summary" title={p.renderReasonSummary}>
+                {p.renderReasonSummary}
+              </span>
+            )}
             {p.duration !== undefined && p.duration > 0 && (
               <span className="event-duration">{p.duration.toFixed(1)}ms</span>
             )}
@@ -232,9 +244,11 @@ export function TimelineTab({ events, tabId, onClear }: TimelineTabProps) {
         return (
           <span className="event-summary">
             <strong>{p.componentName || 'Unknown'}</strong>
-            {p.hookIndex !== undefined && (
+            {p.stateName ? (
+              <span className="state-name">{p.stateName}</span>
+            ) : p.hookIndex !== undefined ? (
               <span className="hook-index">useState #{p.hookIndex}</span>
-            )}
+            ) : null}
             {p.isExtractable && p.oldValue !== undefined && p.newValue !== undefined && (
               <span className="state-change-value">
                 {p.oldValue} → {p.newValue}
@@ -281,6 +295,18 @@ export function TimelineTab({ events, tabId, onClear }: TimelineTabProps) {
           </span>
         );
       }
+      case 'context-change': {
+        const p = event.payload as ContextChangeEventPayload;
+        return (
+          <span className="event-summary">
+            <strong>{p.componentName}</strong>
+            {p.contextType && <span className="context-type">{p.contextType}</span>}
+            {p.changedKeys && p.changedKeys.length > 0 && (
+              <span className="context-changed-keys">{p.changedKeys.join(', ')}</span>
+            )}
+          </span>
+        );
+      }
       default:
         return null;
     }
@@ -293,6 +319,9 @@ export function TimelineTab({ events, tabId, onClear }: TimelineTabProps) {
         return (
           <div className="event-details">
             <div className="detail-row"><strong>Component:</strong> {p.componentName}</div>
+            {p.fiberDepth !== undefined && (
+              <div className="detail-row"><strong>Tree Depth:</strong> {p.fiberDepth}</div>
+            )}
             {p.renderOrder !== undefined && (
               <div className="detail-row"><strong>Render Order:</strong> #{p.renderOrder} in batch</div>
             )}
@@ -315,7 +344,42 @@ export function TimelineTab({ events, tabId, onClear }: TimelineTabProps) {
               </div>
             )}
             <div className="detail-row"><strong>Trigger:</strong> {p.trigger}</div>
-            {p.changedKeys && p.changedKeys.length > 0 && (
+            {p.renderReasonSummary && (
+              <div className="detail-row render-reason-box">
+                <strong>Why Rendered:</strong> {p.renderReasonSummary}
+              </div>
+            )}
+            {p.propsChanges && p.propsChanges.length > 0 && (
+              <div className="detail-row">
+                <strong>Props Changes:</strong>
+                <div className="changes-list">
+                  {p.propsChanges.map((change, i) => (
+                    <div key={i} className="change-item">
+                      <span className="change-key">{change.key}:</span>
+                      <code className="change-old">{change.oldValue}</code>
+                      <span className="change-arrow">→</span>
+                      <code className="change-new">{change.newValue}</code>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {p.stateChanges && p.stateChanges.length > 0 && (
+              <div className="detail-row">
+                <strong>State Changes:</strong>
+                <div className="changes-list">
+                  {p.stateChanges.map((change, i) => (
+                    <div key={i} className="change-item">
+                      <span className="change-key">{change.key}:</span>
+                      <code className="change-old">{change.oldValue}</code>
+                      <span className="change-arrow">→</span>
+                      <code className="change-new">{change.newValue}</code>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {p.changedKeys && p.changedKeys.length > 0 && !p.propsChanges && !p.stateChanges && (
               <div className="detail-row"><strong>Changed:</strong> {p.changedKeys.join(', ')}</div>
             )}
             {p.duration !== undefined && (
@@ -333,8 +397,11 @@ export function TimelineTab({ events, tabId, onClear }: TimelineTabProps) {
           <div className="event-details">
             <div className="detail-row"><strong>Source:</strong> {p.source}</div>
             {p.componentName && <div className="detail-row"><strong>Component:</strong> {p.componentName}</div>}
+            {p.stateName && (
+              <div className="detail-row"><strong>State Variable:</strong> <code>{p.stateName}</code></div>
+            )}
             {p.hookIndex !== undefined && (
-              <div className="detail-row"><strong>Hook:</strong> useState #{p.hookIndex}</div>
+              <div className="detail-row"><strong>Hook Index:</strong> useState #{p.hookIndex}</div>
             )}
             {p.valueType && (
               <div className="detail-row"><strong>Type:</strong> {p.valueType}</div>
@@ -408,6 +475,20 @@ export function TimelineTab({ events, tabId, onClear }: TimelineTabProps) {
               <div className="detail-row"><strong>Growth Rate:</strong> {formatBytes(p.growthRate)}/s</div>
             )}
             {p.isSpike && <div className="detail-row warning">Memory spike detected!</div>}
+          </div>
+        );
+      }
+      case 'context-change': {
+        const p = event.payload as ContextChangeEventPayload;
+        return (
+          <div className="event-details">
+            <div className="detail-row"><strong>Component:</strong> {p.componentName}</div>
+            {p.contextType && (
+              <div className="detail-row"><strong>Context Provider:</strong> {p.contextType}</div>
+            )}
+            {p.changedKeys && p.changedKeys.length > 0 && (
+              <div className="detail-row"><strong>Changed Keys:</strong> {p.changedKeys.join(', ')}</div>
+            )}
           </div>
         );
       }
