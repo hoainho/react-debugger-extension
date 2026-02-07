@@ -129,18 +129,29 @@ export interface CrashEntry {
 // Timeline Events
 // ============================================
 
-export type TimelineEventType = 'render' | 'state-change' | 'effect' | 'error' | 'memory';
+export type TimelineEventType = 'render' | 'state-change' | 'effect' | 'error' | 'memory' | 'context-change';
+
+export interface PropChange {
+  key: string;
+  oldValue: string;
+  newValue: string;
+}
 
 export interface RenderEventPayload {
   componentName: string;
   componentId: string;
-  trigger: 'props' | 'state' | 'context' | 'parent' | 'mount';
+  trigger: 'props' | 'state' | 'context' | 'parent' | 'mount' | 'props+state';
   changedKeys?: string[];
   duration?: number;
   renderOrder?: number;
   parentComponent?: string;
   componentPath?: string[];
   batchId?: string;
+  // Enhanced fields
+  fiberDepth?: number;
+  propsChanges?: PropChange[];
+  stateChanges?: PropChange[];
+  renderReasonSummary?: string;
 }
 
 export interface StateChangeEventPayload {
@@ -152,6 +163,14 @@ export interface StateChangeEventPayload {
   newValue?: string;
   valueType?: string;
   isExtractable?: boolean;
+  // Enhanced field - inferred state variable name
+  stateName?: string;
+}
+
+export interface ContextChangeEventPayload {
+  componentName: string;
+  contextType?: string;
+  changedKeys?: string[];
 }
 
 export interface EffectEventPayload {
@@ -187,7 +206,8 @@ export type TimelineEventPayload =
   | StateChangeEventPayload 
   | EffectEventPayload 
   | ErrorEventPayload 
-  | MemoryEventPayload;
+  | MemoryEventPayload
+  | ContextChangeEventPayload;
 
 export interface TimelineEvent {
   id: string;

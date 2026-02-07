@@ -10,6 +10,28 @@ import { TimelineTab } from './tabs/TimelineTab';
 
 type TabId = 'timeline' | 'ui-state' | 'performance' | 'side-effects' | 'cls' | 'redux' | 'memory';
 
+function isExtensionContextValid(): boolean {
+  try {
+    return !!chrome.runtime?.id;
+  } catch {
+    return false;
+  }
+}
+
+async function safeSendMessage<T>(message: object): Promise<T | null> {
+  if (!isExtensionContextValid()) {
+    return null;
+  }
+  try {
+    return await chrome.runtime.sendMessage(message);
+  } catch (error) {
+    if ((error as Error)?.message?.includes('Extension context invalidated')) {
+      return null;
+    }
+    throw error;
+  }
+}
+
 interface TabConfig {
   id: TabId;
   label: string;
@@ -45,7 +67,6 @@ export function Panel() {
   const [activeTab, setActiveTab] = useState<TabId>('timeline');
   const [state, setState] = useState<TabState>(createInitialState);
   const [isLoading, setIsLoading] = useState(true);
-  const [isNavigating, setIsNavigating] = useState(false);
   const [extensionVersion] = useState(() => chrome.runtime.getManifest().version);
   const [isDebuggerEnabled, setIsDebuggerEnabled] = useState(false);
 
@@ -53,14 +74,23 @@ export function Panel() {
   
   const timelineEventBatchRef = useRef<TimelineEvent[]>([]);
   const timelineBatchTimeoutRef = useRef<number | null>(null);
-  const navigationTimeoutRef = useRef<number | null>(null);
 
   const fetchState = useCallback(async () => {
+    if (!isExtensionContextValid()) {
+      setIsLoading(false);
+      return;
+    }
+    
     try {
       const [stateResponse, debuggerResponse] = await Promise.all([
-        chrome.runtime.sendMessage({ type: 'GET_STATE', tabId }),
-        chrome.runtime.sendMessage({ type: 'GET_DEBUGGER_STATE', tabId }),
+        safeSendMessage<{ success: boolean; state?: TabState }>({ type: 'GET_STATE', tabId }),
+        safeSendMessage<{ success: boolean; enabled?: boolean }>({ type: 'GET_DEBUGGER_STATE', tabId }),
       ]);
+
+      if (!isExtensionContextValid()) {
+        setIsLoading(false);
+        return;
+      }
 
       if (stateResponse?.success && stateResponse.state) {
         const parsedState = {
@@ -71,20 +101,23 @@ export function Panel() {
       }
       
       if (debuggerResponse?.success) {
-        setIsDebuggerEnabled(debuggerResponse.enabled);
+        setIsDebuggerEnabled(debuggerResponse.enabled ?? false);
       }
     } catch (error) {
-      console.error('[React Debugger] Error fetching state:', error);
+      if (!(error as Error)?.message?.includes('Extension context invalidated')) {
+        console.error('[React Debugger] Error fetching state:', error);
+      }
     } finally {
       setIsLoading(false);
-      setIsNavigating(false);
     }
   }, [tabId]);
 
   const toggleDebugger = useCallback(() => {
+    if (!isExtensionContextValid()) return;
+    
     const newEnabled = !isDebuggerEnabled;
     setIsDebuggerEnabled(newEnabled);
-    chrome.runtime.sendMessage({
+    safeSendMessage({
       type: newEnabled ? 'ENABLE_DEBUGGER' : 'DISABLE_DEBUGGER',
       tabId,
     });
@@ -94,33 +127,21 @@ export function Panel() {
     fetchState();
 
     const listener = (message: any) => {
+      if (!isExtensionContextValid()) return;
       if (message.tabId !== tabId) return;
 
       switch (message.type) {
-        case 'PAGE_NAVIGATING':
-          setIsNavigating(true);
-          if (navigationTimeoutRef.current) {
-            clearTimeout(navigationTimeoutRef.current);
-          }
-          navigationTimeoutRef.current = window.setTimeout(() => {
-            setIsNavigating(false);
-            fetchState();
-          }, 5000);
-          break;
-
         case 'REACT_DETECTED':
-          if (navigationTimeoutRef.current) {
-            clearTimeout(navigationTimeoutRef.current);
-            navigationTimeoutRef.current = null;
-          }
-          setState({
-            ...createInitialState(),
+          setState(prev => ({
+            ...prev,
             reactDetected: true,
             reactVersion: message.payload?.version || null,
             reactMode: message.payload?.mode || null,
-          });
+            reduxDetected: false,
+            reduxState: null,
+            reduxActions: [],
+          }));
           setIsLoading(false);
-          setIsNavigating(false);
           break;
 
         case 'REDUX_DETECTED':
@@ -240,12 +261,18 @@ export function Panel() {
       }
     };
 
-    chrome.runtime.onMessage.addListener(listener);
-    return () => chrome.runtime.onMessage.removeListener(listener);
+    if (isExtensionContextValid()) {
+      chrome.runtime.onMessage.addListener(listener);
+    }
+    return () => {
+      if (isExtensionContextValid()) {
+        chrome.runtime.onMessage.removeListener(listener);
+      }
+    };
   }, [tabId, fetchState]);
 
   const clearIssues = useCallback(() => {
-    chrome.runtime.sendMessage({ type: 'CLEAR_ISSUES', tabId });
+    safeSendMessage({ type: 'CLEAR_ISSUES', tabId });
     setState(prev => ({ ...prev, issues: [] }));
   }, [tabId]);
 
@@ -277,15 +304,6 @@ export function Panel() {
       <div className="panel-loading">
         <div className="spinner"></div>
         <p>Loading...</p>
-      </div>
-    );
-  }
-
-  if (isNavigating) {
-    return (
-      <div className="panel-loading">
-        <div className="spinner"></div>
-        <p>Page navigating...</p>
       </div>
     );
   }

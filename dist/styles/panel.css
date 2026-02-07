@@ -2309,6 +2309,115 @@ body {
   font-weight: 600;
 }
 
+.fiber-depth {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  margin-right: 2px;
+}
+
+.render-reason-summary {
+  font-size: 10px;
+  color: var(--accent-purple);
+  background: rgba(157, 121, 215, 0.1);
+  padding: 1px 6px;
+  border-radius: 3px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.render-reason-box {
+  background: rgba(0, 122, 204, 0.1);
+  padding: 8px;
+  border-radius: 4px;
+  border-left: 3px solid var(--accent-blue);
+  margin: 8px 0;
+}
+
+.changes-list {
+  margin-top: 6px;
+  padding: 8px;
+  background: var(--bg-primary);
+  border-radius: 4px;
+}
+
+.change-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.change-item:last-child {
+  border-bottom: none;
+}
+
+.change-key {
+  color: var(--accent-purple);
+  font-weight: 500;
+  min-width: 80px;
+}
+
+.change-old {
+  color: var(--accent-red);
+  background: rgba(255, 78, 66, 0.1);
+  padding: 1px 4px;
+  border-radius: 2px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.change-arrow {
+  color: var(--text-muted);
+}
+
+.change-new {
+  color: var(--accent-green);
+  background: rgba(12, 206, 107, 0.1);
+  padding: 1px 4px;
+  border-radius: 2px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.state-name {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--accent-blue);
+  background: rgba(0, 122, 204, 0.15);
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+.context-type {
+  font-size: 10px;
+  padding: 1px 6px;
+  background: rgba(249, 115, 22, 0.2);
+  color: #f97316;
+  border-radius: 3px;
+}
+
+.context-changed-keys {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .error-stack {
   margin-top: 8px;
   padding: 8px;
