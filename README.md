@@ -1,5 +1,8 @@
 # ⚛️ React Debugger - Chrome Extension
 
+[![npm version](https://img.shields.io/npm/v/react-debugger.svg)](https://www.npmjs.com/package/react-debugger)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 **Author:** NhoNH  
 **Version:** 1.0.0  
 **License:** MIT
@@ -13,38 +16,45 @@ Advanced debugging & performance optimization tool for ReactJS applications.
 - 🔄 **Side Effects** - Find missing cleanup, dependency issues in useEffect
 - 📐 **CLS Monitor** - Track Cumulative Layout Shift in real-time
 - 🗄️ **Redux DevTools** - View state tree, dispatch actions manually
+- 📊 **Timeline** - Visual timeline of all React events
+- 💾 **Memory** - Monitor memory usage and detect leaks
 
 ---
 
 ## 🚀 Installation
 
-### Option 1: Load Unpacked (Development)
+### Option 1: Quick Install via NPX (Recommended)
 
-1. **Build the extension:**
-   ```bash
-   cd react-debugger-extension
-   npm install
-   npm run build
-   ```
+```bash
+npx react-debugger
+```
 
-2. **Load in Chrome:**
-   - Open Chrome and go to `chrome://extensions/`
-   - Enable **"Developer mode"** (toggle in top right)
-   - Click **"Load unpacked"**
-   - Select the `dist` folder inside `react-debugger-extension`
+Then load the extension in Chrome:
+1. Open `chrome://extensions/`
+2. Enable **Developer mode**
+3. Click **Load unpacked**
+4. Select the downloaded folder
 
-3. **Verify installation:**
-   - Open DevTools on any page (F12)
-   - Look for the **"React Debugger"** tab
+### Option 2: Build from Source
 
-### Option 2: Install from ZIP
+```bash
+git clone https://github.com/nhonh/react-debugger-extension.git
+cd react-debugger-extension
+npm install
+npm run build
+```
 
-1. Build and package:
-   ```bash
-   npm run package
-   ```
-2. This creates `react-debugger.zip`
-3. Unzip and load as unpacked extension
+Then load the `dist` folder in Chrome:
+1. Open `chrome://extensions/`
+2. Enable **Developer mode**
+3. Click **Load unpacked**
+4. Select the `dist` folder
+
+### Option 3: Download ZIP from Releases
+
+1. Download `react-debugger.zip` from [GitHub Releases](https://github.com/nhonh/react-debugger-extension/releases)
+2. Extract the ZIP
+3. Load the extracted folder in Chrome as above
 
 ---
 
@@ -238,6 +248,10 @@ The guide includes:
 - Quick reference tables for thresholds and color coding
 
 ---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📄 License
 
