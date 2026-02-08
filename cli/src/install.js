@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import decompress from 'decompress';
 
-const GITHUB_REPO = 'nhonh/react-debugger-extension';
+const GITHUB_REPO = 'hoainho/react-debugger-extension';
 const RELEASE_TAG = 'latest';
 
 async function getLatestReleaseUrl() {

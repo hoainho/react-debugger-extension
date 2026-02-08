@@ -105,7 +105,7 @@ ${pc.yellow('Examples:')}
     console.error(pc.red('Error:'), err.message);
     console.error();
     console.error(pc.dim('If this persists, please report at:'));
-    console.error(pc.dim('https://github.com/nhonh/react-debugger-extension/issues'));
+    console.error(pc.dim('https://github.com/hoainho/react-debugger-extension/issues'));
     process.exit(1);
   }
 }

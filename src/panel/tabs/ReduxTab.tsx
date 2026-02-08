@@ -23,6 +23,7 @@ export function ReduxTab({ detected, state, actions, tabId }: ReduxTabProps) {
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set(['root']));
   const [editingState, setEditingState] = useState<EditingState>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const refreshState = useCallback(() => {
     chrome.runtime.sendMessage({
@@ -176,7 +177,7 @@ if (process.env.NODE_ENV === 'development') {
   };
 
   const saveEdit = () => {
-    if (!editingState) return;
+    if (!editingState || isSaving) return;
     
     let parsedValue: unknown;
     
@@ -211,7 +212,7 @@ if (process.env.NODE_ENV === 'development') {
         parsedValue = editingState.value;
     }
     
-    console.log('[Redux Edit] Saving:', { path: editingState.path, value: parsedValue, type: editingState.type });
+    setIsSaving(true);
     
     chrome.runtime.sendMessage({
       type: 'SET_REDUX_STATE',
@@ -223,30 +224,43 @@ if (process.env.NODE_ENV === 'development') {
     });
     
     setEditingState(null);
-    setTimeout(refreshState, 150);
+    setTimeout(() => {
+      refreshState();
+      setIsSaving(false);
+    }, 300);
   };
 
   const cancelEdit = () => {
+    if (isSaving) return;
     setEditingState(null);
   };
 
   const deleteArrayItem = (arrayPath: string[], index: number) => {
+    if (isSaving) return;
+    setIsSaving(true);
     chrome.runtime.sendMessage({
       type: 'DELETE_ARRAY_ITEM',
       tabId,
       payload: { path: arrayPath, index },
     });
-    setTimeout(refreshState, 150);
+    setTimeout(() => {
+      refreshState();
+      setIsSaving(false);
+    }, 300);
   };
 
   const moveArrayItem = (arrayPath: string[], fromIndex: number, toIndex: number) => {
-    if (toIndex < 0) return;
+    if (toIndex < 0 || isSaving) return;
+    setIsSaving(true);
     chrome.runtime.sendMessage({
       type: 'MOVE_ARRAY_ITEM',
       tabId,
       payload: { path: arrayPath, fromIndex, toIndex },
     });
-    setTimeout(refreshState, 150);
+    setTimeout(() => {
+      refreshState();
+      setIsSaving(false);
+    }, 300);
   };
 
   const pathToArray = (pathStr: string): string[] => {
@@ -487,7 +501,7 @@ if (process.env.NODE_ENV === 'development') {
 
         <div className="redux-state-panel">
           <div className="state-header">
-            <h3>State Tree</h3>
+            <h3>State Tree {isSaving && <span className="saving-indicator">Saving...</span>}</h3>
             <div className="state-controls">
               <input
                 type="text"
@@ -495,13 +509,20 @@ if (process.env.NODE_ENV === 'development') {
                 placeholder="Search state..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
+                disabled={isSaving}
               />
-              <button className="small-btn" onClick={expandAll} title="Expand All">+</button>
-              <button className="small-btn" onClick={collapseAll} title="Collapse All">−</button>
-              <button className="small-btn danger" onClick={clearOverrides} title="Reset all edited values">⟲</button>
+              <button className="small-btn" onClick={expandAll} title="Expand All" disabled={isSaving}>+</button>
+              <button className="small-btn" onClick={collapseAll} title="Collapse All" disabled={isSaving}>−</button>
+              <button className="small-btn danger" onClick={clearOverrides} title="Reset all edited values" disabled={isSaving}>⟲</button>
             </div>
           </div>
-          <div className="state-tree">
+          <div className={`state-tree ${isSaving ? 'state-tree-saving' : ''}`}>
+            {isSaving && (
+              <div className="state-saving-overlay">
+                <div className="mini-spinner"></div>
+                <span>Updating state...</span>
+              </div>
+            )}
             {state ? renderValue(state, 'root') : (
               <p className="no-state">No state available</p>
             )}
