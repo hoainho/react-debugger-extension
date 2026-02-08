@@ -2,6 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/react-debugger.svg)](https://www.npmjs.com/package/react-debugger)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/hoainho/react-debugger-extension)
 
 **Author:** NhoNH  
 **Version:** 1.0.0  
@@ -30,6 +31,7 @@ npx react-debugger
 ```
 
 Then load the extension in Chrome:
+
 1. Open `chrome://extensions/`
 2. Enable **Developer mode**
 3. Click **Load unpacked**
@@ -45,6 +47,7 @@ npm run build
 ```
 
 Then load the `dist` folder in Chrome:
+
 1. Open `chrome://extensions/`
 2. Enable **Developer mode**
 3. Click **Load unpacked**
@@ -63,6 +66,7 @@ Then load the `dist` folder in Chrome:
 ### Step 1: Open a React Application
 
 Test on any React website or local development server:
+
 - https://react.dev (official React docs)
 - https://reactjs.org
 - Any local React app (Create React App, Next.js, Vite, etc.)
@@ -75,26 +79,31 @@ Test on any React website or local development server:
 ### Step 3: Explore Features
 
 #### 🎯 UI & State Tab
+
 - Shows issues with state management and list keys
 - Click on any issue to expand details
 - Follow suggestions to fix problems
 
 #### ⚡ Performance Tab
+
 - Shows component render statistics
 - Lists top re-rendering components
 - Identifies render triggers (props, state, context)
 
 #### 🔄 Side Effects Tab
+
 - Lists useEffect issues
 - Identifies missing cleanup functions
 - Shows dependency problems
 
 #### 📐 CLS Tab
+
 - Real-time CLS score monitoring
 - Shows top layout shift contributors
 - Timeline of shift events
 
 #### 🗄️ Redux Tab
+
 - View Redux state tree (if Redux is detected)
 - See action history
 - Dispatch custom actions for testing
@@ -106,6 +115,7 @@ Test on any React website or local development server:
 ### Test 1: Missing Key Detection
 
 Create a React app with this code:
+
 ```jsx
 function App() {
   const items = ['a', 'b', 'c'];
@@ -126,13 +136,13 @@ function App() {
 ```jsx
 function Counter() {
   const [count, setCount] = useState(0);
-  
+
   // This will cause excessive renders
   useEffect(() => {
-    const id = setInterval(() => setCount(c => c + 1), 100);
+    const id = setInterval(() => setCount((c) => c + 1), 100);
     return () => clearInterval(id);
   }, []);
-  
+
   return <div>{count}</div>;
 }
 ```
@@ -145,11 +155,11 @@ function Counter() {
 function Timer() {
   useEffect(() => {
     const id = setInterval(() => {
-      console.log('tick');
+      console.log("tick");
     }, 1000);
     // Missing: return () => clearInterval(id);
   }, []);
-  
+
   return <div>Timer</div>;
 }
 ```
@@ -159,8 +169,10 @@ function Timer() {
 ### Test 4: Layout Shift
 
 Load a page with images without dimensions:
+
 ```html
-<img src="large-image.jpg" />  <!-- No width/height -->
+<img src="large-image.jpg" />
+<!-- No width/height -->
 ```
 
 **Expected:** CLS score > 0 shown in CLS tab when image loads.
@@ -170,21 +182,25 @@ Load a page with images without dimensions:
 ## 🛠️ Development
 
 ### Setup
+
 ```bash
 npm install
 ```
 
 ### Build for production
+
 ```bash
 npm run build
 ```
 
 ### Watch mode (auto-rebuild)
+
 ```bash
 npm run dev
 ```
 
 ### Package for distribution
+
 ```bash
 npm run package
 ```
@@ -218,16 +234,19 @@ react-debugger-extension/
 ## 🔧 Troubleshooting
 
 ### Extension not showing in DevTools?
+
 1. Make sure you loaded the `dist` folder (not the root)
 2. Refresh the page after loading extension
 3. Check for errors in `chrome://extensions/`
 
 ### React not detected?
+
 - The page must use React 16+ with fiber architecture
 - Try refreshing the page
 - Check console for errors
 
 ### No issues detected?
+
 - The extension only shows issues when they're found
 - Try the test scenarios above
 - Check that React is in development mode for some features
@@ -241,6 +260,7 @@ For a comprehensive debugging guide covering all tabs, metrics, and debugging st
 **[DEBUGGING-GUIDE.md](./DEBUGGING-GUIDE.md)**
 
 The guide includes:
+
 - Detailed explanation of each tab and its metrics
 - Debugging workflows for Fresher, Mid-level, and Senior developers
 - Common issues and their fixes with code examples
