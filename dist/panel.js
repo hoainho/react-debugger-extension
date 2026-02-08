@@ -7653,6 +7653,7 @@ function ReduxTab({ detected, state, actions, tabId }) {
   const [expandedPaths, setExpandedPaths] = reactExports.useState(/* @__PURE__ */ new Set(["root"]));
   const [editingState, setEditingState] = reactExports.useState(null);
   const [searchQuery, setSearchQuery] = reactExports.useState("");
+  const [isSaving, setIsSaving] = reactExports.useState(false);
   const refreshState = reactExports.useCallback(() => {
     chrome.runtime.sendMessage({
       type: "REFRESH_REDUX_STATE",
@@ -7792,7 +7793,7 @@ if (process.env.NODE_ENV === 'development') {
     setEditingState({ path, value: strValue, type });
   };
   const saveEdit = () => {
-    if (!editingState) return;
+    if (!editingState || isSaving) return;
     let parsedValue;
     switch (editingState.type) {
       case "null":
@@ -7824,7 +7825,7 @@ if (process.env.NODE_ENV === 'development') {
       default:
         parsedValue = editingState.value;
     }
-    console.log("[Redux Edit] Saving:", { path: editingState.path, value: parsedValue, type: editingState.type });
+    setIsSaving(true);
     chrome.runtime.sendMessage({
       type: "SET_REDUX_STATE",
       tabId,
@@ -7834,27 +7835,40 @@ if (process.env.NODE_ENV === 'development') {
       }
     });
     setEditingState(null);
-    setTimeout(refreshState, 150);
+    setTimeout(() => {
+      refreshState();
+      setIsSaving(false);
+    }, 300);
   };
   const cancelEdit = () => {
+    if (isSaving) return;
     setEditingState(null);
   };
   const deleteArrayItem = (arrayPath, index) => {
+    if (isSaving) return;
+    setIsSaving(true);
     chrome.runtime.sendMessage({
       type: "DELETE_ARRAY_ITEM",
       tabId,
       payload: { path: arrayPath, index }
     });
-    setTimeout(refreshState, 150);
+    setTimeout(() => {
+      refreshState();
+      setIsSaving(false);
+    }, 300);
   };
   const moveArrayItem = (arrayPath, fromIndex, toIndex) => {
-    if (toIndex < 0) return;
+    if (toIndex < 0 || isSaving) return;
+    setIsSaving(true);
     chrome.runtime.sendMessage({
       type: "MOVE_ARRAY_ITEM",
       tabId,
       payload: { path: arrayPath, fromIndex, toIndex }
     });
-    setTimeout(refreshState, 150);
+    setTimeout(() => {
+      refreshState();
+      setIsSaving(false);
+    }, 300);
   };
   const pathToArray = (pathStr) => {
     if (pathStr === "root") return [];
@@ -8065,7 +8079,10 @@ if (process.env.NODE_ENV === 'development') {
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "redux-state-panel", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "state-header", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { children: "State Tree" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { children: [
+            "State Tree ",
+            isSaving && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "saving-indicator", children: "Saving..." })
+          ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "state-controls", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx(
               "input",
@@ -8074,15 +8091,22 @@ if (process.env.NODE_ENV === 'development') {
                 className: "search-input",
                 placeholder: "Search state...",
                 value: searchQuery,
-                onChange: (e) => setSearchQuery(e.target.value)
+                onChange: (e) => setSearchQuery(e.target.value),
+                disabled: isSaving
               }
             ),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "small-btn", onClick: expandAll, title: "Expand All", children: "+" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "small-btn", onClick: collapseAll, title: "Collapse All", children: "−" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "small-btn danger", onClick: clearOverrides, title: "Reset all edited values", children: "⟲" })
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "small-btn", onClick: expandAll, title: "Expand All", disabled: isSaving, children: "+" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "small-btn", onClick: collapseAll, title: "Collapse All", disabled: isSaving, children: "−" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "small-btn danger", onClick: clearOverrides, title: "Reset all edited values", disabled: isSaving, children: "⟲" })
           ] })
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "state-tree", children: state ? renderValue(state, "root") : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "no-state", children: "No state available" }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: `state-tree ${isSaving ? "state-tree-saving" : ""}`, children: [
+          isSaving && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "state-saving-overlay", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mini-spinner" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Updating state..." })
+          ] }),
+          state ? renderValue(state, "root") : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "no-state", children: "No state available" })
+        ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "edit-hint", children: "💡 Click on any value to edit it directly" })
       ] })
     ] }),
