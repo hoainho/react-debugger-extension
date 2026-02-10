@@ -1159,14 +1159,22 @@
     }
   }
 
-  function traverseFiber(fiber: FiberNode | null, callback: (fiber: FiberNode, path: string) => void, path = ''): void {
+  function traverseFiber(fiber: FiberNode | null, callback: (fiber: FiberNode, path: string) => void, path = '', maxNodes = 500): void {
     if (!fiber) return;
-    callback(fiber, path);
-    if (fiber.child) traverseFiber(fiber.child, callback, `${path}/0`);
-    if (fiber.sibling) {
-      const parts = path.split('/');
-      const index = parseInt(parts.pop() || '0', 10) + 1;
-      traverseFiber(fiber.sibling, callback, `${parts.join('/')}/${index}`);
+    const stack: Array<{fiber: FiberNode; path: string}> = [{fiber, path}];
+    let nodeCount = 0;
+    while (stack.length > 0 && nodeCount < maxNodes) {
+      const item = stack.pop()!;
+      nodeCount++;
+      callback(item.fiber, item.path);
+      if (item.fiber.sibling) {
+        const parts = item.path.split('/');
+        const index = parseInt(parts.pop() || '0', 10) + 1;
+        stack.push({fiber: item.fiber.sibling, path: `${parts.join('/')}/${index}`});
+      }
+      if (item.fiber.child) {
+        stack.push({fiber: item.fiber.child, path: `${item.path}/0`});
+      }
     }
   }
 
@@ -1602,7 +1610,7 @@
     let lastAnalyzeTime = 0;
     let pendingRoot: FiberRoot | null = null;
     let analyzeTimeout: number | null = null;
-    const ANALYZE_THROTTLE_MS = 100;
+    const ANALYZE_THROTTLE_MS = 250;
     
     const scheduleAnalyze = (root: FiberRoot) => {
       pendingRoot = root;
@@ -1650,7 +1658,7 @@
               const count = renderCounts.get(fiberId) || 1;
               flashRenderOverlay(node, componentName, count);
             }
-          });
+          }, '', 200);
         } catch (e) {
           if (DEBUG) console.error('[React Debugger] Scan error:', e);
         }
@@ -1668,8 +1676,7 @@
   function findReactRoots(): FiberRoot[] {
     const roots: FiberRoot[] = [];
     
-    const allElements = document.querySelectorAll('*');
-    for (const element of allElements) {
+    const extractRoot = (element: Element): FiberRoot | null => {
       try {
         const keys = Object.keys(element);
         const fiberKey = keys.find(key => 
@@ -1683,27 +1690,40 @@
           
           while (fiber && maxDepth > 0) {
             if (fiber.stateNode && fiber.stateNode.current) {
-              const root = fiber.stateNode as FiberRoot;
-              if (!roots.includes(root)) {
-                roots.push(root);
-              }
-              break;
+              return fiber.stateNode as FiberRoot;
             }
             if (fiber.tag === FIBER_TAGS.HostRoot && fiber.stateNode) {
-              const root = fiber.stateNode as FiberRoot;
-              if (!roots.includes(root)) {
-                roots.push(root);
-              }
-              break;
+              return fiber.stateNode as FiberRoot;
             }
             fiber = fiber.return;
             maxDepth--;
           }
-          
-          if (roots.length > 0) break;
         }
       } catch (e) {
-        continue;
+        // ignore
+      }
+      return null;
+    };
+    
+    // 1. Try known root selectors first
+    const knownSelectors = '#root, #app, #__next, [data-reactroot], #___gatsby';
+    const knownElements = document.querySelectorAll(knownSelectors);
+    for (const element of knownElements) {
+      const root = extractRoot(element);
+      if (root && !roots.includes(root)) {
+        roots.push(root);
+      }
+    }
+    if (roots.length > 0) return roots;
+    
+    // 2. Fallback: scan first 200 elements
+    const allElements = document.querySelectorAll('*');
+    const limit = Math.min(allElements.length, 200);
+    for (let i = 0; i < limit; i++) {
+      const root = extractRoot(allElements[i]);
+      if (root && !roots.includes(root)) {
+        roots.push(root);
+        break; // Found one, stop scanning
       }
     }
     
@@ -2445,42 +2465,25 @@
   }
   
   function startReduxPolling(): void {
-    if (reduxCheckInterval) return;
+    if (reduxStore || reduxSearchStopped) return;
     
-    let attempts = 0;
-    const maxAttempts = 20;
-    const checkInterval = 1000;
+    reduxSearchAttempts++;
+    const store = findReduxStore();
+    if (store) {
+      setupReduxStore(store);
+      return;
+    }
     
-    reduxCheckInterval = window.setInterval(() => {
-      attempts++;
+    setTimeout(() => {
+      if (reduxStore || reduxSearchStopped) return;
       reduxSearchAttempts++;
-      
-      if (reduxSearchStopped || reduxStore) {
-        if (reduxCheckInterval) {
-          clearInterval(reduxCheckInterval);
-          reduxCheckInterval = null;
-        }
-        return;
-      }
-      
       const store = findReduxStore();
       if (store) {
-        if (reduxCheckInterval) {
-          clearInterval(reduxCheckInterval);
-          reduxCheckInterval = null;
-        }
         setupReduxStore(store);
-        return;
+      } else {
+        log('Redux store not found after 2 attempts');
       }
-      
-      if (attempts >= maxAttempts) {
-        if (reduxCheckInterval) {
-          clearInterval(reduxCheckInterval);
-          reduxCheckInterval = null;
-        }
-        log('Redux store detection paused after', maxAttempts, 'attempts (will retry on enable)');
-      }
-    }, checkInterval);
+    }, 2000);
   }
   
   function installReduxHook(): void {
@@ -2800,6 +2803,20 @@
       flushTimeout = null;
     }
     clearPathCache();
+    renderCounts.clear();
+    lastRenderTimes.clear();
+    recentRenderTimestamps.clear();
+    reportedEffectIssues.clear();
+    reportedExcessiveRerenders.clear();
+    reportedSlowRenders.clear();
+    componentRenderIds.clear();
+    lastEffectStates.clear();
+    trackedClosures.clear();
+    staleClosureIssues.clear();
+    stateOverrides.clear();
+    overlayElements.clear();
+    renderFlashTimers.forEach(timer => clearTimeout(timer));
+    renderFlashTimers.clear();
     log('All monitoring stopped');
   }
 
