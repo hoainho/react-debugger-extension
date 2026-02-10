@@ -16,6 +16,33 @@ import type {
 
 const tabStates = new Map<number, TabState>();
 const debuggerEnabledStates = new Map<number, boolean>();
+const lastFiberCommitTime = new Map<number, number>();
+const FIBER_COMMIT_THROTTLE_MS = 50;
+
+const VALID_MESSAGE_TYPES = new Set([
+  'REACT_DETECTED', 'REDUX_DETECTED', 'FIBER_COMMIT', 'ISSUE_DETECTED',
+  'STALE_CLOSURE_DETECTED', 'CLS_ENTRY', 'REDUX_STATE_CHANGE', 'REDUX_ACTION',
+  'GET_STATE', 'DISPATCH_REDUX_ACTION', 'SET_REDUX_STATE', 'DELETE_ARRAY_ITEM',
+  'MOVE_ARRAY_ITEM', 'REFRESH_REDUX_STATE', 'CLEAR_REDUX_OVERRIDES', 'CLEAR_ISSUES',
+  'ENABLE_DEBUGGER', 'DISABLE_DEBUGGER', 'GET_DEBUGGER_STATE', 'MEMORY_SNAPSHOT',
+  'START_MEMORY_MONITORING', 'STOP_MEMORY_MONITORING', 'PAGE_LOAD_METRICS',
+  'CRASH_DETECTED', 'TIMELINE_EVENTS', 'GET_CORRELATION', 'DEBUGGER_STATE_CHANGED',
+  'REDUX_OVERRIDES_CLEARED'
+]);
+
+function isValidMessage(message: unknown): message is Message {
+  if (!message || typeof message !== 'object') return false;
+  const msg = message as Record<string, unknown>;
+  return typeof msg.type === 'string' && VALID_MESSAGE_TYPES.has(msg.type);
+}
+
+function resetTabState(tabId: number): void {
+  const state = tabStates.get(tabId);
+  if (state) {
+    tabStates.set(tabId, createInitialState());
+  }
+  lastFiberCommitTime.delete(tabId);
+}
 
 async function getDebuggerState(tabId: number): Promise<boolean> {
   if (debuggerEnabledStates.has(tabId)) {
@@ -82,11 +109,23 @@ function serializeState(state: TabState): object {
 }
 
 chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) => {
+  if (!isValidMessage(message)) {
+    return;
+  }
+  
   const tabId = sender.tab?.id ?? message.tabId;
   
   if (!tabId) {
-    console.warn('[React Debugger] No tabId found in message');
     return;
+  }
+  
+  if (message.type === 'FIBER_COMMIT') {
+    const now = Date.now();
+    const lastTime = lastFiberCommitTime.get(tabId) || 0;
+    if (now - lastTime < FIBER_COMMIT_THROTTLE_MS) {
+      return;
+    }
+    lastFiberCommitTime.set(tabId, now);
   }
   
   const state = getOrCreateState(tabId);
@@ -270,7 +309,7 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) =>
     }
     
     case 'DISPATCH_REDUX_ACTION': {
-      chrome.tabs.sendMessage(tabId, {
+      safeSendToTab(tabId, {
         type: 'DISPATCH_REDUX_ACTION',
         payload: message.payload,
       });
@@ -278,7 +317,7 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) =>
     }
     
     case 'SET_REDUX_STATE': {
-      chrome.tabs.sendMessage(tabId, {
+      safeSendToTab(tabId, {
         type: 'SET_REDUX_STATE',
         payload: message.payload,
       });
@@ -286,7 +325,7 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) =>
     }
     
     case 'DELETE_ARRAY_ITEM': {
-      chrome.tabs.sendMessage(tabId, {
+      safeSendToTab(tabId, {
         type: 'DELETE_ARRAY_ITEM',
         payload: message.payload,
       });
@@ -294,7 +333,7 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) =>
     }
     
     case 'MOVE_ARRAY_ITEM': {
-      chrome.tabs.sendMessage(tabId, {
+      safeSendToTab(tabId, {
         type: 'MOVE_ARRAY_ITEM',
         payload: message.payload,
       });
@@ -302,14 +341,14 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) =>
     }
     
     case 'REFRESH_REDUX_STATE': {
-      chrome.tabs.sendMessage(tabId, {
+      safeSendToTab(tabId, {
         type: 'REFRESH_REDUX_STATE',
       });
       break;
     }
     
     case 'CLEAR_REDUX_OVERRIDES': {
-      chrome.tabs.sendMessage(tabId, {
+      safeSendToTab(tabId, {
         type: 'CLEAR_REDUX_OVERRIDES',
       });
       break;
@@ -323,14 +362,14 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) =>
     
     case 'ENABLE_DEBUGGER': {
       setDebuggerState(tabId, true);
-      chrome.tabs.sendMessage(tabId, { type: 'ENABLE_DEBUGGER' });
+      safeSendToTab(tabId, { type: 'ENABLE_DEBUGGER' });
       broadcastToPanel(tabId, 'DEBUGGER_STATE_CHANGED', { enabled: true });
       break;
     }
     
     case 'DISABLE_DEBUGGER': {
       setDebuggerState(tabId, false);
-      chrome.tabs.sendMessage(tabId, { type: 'DISABLE_DEBUGGER' });
+      safeSendToTab(tabId, { type: 'DISABLE_DEBUGGER' });
       broadcastToPanel(tabId, 'DEBUGGER_STATE_CHANGED', { enabled: false });
       break;
     }
@@ -396,12 +435,12 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) =>
     }
     
     case 'START_MEMORY_MONITORING': {
-      chrome.tabs.sendMessage(tabId, { type: 'START_MEMORY_MONITORING' });
+      safeSendToTab(tabId, { type: 'START_MEMORY_MONITORING' });
       break;
     }
     
     case 'STOP_MEMORY_MONITORING': {
-      chrome.tabs.sendMessage(tabId, { type: 'STOP_MEMORY_MONITORING' });
+      safeSendToTab(tabId, { type: 'STOP_MEMORY_MONITORING' });
       break;
     }
     
@@ -590,11 +629,21 @@ function broadcastToPanel(tabId: number, type: string, payload: unknown): void {
   }).catch(() => {});
 }
 
+function safeSendToTab(tabId: number, message: object): void {
+  chrome.tabs.sendMessage(tabId, message).catch(() => {});
+}
+
 chrome.tabs.onRemoved.addListener((tabId) => {
   tabStates.delete(tabId);
+  lastFiberCommitTime.delete(tabId);
+  debuggerEnabledStates.delete(tabId);
   clearDebuggerState(tabId);
 });
 
-
+chrome.webNavigation.onCommitted.addListener((details) => {
+  if (details.frameId === 0) {
+    resetTabState(details.tabId);
+  }
+});
 
 console.log('[React Debugger] Background service worker started');
