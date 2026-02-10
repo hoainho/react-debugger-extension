@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="React Debugger - Advanced debugging and performance optimization tool for React applications. Detect issues, monitor performance, and debug Redux state.">
+  <meta name="keywords" content="React, Debugger, DevTools, Chrome Extension, Performance, Redux, React Developer Tools">
+  <meta name="author" content="NhoNH">
+  <meta property="og:title" content="React Debugger - Chrome Extension">
+  <meta property="og:description" content="Advanced debugging and performance optimization tool for React applications">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://hoainho.github.io/react-debugger-extension/">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="React Debugger - Chrome Extension">
+  <meta name="twitter:description" content="Advanced debugging and performance optimization tool for React applications">
+  <title>React Debugger - Advanced React DevTools Extension</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-tertiary: #1a1a24;
+      --text-primary: #f0f0f5;
+      --text-secondary: #a0a0b0;
+      --text-muted: #606070;
+      --accent-blue: #3b82f6;
+      --accent-purple: #8b5cf6;
+      --accent-cyan: #06b6d4;
+      --accent-green: #10b981;
+      --accent-orange: #f59e0b;
+      --accent-red: #ef4444;
+      --border-color: #2a2a3a;
+      --gradient-1: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      --gradient-2: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    code, pre {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    a {
+      color: var(--accent-blue);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    a:hover {
+      color: var(--accent-cyan);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Navigation */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: rgba(10, 10, 15, 0.8);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    nav .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      font-size: 1.25rem;
+    }
+
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--gradient-1);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 32px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--text-secondary);
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--text-primary);
+    }
+
+    .nav-cta {
+      background: var(--gradient-1);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .nav-cta:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
+      color: white;
+    }
+
+    /* Hero Section */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      padding-top: 64px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 800px;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-content {
+      text-align: center;
+      max-width: 800px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      padding: 8px 16px;
+      border-radius: 100px;
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+    }
+
+    .hero-badge span {
+      background: var(--accent-green);
+      color: var(--bg-primary);
+      padding: 2px 8px;
+      border-radius: 100px;
+      font-weight: 600;
+      font-size: 0.75rem;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.5rem, 6vw, 4rem);
+      font-weight: 700;
+      line-height: 1.1;
+      margin-bottom: 24px;
+      background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero h1 .highlight {
+      background: var(--gradient-1);
+      -webkit-background-clip: text;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 1.25rem;
+      color: var(--text-secondary);
+      margin-bottom: 40px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 28px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: all 0.2s;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-primary {
+      background: var(--gradient-1);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(59, 130, 246, 0.4);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-secondary);
+      border-color: var(--accent-blue);
+      color: var(--text-primary);
+    }
+
+    /* Features Section */
+    .features {
+      padding: 120px 0;
+      background: var(--bg-secondary);
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 64px;
+    }
+
+    .section-header h2 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    .section-header p {
+      color: var(--text-secondary);
+      font-size: 1.125rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+    }
+
+    .feature-card {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 32px;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--accent-blue);
+    }
+
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+    }
+
+    .feature-icon.blue { background: rgba(59, 130, 246, 0.15); }
+    .feature-icon.purple { background: rgba(139, 92, 246, 0.15); }
+    .feature-icon.cyan { background: rgba(6, 182, 212, 0.15); }
+    .feature-icon.green { background: rgba(16, 185, 129, 0.15); }
+    .feature-icon.orange { background: rgba(245, 158, 11, 0.15); }
+    .feature-icon.red { background: rgba(239, 68, 68, 0.15); }
+
+    .feature-card h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .feature-card p {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+    }
+
+    /* Installation Section */
+    .installation {
+      padding: 120px 0;
+    }
+
+    .install-methods {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 32px;
+      margin-top: 48px;
+    }
+
+    .install-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 32px;
+    }
+
+    .install-card h3 {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 1.25rem;
+      margin-bottom: 16px;
+    }
+
+    .install-card h3 span {
+      background: var(--accent-green);
+      color: var(--bg-primary);
+      padding: 4px 12px;
+      border-radius: 100px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .install-card p {
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+    }
+
+    .code-block {
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+      overflow-x: auto;
+    }
+
+    .code-block code {
+      color: var(--accent-cyan);
+      font-size: 0.9rem;
+    }
+
+    .install-steps {
+      list-style: none;
+      counter-reset: step;
+    }
+
+    .install-steps li {
+      counter-increment: step;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+      color: var(--text-secondary);
+    }
+
+    .install-steps li::before {
+      content: counter(step);
+      background: var(--bg-tertiary);
+      color: var(--accent-blue);
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    /* Demo Section */
+    .demo {
+      padding: 120px 0;
+      background: var(--bg-secondary);
+    }
+
+    .demo-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px;
+      align-items: center;
+    }
+
+    .demo-text h2 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 24px;
+    }
+
+    .demo-text p {
+      color: var(--text-secondary);
+      font-size: 1.125rem;
+      margin-bottom: 32px;
+    }
+
+    .demo-features {
+      list-style: none;
+    }
+
+    .demo-features li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      color: var(--text-secondary);
+    }
+
+    .demo-features li::before {
+      content: '✓';
+      color: var(--accent-green);
+      font-weight: 700;
+    }
+
+    .demo-visual {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px;
+      aspect-ratio: 16/10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .demo-placeholder {
+      text-align: center;
+      color: var(--text-muted);
+    }
+
+    .demo-placeholder .icon {
+      font-size: 4rem;
+      margin-bottom: 16px;
+    }
+
+    /* Contributing Section */
+    .contributing {
+      padding: 120px 0;
+    }
+
+    .contributing-content {
+      text-align: center;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .contributing h2 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 24px;
+    }
+
+    .contributing p {
+      color: var(--text-secondary);
+      font-size: 1.125rem;
+      margin-bottom: 40px;
+    }
+
+    .contributing-links {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    /* Footer */
+    footer {
+      padding: 48px 0;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .footer-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 24px;
+    }
+
+    .footer-left {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 24px;
+      list-style: none;
+    }
+
+    .footer-links a {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+
+    .footer-links a:hover {
+      color: var(--text-primary);
+    }
+
+    .footer-right {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .nav-links {
+        display: none;
+      }
+
+      .demo-content {
+        grid-template-columns: 1fr;
+      }
+
+      .demo-visual {
+        order: -1;
+      }
+
+      .footer-content {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .footer-left {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="container">
+      <div class="logo">
+        <div class="logo-icon">⚛</div>
+        React Debugger
+      </div>
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#installation">Installation</a></li>
+        <li><a href="#demo">Demo</a></li>
+        <li><a href="#contributing">Contributing</a></li>
+      </ul>
+      <a href="https://github.com/hoainho/react-debugger-extension" class="nav-cta">GitHub</a>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="container">
+      <div class="hero-content">
+        <div class="hero-badge">
+          <span>v1.0.2</span>
+          Now with improved stability
+        </div>
+        <h1>Debug React Apps<br><span class="highlight">Like a Pro</span></h1>
+        <p>Advanced debugging and performance optimization tool for React applications. Detect issues, monitor performance, and debug Redux state—all in one extension.</p>
+        <div class="hero-buttons">
+          <a href="#installation" class="btn btn-primary">
+            Get Started
+          </a>
+          <a href="https://github.com/hoainho/react-debugger-extension" class="btn btn-secondary">
+            View on GitHub
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" class="features">
+    <div class="container">
+      <div class="section-header">
+        <h2>Powerful Features</h2>
+        <p>Everything you need to debug and optimize your React applications</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon blue">🎯</div>
+          <h3>UI & State Issues</h3>
+          <p>Detect direct state mutations, missing keys, and index-as-key anti-patterns automatically.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon purple">⚡</div>
+          <h3>Performance Analysis</h3>
+          <p>Track component re-renders, identify excessive renders, and find performance bottlenecks.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon cyan">🔄</div>
+          <h3>Side Effects</h3>
+          <p>Find missing cleanup functions and dependency issues in useEffect hooks.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon green">📐</div>
+          <h3>CLS Monitor</h3>
+          <p>Track Cumulative Layout Shift in real-time and identify layout shift sources.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon orange">🗄️</div>
+          <h3>Redux DevTools</h3>
+          <p>View state tree, dispatch actions manually, and debug Redux state changes.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon red">💾</div>
+          <h3>Memory Monitor</h3>
+          <p>Monitor memory usage, detect leaks, and track heap size over time.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="installation" class="installation">
+    <div class="container">
+      <div class="section-header">
+        <h2>Quick Installation</h2>
+        <p>Get up and running in minutes</p>
+      </div>
+      <div class="install-methods">
+        <div class="install-card">
+          <h3>NPX Install <span>Recommended</span></h3>
+          <p>The fastest way to get started. Run a single command:</p>
+          <div class="code-block">
+            <code>npx react-debugger</code>
+          </div>
+          <br>
+          <p>Then load the extension in Chrome:</p>
+          <ol class="install-steps">
+            <li>Open <code>chrome://extensions/</code></li>
+            <li>Enable Developer mode</li>
+            <li>Click "Load unpacked"</li>
+            <li>Select the downloaded folder</li>
+          </ol>
+        </div>
+        <div class="install-card">
+          <h3>Build from Source</h3>
+          <p>Clone and build the extension yourself:</p>
+          <div class="code-block">
+            <code>git clone https://github.com/hoainho/react-debugger-extension.git<br>cd react-debugger-extension<br>npm install<br>npm run build</code>
+          </div>
+          <br>
+          <p>Then load the <code>dist</code> folder in Chrome using the same steps above.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="demo" class="demo">
+    <div class="container">
+      <div class="demo-content">
+        <div class="demo-text">
+          <h2>See It in Action</h2>
+          <p>Open DevTools on any React application and find the "React Debugger" tab. Start debugging immediately.</p>
+          <ul class="demo-features">
+            <li>Works with React 16+ and React 18 concurrent features</li>
+            <li>Supports Next.js, Create React App, Vite, and more</li>
+            <li>Zero configuration required</li>
+            <li>Minimal performance overhead</li>
+            <li>Dark theme optimized for DevTools</li>
+          </ul>
+        </div>
+        <div class="demo-visual">
+          <div class="demo-placeholder">
+            <div class="icon">🖥️</div>
+            <p>Open DevTools → React Debugger tab</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="contributing" class="contributing">
+    <div class="container">
+      <div class="contributing-content">
+        <h2>Open Source</h2>
+        <p>React Debugger is open source and welcomes contributions. Report bugs, suggest features, or submit pull requests.</p>
+        <div class="contributing-links">
+          <a href="https://github.com/hoainho/react-debugger-extension/issues" class="btn btn-secondary">
+            Report Issue
+          </a>
+          <a href="https://github.com/hoainho/react-debugger-extension/pulls" class="btn btn-secondary">
+            Pull Requests
+          </a>
+          <a href="https://github.com/hoainho/react-debugger-extension" class="btn btn-primary">
+            Star on GitHub
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-left">
+          <div class="logo">
+            <div class="logo-icon">⚛</div>
+            React Debugger
+          </div>
+          <ul class="footer-links">
+            <li><a href="https://github.com/hoainho/react-debugger-extension">GitHub</a></li>
+            <li><a href="https://github.com/hoainho/react-debugger-extension/blob/main/LICENSE">MIT License</a></li>
+            <li><a href="https://github.com/hoainho/react-debugger-extension/blob/main/CHANGELOG.md">Changelog</a></li>
+          </ul>
+        </div>
+        <div class="footer-right">
+          Made with ❤️ by <a href="https://github.com/hoainho">NhoNH</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
