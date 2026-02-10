@@ -1,6 +1,5 @@
 import type { Message, MessageType } from '@/types';
 
-const EXTENSION_SOURCE = 'REACT_DEBUGGER_EXTENSION';
 const PAGE_SOURCE = 'REACT_DEBUGGER_PAGE';
 const CONTENT_SOURCE = 'REACT_DEBUGGER_CONTENT';
 

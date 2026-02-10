@@ -65,17 +65,11 @@ async function checkIfSiteEnabled(): Promise<boolean> {
   }
 }
 
-async function init(): Promise<void> {
-  isEnabled = await checkIfSiteEnabled();
-  
-  if (!isEnabled) {
-    console.log('[React Debugger] Disabled for this site');
-    return;
-  }
-  
-  injectPageScript();
-  
-  window.addEventListener('message', (event) => {
+let pageMessageHandler: ((event: MessageEvent) => void) | null = null;
+
+function setupPageMessageListener(): void {
+  if (pageMessageHandler) return;
+  pageMessageHandler = (event: MessageEvent) => {
     if (!extensionContextValid) return;
     if (event.source !== window) return;
     if (!event.data || event.data.source !== PAGE_SOURCE) return;
@@ -84,31 +78,61 @@ async function init(): Promise<void> {
       type: event.data.type,
       payload: event.data.payload,
     });
-  });
+  };
+  window.addEventListener('message', pageMessageHandler);
+}
+
+function removePageMessageListener(): void {
+  if (pageMessageHandler) {
+    window.removeEventListener('message', pageMessageHandler);
+    pageMessageHandler = null;
+  }
+}
+
+async function handleEnableDebugger(message: { type: string; payload?: unknown }): Promise<void> {
+  isEnabled = await checkIfSiteEnabled();
+  if (!isEnabled) return;
   
-  chrome.runtime.onMessage.addListener((message) => {
-    if (!extensionContextValid) return;
-    
-    if (message.type === 'ENABLE_DEBUGGER') {
-      debuggerEnabled = true;
-      sendToPage(message.type, message.payload);
-      initCLSObserver();
-      return;
-    }
-    
-    if (message.type === 'DISABLE_DEBUGGER') {
-      debuggerEnabled = false;
-      sendToPage(message.type, message.payload);
-      stopCLSObserver();
-      return;
-    }
-    
-    sendToPage(message.type, message.payload);
-  });
-  
+  injectPageScript();
+  debuggerEnabled = true;
+  setupPageMessageListener();
+  sendToPage(message.type, message.payload);
+  initCLSObserver();
   capturePageLoadMetrics();
-  
-  console.log('[React Debugger] Content script loaded');
+}
+
+function handleDisableDebugger(message: { type: string; payload?: unknown }): void {
+  debuggerEnabled = false;
+  sendToPage(message.type, message.payload);
+  stopCLSObserver();
+  removePageMessageListener();
+}
+
+function init(): void {
+  try {
+    chrome.runtime.onMessage.addListener((message) => {
+      if (!extensionContextValid) return;
+      
+      try {
+        if (message.type === 'ENABLE_DEBUGGER') {
+          handleEnableDebugger(message);
+          return;
+        }
+        
+        if (message.type === 'DISABLE_DEBUGGER') {
+          handleDisableDebugger(message);
+          return;
+        }
+        
+        if (debuggerEnabled && isInitialized) {
+          sendToPage(message.type, message.payload);
+        }
+      } catch {
+      }
+    });
+  } catch {
+    extensionContextValid = false;
+  }
 }
 
 let clsValue = 0;
