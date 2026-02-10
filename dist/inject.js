@@ -860,14 +860,22 @@
         });
       }
     }
-    function traverseFiber(fiber, callback, path = "") {
+    function traverseFiber(fiber, callback, path = "", maxNodes = 500) {
       if (!fiber) return;
-      callback(fiber, path);
-      if (fiber.child) traverseFiber(fiber.child, callback, `${path}/0`);
-      if (fiber.sibling) {
-        const parts = path.split("/");
-        const index = parseInt(parts.pop() || "0", 10) + 1;
-        traverseFiber(fiber.sibling, callback, `${parts.join("/")}/${index}`);
+      const stack = [{ fiber, path }];
+      let nodeCount = 0;
+      while (stack.length > 0 && nodeCount < maxNodes) {
+        const item = stack.pop();
+        nodeCount++;
+        callback(item.fiber, item.path);
+        if (item.fiber.sibling) {
+          const parts = item.path.split("/");
+          const index = parseInt(parts.pop() || "0", 10) + 1;
+          stack.push({ fiber: item.fiber.sibling, path: `${parts.join("/")}/${index}` });
+        }
+        if (item.fiber.child) {
+          stack.push({ fiber: item.fiber.child, path: `${item.path}/0` });
+        }
       }
     }
     function detectRenderChanges(node) {
@@ -1236,7 +1244,7 @@
       let lastAnalyzeTime = 0;
       let pendingRoot = null;
       let analyzeTimeout = null;
-      const ANALYZE_THROTTLE_MS = 100;
+      const ANALYZE_THROTTLE_MS = 250;
       const scheduleAnalyze = (root) => {
         pendingRoot = root;
         const now = Date.now();
@@ -1276,7 +1284,7 @@
                 const count = renderCounts.get(fiberId) || 1;
                 flashRenderOverlay(node, componentName, count);
               }
-            });
+            }, "", 200);
           } catch (e) {
           }
         }
@@ -1290,8 +1298,7 @@
     }
     function findReactRoots() {
       const roots = [];
-      const allElements = document.querySelectorAll("*");
-      for (const element of allElements) {
+      const extractRoot = (element) => {
         try {
           const keys = Object.keys(element);
           const fiberKey = keys.find(
@@ -1302,26 +1309,35 @@
             let maxDepth = 100;
             while (fiber && maxDepth > 0) {
               if (fiber.stateNode && fiber.stateNode.current) {
-                const root = fiber.stateNode;
-                if (!roots.includes(root)) {
-                  roots.push(root);
-                }
-                break;
+                return fiber.stateNode;
               }
               if (fiber.tag === FIBER_TAGS.HostRoot && fiber.stateNode) {
-                const root = fiber.stateNode;
-                if (!roots.includes(root)) {
-                  roots.push(root);
-                }
-                break;
+                return fiber.stateNode;
               }
               fiber = fiber.return;
               maxDepth--;
             }
-            if (roots.length > 0) break;
           }
         } catch (e) {
-          continue;
+        }
+        return null;
+      };
+      const knownSelectors = "#root, #app, #__next, [data-reactroot], #___gatsby";
+      const knownElements = document.querySelectorAll(knownSelectors);
+      for (const element of knownElements) {
+        const root = extractRoot(element);
+        if (root && !roots.includes(root)) {
+          roots.push(root);
+        }
+      }
+      if (roots.length > 0) return roots;
+      const allElements = document.querySelectorAll("*");
+      const limit = Math.min(allElements.length, 200);
+      for (let i = 0; i < limit; i++) {
+        const root = extractRoot(allElements[i]);
+        if (root && !roots.includes(root)) {
+          roots.push(root);
+          break;
         }
       }
       return roots;
@@ -1787,7 +1803,6 @@
     let stateChangeTimeout = null;
     const STATE_CHANGE_DEBOUNCE = 100;
     let reduxHookInstalled = false;
-    let reduxCheckInterval = null;
     function restartReduxSearch() {
       reduxSearchStopped = false;
       if (reduxStore) return;
@@ -1802,10 +1817,6 @@
       if (!store || reduxStore === store) return;
       reduxStore = store;
       reduxSearchStopped = true;
-      if (reduxCheckInterval) {
-        clearInterval(reduxCheckInterval);
-        reduxCheckInterval = null;
-      }
       try {
         const initialState = deepSanitizeState(store.getState());
         console.log("[React Debugger] Redux store connected");
@@ -1917,35 +1928,19 @@
       }
     }
     function startReduxPolling() {
-      if (reduxCheckInterval) return;
-      let attempts = 0;
-      const maxAttempts = 20;
-      const checkInterval = 1e3;
-      reduxCheckInterval = window.setInterval(() => {
-        attempts++;
-        if (reduxSearchStopped || reduxStore) {
-          if (reduxCheckInterval) {
-            clearInterval(reduxCheckInterval);
-            reduxCheckInterval = null;
-          }
-          return;
+      if (reduxStore || reduxSearchStopped) return;
+      const store = findReduxStore();
+      if (store) {
+        setupReduxStore(store);
+        return;
+      }
+      setTimeout(() => {
+        if (reduxStore || reduxSearchStopped) return;
+        const store2 = findReduxStore();
+        if (store2) {
+          setupReduxStore(store2);
         }
-        const store = findReduxStore();
-        if (store) {
-          if (reduxCheckInterval) {
-            clearInterval(reduxCheckInterval);
-            reduxCheckInterval = null;
-          }
-          setupReduxStore(store);
-          return;
-        }
-        if (attempts >= maxAttempts) {
-          if (reduxCheckInterval) {
-            clearInterval(reduxCheckInterval);
-            reduxCheckInterval = null;
-          }
-        }
-      }, checkInterval);
+      }, 2e3);
     }
     function installReduxHook() {
       if (reduxHookInstalled) return;
@@ -2199,6 +2194,20 @@
         flushTimeout = null;
       }
       clearPathCache();
+      renderCounts.clear();
+      lastRenderTimes.clear();
+      recentRenderTimestamps.clear();
+      reportedEffectIssues.clear();
+      reportedExcessiveRerenders.clear();
+      reportedSlowRenders.clear();
+      componentRenderIds.clear();
+      lastEffectStates.clear();
+      trackedClosures.clear();
+      staleClosureIssues.clear();
+      stateOverrides.clear();
+      overlayElements.clear();
+      renderFlashTimers.forEach((timer) => clearTimeout(timer));
+      renderFlashTimers.clear();
     }
     window.__REACT_DEBUGGER_MEMORY__ = {
       start: startMemoryMonitoring,
