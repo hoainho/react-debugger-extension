@@ -52,7 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Memory & Cleanup (8 cases)
   - UI & State Issues (7 cases)
   - CLS & Layout (7 cases)
-- **Landing page**: Created modern dark-themed landing page at docs/index.html for reactdebugger.dev
+- **Landing page**: Created modern dark-themed landing page at docs/index.html for GitHub Pages
 - **CHANGELOG.md**: This file
 
 ### Changed
