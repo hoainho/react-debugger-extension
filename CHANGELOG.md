@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-02-22
+
+### Added
+
+#### AI Analysis Tab
+ AI-powered code analysis with security, performance, crash risk, and root cause detection
+ Rate-limited to 3 free calls per 5-minute window
+ Subscription key system for unlimited access with paywall UI
+ Remote key validation via Cloudflare Worker (no secrets in source code)
+ PRO badge and "Unlimited" status indicator for subscribers
+ Contact email link for subscription inquiries
+
+#### Exclusive Branding
+ New proprietary logo: broken orbital rings + hexagonal core + diagnostic crosshair
+ Replaced standard React atom icon with unique design across all sizes (16/48/128px)
+
+### Changed
+
+#### UI Overhaul
+ Replaced all emoji indicators with CSS badge/indicator system
+ New dark blue theme (GitHub Dark style) with cyan accent tokens
+ Modernized all 10 tab components with consistent badge styling
+ Added 375+ lines of new CSS for badges, indicators, status elements, and paywall
+
+#### Panel Header
+ Removed Recording ON/OFF toggle (redundant with extension bar tooltip enable)
+ Simplified header to logo + version + Redux badge only
+
+#### AI Settings
+ Removed proxy URL and API key fields from settings (security: prevents credential exposure)
+ Settings now show only Model selector + subscription key input
+ Added contact email section (hoainho.work@gmail.com)
+
+### Fixed
+
+#### React Detection
+ Fixed race condition: proactive ENABLE_DEBUGGER re-send on navigation
+ Fixed async content script injection timing
+ Added REACT_DETECTED re-send when React is already initialized
+ Auto-enable debugger on panel open
+
+#### DevTools
+ Fixed `Extension context invalidated` error in devtools.js by removing dead PANEL_READY callback
+
+#### Git Hygiene
+ Untracked `node_modules/` and `dist/` from git (were previously committed)
+ Added `worker/` to .gitignore
+
+### Security
+ Subscription key validation moved from local SHA-256 hash to remote Cloudflare Worker
+ No API keys, hashes, or secrets stored in source code
+ Real proxy API key hidden from extension UI
+
+
 ## [1.0.2] - 2026-02-10
 
 ### Fixed
