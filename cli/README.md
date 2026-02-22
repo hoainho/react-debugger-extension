@@ -281,7 +281,8 @@ Get AI-powered insights into your React application's code quality.
 
 - 3 free AI analyses are included per session
 - To unlock unlimited analyses, enter your subscription key in the Settings panel
-- Contact nhoxtvt@gmail.com for subscription key inquiries
+- Contact hoainho.work@gmail.com for subscription key inquiries
+
 ---
 
 ## Common Debugging Scenarios
