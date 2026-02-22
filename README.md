@@ -10,6 +10,12 @@
 
 Advanced debugging & performance optimization tool for ReactJS applications.
 
+## 🎬 Demo
+
+<video src="https://raw.githubusercontent.com/hoainho/react-debugger-extension/main/docs/video/react-ext-demo-3x.mp4" controls muted playsinline></video>
+
+Direct link: https://raw.githubusercontent.com/hoainho/react-debugger-extension/main/docs/video/react-ext-demo-3x.mp4
+
 ## ✨ Features
 
 - 🎯 **UI & State Issues** - Detect direct state mutation, missing keys, index as key
