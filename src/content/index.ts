@@ -43,15 +43,22 @@ function getSelector(element: Element | null): string {
   return tag;
 }
 
-function injectPageScript(): void {
-  if (isInitialized) return;
+function injectPageScript(): Promise<void> {
+  if (isInitialized) return Promise.resolve();
   isInitialized = true;
-  
-  const script = document.createElement('script');
-  script.src = chrome.runtime.getURL('inject.js');
-  script.onload = () => script.remove();
-  script.onerror = (e) => console.error('[React Debugger] Failed to inject script:', e);
-  (document.head || document.documentElement).appendChild(script);
+  return new Promise<void>((resolve) => {
+    const script = document.createElement('script');
+    script.src = chrome.runtime.getURL('inject.js');
+    script.onload = () => {
+      script.remove();
+      resolve();
+    };
+    script.onerror = (e) => {
+      console.error('[React Debugger] Failed to inject script:', e);
+      resolve(); // Resolve anyway to not block the flow
+    };
+    (document.head || document.documentElement).appendChild(script);
+  });
 }
 
 async function checkIfSiteEnabled(): Promise<boolean> {
@@ -92,10 +99,10 @@ function removePageMessageListener(): void {
 async function handleEnableDebugger(message: { type: string; payload?: unknown }): Promise<void> {
   isEnabled = await checkIfSiteEnabled();
   if (!isEnabled) return;
-  
-  injectPageScript();
   debuggerEnabled = true;
   setupPageMessageListener();
+  // Wait for inject.js to fully load before sending ENABLE_DEBUGGER to the page
+  await injectPageScript();
   sendToPage(message.type, message.payload);
   initCLSObserver();
   capturePageLoadMetrics();

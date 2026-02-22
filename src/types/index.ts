@@ -336,3 +336,88 @@ export interface FiberCommitPayload {
   }>;
   timestamp: number;
 }
+
+// ============================================
+// AI Analysis Types
+// ============================================
+
+export type AIAnalysisSeverity = 'critical' | 'warning' | 'info' | 'success';
+
+export interface AIAnalysisItem {
+  title: string;
+  severity: AIAnalysisSeverity;
+  description: string;
+  suggestion?: string;
+  affectedComponents?: string[];
+}
+
+export interface AIAnalysisResult {
+  id: string;
+  timestamp: number;
+  snapshotHash: string;
+  model: string;
+  security: AIAnalysisItem[];
+  crashRisks: AIAnalysisItem[];
+  performance: AIAnalysisItem[];
+  rootCauses: AIAnalysisItem[];
+  suggestions: AIAnalysisItem[];
+  summary: string;
+  tokenUsage: {
+    prompt: number;
+    completion: number;
+    total: number;
+  };
+  latencyMs: number;
+}
+
+export interface AIAnalysisSnapshot {
+  issues: Array<{
+    type: string;
+    severity: string;
+    component: string;
+    message: string;
+    suggestion: string;
+  }>;
+  components: Array<{
+    name: string;
+    renderCount: number;
+    avgDuration: number;
+  }>;
+  crashes: Array<{
+    type: string;
+    message: string;
+    stack?: string;
+    analysisHints: string[];
+  }>;
+  memory: {
+    usedMB: number;
+    totalMB: number;
+    limitMB: number;
+    growthRateKBs: number;
+    warnings: string[];
+  } | null;
+  pageMetrics: {
+    fcp: number | null;
+    lcp: number | null;
+    ttfb: number | null;
+  } | null;
+  reactVersion: string | null;
+  reactMode: string | null;
+  totalRenders: number;
+  totalTimelineEvents: number;
+}
+
+export interface AIConfig {
+  proxyUrl: string;
+  apiKey: string;
+  model: string;
+  maxTokens: number;
+  subscriptionKey: string;
+}
+export const DEFAULT_AI_CONFIG: AIConfig = {
+  proxyUrl: 'https://proxy.hoainho.info',
+  apiKey: 'hoainho',
+  model: 'gemini-2.5-flash-lite',
+  maxTokens: 4096,
+  subscriptionKey: '',
+};
