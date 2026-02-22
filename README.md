@@ -5,7 +5,7 @@
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/hoainho/react-debugger-extension)
 
 **Author:** NhoNH  
-**Version:** 2.0.1  
+**Version:** 2.0.2  
 **License:** MIT
 
 Advanced debugging & performance optimization tool for ReactJS applications.
