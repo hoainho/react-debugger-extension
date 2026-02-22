@@ -13,12 +13,12 @@ function getRatingColor(rating: CLSReport['rating']): string {
   }
 }
 
-function getRatingEmoji(rating: CLSReport['rating']): string {
+function getRatingBadgeClass(rating: CLSReport['rating']): string {
   switch (rating) {
-    case 'good': return '🟢';
-    case 'needs-improvement': return '🟡';
-    case 'poor': return '🔴';
-    default: return '⚪';
+    case 'good': return 'status-badge status-badge--good';
+    case 'needs-improvement': return 'status-badge status-badge--warning';
+    case 'poor': return 'status-badge status-badge--poor';
+    default: return 'status-badge status-badge--neutral';
   }
 }
 
@@ -30,7 +30,7 @@ export function CLSTab({ report }: CLSTabProps) {
   return (
     <div className="tab-panel">
       <div className="tab-header">
-        <h2>📐 Layout Shift (CLS) Monitor</h2>
+        <h2><span className="section-badge section-badge--cls" /> Layout Shift (CLS) Monitor</h2>
       </div>
 
       <section className="section cls-score-section">
@@ -61,7 +61,7 @@ export function CLSTab({ report }: CLSTabProps) {
           </div>
 
           <div className="cls-rating">
-            <span className="rating-emoji">{getRatingEmoji(rating)}</span>
+            <span className={`rating-emoji ${getRatingBadgeClass(rating)}`} />
             <span className="rating-text">
               {rating === 'good' && 'Good - Meets Core Web Vitals threshold'}
               {rating === 'needs-improvement' && 'Needs Improvement - Consider optimizing'}
@@ -127,7 +127,7 @@ export function CLSTab({ report }: CLSTabProps) {
       )}
 
       <section className="section info-section">
-        <h3>💡 How to Reduce CLS</h3>
+        <h3><span className="action-badge action-badge--suggestion" /> How to Reduce CLS</h3>
         <ul className="tips-list">
           <li>Add <code>width</code> and <code>height</code> attributes to images and videos</li>
           <li>Use <code>aspect-ratio</code> CSS property for responsive media</li>
@@ -140,7 +140,7 @@ export function CLSTab({ report }: CLSTabProps) {
 
       {(!report || report.entries.length === 0) && (
         <div className="empty-state">
-          <span className="empty-icon">📊</span>
+          <span className="empty-state-icon empty-state-icon--chart" />
           <p>No layout shifts detected yet</p>
           <p className="hint">Layout shifts will be recorded as they occur.</p>
         </div>

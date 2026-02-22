@@ -82,17 +82,17 @@ export function MemoryTab({ report, tabId }: MemoryTabProps) {
     return (
       <div className="tab-panel">
         <div className="tab-header">
-          <h2>🧠 Memory Monitor</h2>
+          <h2><span className="section-badge section-badge--memory" /> Memory Monitor</h2>
           <button
             className={`scan-toggle ${isMonitoring ? 'active' : ''}`}
             onClick={toggleMonitoring}
           >
-            {isMonitoring ? '⏹️ Stop Monitoring' : '▶️ Start Monitoring'}
+            {isMonitoring ? <><span className="action-badge action-badge--stop" /> Stop Monitoring</> : <><span className="action-badge action-badge--play" /> Start Monitoring</>}
           </button>
         </div>
 
         <div className="empty-state">
-          <span className="empty-icon">🧠</span>
+          <span className="empty-state-icon empty-state-icon--memory" />
           <h2>Memory Monitoring</h2>
           <p>Click "Start Monitoring" to track JavaScript heap usage.</p>
           <p className="hint">Note: Requires Chrome with memory API support.</p>
@@ -106,12 +106,12 @@ export function MemoryTab({ report, tabId }: MemoryTabProps) {
   return (
     <div className="tab-panel memory-panel">
       <div className="tab-header">
-        <h2>🧠 Memory Monitor</h2>
+        <h2><span className="section-badge section-badge--memory" /> Memory Monitor</h2>
         <button
           className={`scan-toggle ${isMonitoring ? 'active' : ''}`}
           onClick={toggleMonitoring}
         >
-          {isMonitoring ? '⏹️ Stop Monitoring' : '▶️ Start Monitoring'}
+          {isMonitoring ? <><span className="action-badge action-badge--stop" /> Stop Monitoring</> : <><span className="action-badge action-badge--play" /> Start Monitoring</>}
         </button>
       </div>
 
@@ -120,7 +120,7 @@ export function MemoryTab({ report, tabId }: MemoryTabProps) {
           <div className="memory-warnings">
             {report.warnings.map((warning, i) => (
               <div key={i} className="memory-warning">
-                <span className="warning-icon">⚠️</span>
+                <span className="warning-icon indicator-dot indicator-dot--warning" />
                 <span>{warning}</span>
               </div>
             ))}
@@ -263,12 +263,12 @@ export function MemoryTab({ report, tabId }: MemoryTabProps) {
 function CrashLogSection({ crashes }: { crashes: CrashEntry[] }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const getCrashIcon = (type: CrashEntry['type']) => {
+  const getCrashIconClass = (type: CrashEntry['type']) => {
     switch (type) {
-      case 'js-error': return '❌';
-      case 'unhandled-rejection': return '⚠️';
-      case 'react-error': return '🔴';
-      default: return '❌';
+      case 'js-error': return 'indicator-dot indicator-dot--error';
+      case 'unhandled-rejection': return 'indicator-dot indicator-dot--warning';
+      case 'react-error': return 'indicator-dot indicator-dot--critical';
+      default: return 'indicator-dot indicator-dot--error';
     }
   };
 
@@ -291,7 +291,7 @@ function CrashLogSection({ crashes }: { crashes: CrashEntry[] }) {
               className="crash-header"
               onClick={() => setExpandedId(expandedId === crash.id ? null : crash.id)}
             >
-              <span className="crash-icon">{getCrashIcon(crash.type)}</span>
+              <span className={`crash-icon ${getCrashIconClass(crash.type)}`} />
               <span className="crash-time">
                 {new Date(crash.timestamp).toLocaleTimeString()}
               </span>
@@ -343,7 +343,7 @@ function CrashLogSection({ crashes }: { crashes: CrashEntry[] }) {
                 {crash.analysisHints && crash.analysisHints.length > 0 && (
                   <div className="crash-hints">
                     {crash.analysisHints.map((hint, i) => (
-                      <div key={i} className="crash-hint">💡 {hint}</div>
+                      <div key={i} className="crash-hint"><span className="action-badge action-badge--suggestion" /> {hint}</div>
                     ))}
                   </div>
                 )}

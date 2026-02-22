@@ -3040,6 +3040,14 @@
     
     if (message.type === 'ENABLE_DEBUGGER') {
       debuggerEnabled = true;
+      // Re-send REACT_DETECTED since inject.js may have loaded after React initialized
+      const hook = (window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__;
+      if (hook?.renderers?.size > 0) {
+        sendFromPage('REACT_DETECTED', {
+          version: detectReactVersion(),
+          mode: detectReactMode(),
+        });
+      }
       installReduxHook();
       restartReduxSearch();
       forceReanalyze();

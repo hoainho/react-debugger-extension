@@ -1,4 +1,6 @@
 .opencode
-node_modules
 dist
 .sisyphus
+.agent
+worker
+node_modules

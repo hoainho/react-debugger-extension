@@ -6,9 +6,9 @@ interface IssueCardProps {
 }
 
 const SEVERITY_CONFIG = {
-  error: { icon: '❌', color: '#ff4444', label: 'Error', bgColor: 'rgba(255, 68, 68, 0.1)' },
-  warning: { icon: '⚠️', color: '#ffaa00', label: 'Warning', bgColor: 'rgba(255, 170, 0, 0.1)' },
-  info: { icon: 'ℹ️', color: '#4488ff', label: 'Info', bgColor: 'rgba(68, 136, 255, 0.1)' },
+  error: { iconClass: 'indicator-dot indicator-dot--error', color: '#ff4444', label: 'Error', bgColor: 'rgba(255, 68, 68, 0.1)' },
+  warning: { iconClass: 'indicator-dot indicator-dot--warning', color: '#ffaa00', label: 'Warning', bgColor: 'rgba(255, 170, 0, 0.1)' },
+  info: { iconClass: 'indicator-dot indicator-dot--info', color: '#4488ff', label: 'Info', bgColor: 'rgba(68, 136, 255, 0.1)' },
 };
 
 const ISSUE_INFO: Record<string, { title: string; why: string; learnUrl?: string }> = {
@@ -95,7 +95,7 @@ export function IssueCard({ issue }: IssueCardProps) {
       style={{ borderLeftColor: severity.color }}
     >
       <div className="issue-header" onClick={() => setExpanded(!expanded)}>
-        <span className="issue-icon">{severity.icon}</span>
+        <span className={`issue-icon ${severity.iconClass}`} />
         <div className="issue-info">
           <div className="issue-title-row">
             <h4 className="issue-title">{info.title}</h4>
@@ -160,7 +160,7 @@ export function IssueCard({ issue }: IssueCardProps) {
 
           {location?.closureInfo && (
             <div className="closure-info">
-              <strong>🔍 Closure Timeline:</strong>
+              <strong><span className="action-badge action-badge--search" /> Closure Timeline:</strong>
               <div className="closure-timeline">
                 <div className="timeline-item created">
                   <span className="timeline-badge">Created</span>
@@ -219,7 +219,7 @@ export function IssueCard({ issue }: IssueCardProps) {
           )}
 
           <div className="issue-suggestion">
-            <strong>💡 Suggestion:</strong>
+            <strong><span className="action-badge action-badge--suggestion" /> Suggestion:</strong>
             <p>{issue.suggestion}</p>
           </div>
 
@@ -240,7 +240,7 @@ export function IssueCard({ issue }: IssueCardProps) {
                 rel="noopener noreferrer"
                 className="learn-link"
               >
-                📚 Learn more
+                <span className="action-badge action-badge--learn" /> Learn more
               </a>
             )}
           </div>

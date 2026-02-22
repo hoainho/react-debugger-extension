@@ -22,7 +22,7 @@ export function SideEffectsTab({ issues }: SideEffectsTabProps) {
   return (
     <div className="tab-panel">
       <div className="tab-header">
-        <h2>🔄 Side Effects Analysis</h2>
+        <h2><span className="section-badge section-badge--side-effects" /> Side Effects Analysis</h2>
         <span className="issue-count">
           {filteredIssues.length} issue{filteredIssues.length !== 1 ? 's' : ''}
         </span>
@@ -30,7 +30,7 @@ export function SideEffectsTab({ issues }: SideEffectsTabProps) {
 
       {filteredIssues.length === 0 ? (
         <div className="empty-state">
-          <span className="empty-icon">✅</span>
+          <span className="empty-state-icon empty-state-icon--check" />
           <p>No side effect issues detected</p>
           <p className="hint">Your useEffect hooks look good!</p>
         </div>
@@ -38,7 +38,7 @@ export function SideEffectsTab({ issues }: SideEffectsTabProps) {
         <>
           {cleanupIssues.length > 0 && (
             <section className="section">
-              <h3>⚠️ Missing Cleanup ({cleanupIssues.length})</h3>
+              <h3><span className="indicator-dot indicator-dot--warning" /> Missing Cleanup ({cleanupIssues.length})</h3>
               <p className="section-desc">
                 These effects may cause memory leaks if they have subscriptions, timers, or event listeners.
               </p>
@@ -52,7 +52,7 @@ export function SideEffectsTab({ issues }: SideEffectsTabProps) {
 
           {depIssues.length > 0 && (
             <section className="section">
-              <h3>📋 Dependency Issues ({depIssues.length})</h3>
+              <h3><span className="action-badge action-badge--learn" /> Dependency Issues ({depIssues.length})</h3>
               <p className="section-desc">
                 Missing or incorrect dependencies can cause stale closures or unnecessary re-runs.
               </p>
@@ -66,7 +66,7 @@ export function SideEffectsTab({ issues }: SideEffectsTabProps) {
 
           {loopIssues.length > 0 && (
             <section className="section">
-              <h3>🔴 Infinite Loop Risk ({loopIssues.length})</h3>
+              <h3><span className="indicator-dot indicator-dot--critical" /> Infinite Loop Risk ({loopIssues.length})</h3>
               <p className="section-desc">
                 These effects may cause infinite re-renders.
               </p>
@@ -80,7 +80,7 @@ export function SideEffectsTab({ issues }: SideEffectsTabProps) {
 
           {staleClosureIssues.length > 0 && (
             <section className="section">
-              <h3>🔒 Stale Closures ({staleClosureIssues.length})</h3>
+              <h3><span className="action-badge action-badge--search" /> Stale Closures ({staleClosureIssues.length})</h3>
               <p className="section-desc">
                 These callbacks may be using outdated state/props from previous renders.
                 This is one of the most common and hard-to-debug React issues.
@@ -96,7 +96,7 @@ export function SideEffectsTab({ issues }: SideEffectsTabProps) {
       )}
 
       <section className="section info-section">
-        <h3>💡 Best Practices</h3>
+        <h3><span className="action-badge action-badge--suggestion" /> Best Practices</h3>
         <ul className="tips-list">
           <li>Always return a cleanup function when using <code>setInterval</code>, <code>addEventListener</code>, or subscriptions</li>
           <li>Include all variables used inside the effect in the dependency array</li>

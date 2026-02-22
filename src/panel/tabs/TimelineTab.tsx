@@ -22,13 +22,13 @@ interface TimelineSnapshot {
   events: RenderSnapshotEvent[];
 }
 
-const EVENT_CONFIG: Record<TimelineEventType, { icon: string; color: string; label: string }> = {
-  'render': { icon: '🔄', color: 'var(--accent-blue)', label: 'Render' },
-  'state-change': { icon: '📦', color: '#a855f7', label: 'State' },
-  'effect': { icon: '⚡', color: 'var(--accent-yellow)', label: 'Effect' },
-  'error': { icon: '❌', color: 'var(--accent-red)', label: 'Error' },
-  'memory': { icon: '🧠', color: 'var(--accent-green)', label: 'Memory' },
-  'context-change': { icon: '🔗', color: '#f97316', label: 'Context' },
+const EVENT_CONFIG: Record<TimelineEventType, { iconClass: string; color: string; label: string }> = {
+  'render': { iconClass: 'event-type-indicator event-type-indicator--render', color: 'var(--accent-blue)', label: 'Render' },
+  'state-change': { iconClass: 'event-type-indicator event-type-indicator--state', color: '#a855f7', label: 'State' },
+  'effect': { iconClass: 'event-type-indicator event-type-indicator--effect', color: 'var(--accent-yellow)', label: 'Effect' },
+  'error': { iconClass: 'event-type-indicator event-type-indicator--error', color: 'var(--accent-red)', label: 'Error' },
+  'memory': { iconClass: 'event-type-indicator event-type-indicator--memory', color: 'var(--accent-green)', label: 'Memory' },
+  'context-change': { iconClass: 'event-type-indicator event-type-indicator--context', color: '#f97316', label: 'Context' },
 };
 
 function formatTime(timestamp: number): string {
@@ -500,7 +500,7 @@ export function TimelineTab({ events, tabId, onClear }: TimelineTabProps) {
   return (
     <div className="tab-panel timeline-panel">
       <div className="tab-header">
-        <h2>⏱️ Debug Timeline</h2>
+        <h2><span className="section-badge section-badge--timeline" /> Debug Timeline</h2>
         <div className="tab-header-actions">
           <span className="event-count">{events.length} events</span>
           {events.length > 0 && (
@@ -522,7 +522,7 @@ export function TimelineTab({ events, tabId, onClear }: TimelineTabProps) {
                 onClick={() => toggleFilter(type)}
                 style={{ borderColor: filters[type] ? config.color : 'transparent' }}
               >
-                <span className="filter-icon">{config.icon}</span>
+                <span className={`filter-icon ${config.iconClass}`} />
                 <span className="filter-label">{config.label}</span>
                 <span className="filter-count">{eventCounts[type]}</span>
               </button>
@@ -635,7 +635,7 @@ export function TimelineTab({ events, tabId, onClear }: TimelineTabProps) {
 
       {filteredEvents.length === 0 ? (
         <div className="empty-state">
-          <span className="empty-icon">⏱️</span>
+          <span className="empty-state-icon empty-state-icon--timer" />
           <p>{events.length === 0 ? 'No events captured yet' : 'No events match filters'}</p>
           <p className="hint">
             {events.length === 0 
@@ -671,7 +671,7 @@ export function TimelineTab({ events, tabId, onClear }: TimelineTabProps) {
                     }
                   }}
                 >
-                  <span className="event-icon">{config.icon}</span>
+                  <span className={`event-icon ${config.iconClass}`} />
                   <span className="event-time">{formatTime(event.timestamp)}</span>
                   <span className="event-type" style={{ color: config.color }}>
                     {config.label}

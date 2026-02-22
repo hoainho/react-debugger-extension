@@ -98,13 +98,13 @@ export function PerformanceTab({ issues, components, renders, tabId, pageLoadMet
   return (
     <div className="tab-panel">
       <div className="tab-header">
-        <h2>⚡ Performance Analysis</h2>
+        <h2><span className="section-badge section-badge--performance" /> Performance Analysis</h2>
         <button 
           className={`scan-toggle ${scanEnabled ? 'active' : ''}`}
           onClick={toggleScan}
           title="Toggle React Scan - highlights component re-renders on the page"
         >
-          {scanEnabled ? '🔍 Scan ON' : '🔍 Scan OFF'}
+          {scanEnabled ? <><span className="action-badge action-badge--scan" /> Scan ON</> : <><span className="action-badge action-badge--scan" /> Scan OFF</>}
         </button>
       </div>
 
@@ -203,7 +203,7 @@ export function PerformanceTab({ issues, components, renders, tabId, pageLoadMet
 
       {slowRenders.length > 0 && (
         <section className="section">
-          <h3>🐌 Slowest Components</h3>
+          <h3><span className="indicator-dot indicator-dot--warning" /> Slowest Components</h3>
           <p className="section-desc">Components exceeding 16ms frame budget (60fps target)</p>
           <div className="render-table slow-table">
             <table>
@@ -289,7 +289,7 @@ export function PerformanceTab({ issues, components, renders, tabId, pageLoadMet
 
       {renderStats.length === 0 && filteredIssues.length === 0 && (
         <div className="empty-state">
-          <span className="empty-icon">📊</span>
+          <span className="empty-state-icon empty-state-icon--chart" />
           <p>No performance data yet</p>
           <p className="hint">Interact with the page to see render statistics.</p>
         </div>

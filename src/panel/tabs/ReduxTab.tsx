@@ -44,10 +44,10 @@ export function ReduxTab({ detected, state, actions, tabId }: ReduxTabProps) {
     return (
       <div className="tab-panel">
         <div className="tab-header">
-          <h2>🗄️ Redux DevTools</h2>
+          <h2><span className="section-badge section-badge--redux" /> Redux DevTools</h2>
         </div>
         <div className="empty-state">
-          <span className="empty-icon">🗄️</span>
+          <span className="empty-state-icon empty-state-icon--redux" />
           <p>Redux not detected</p>
           <p className="hint">
             Make sure your app uses Redux and the store is accessible via one of the methods below.
@@ -456,10 +456,10 @@ if (process.env.NODE_ENV === 'development') {
   return (
     <div className="tab-panel redux-panel">
       <div className="tab-header">
-        <h2>🗄️ Redux DevTools</h2>
+        <h2><span className="section-badge section-badge--redux" /> Redux DevTools</h2>
         <div className="header-actions">
           <button className="icon-btn" onClick={refreshState} title="Refresh State">
-            🔄
+            <span className="action-badge action-badge--refresh" />
           </button>
         </div>
       </div>
@@ -527,7 +527,7 @@ if (process.env.NODE_ENV === 'development') {
               <p className="no-state">No state available</p>
             )}
           </div>
-          <p className="edit-hint">💡 Click on any value to edit it directly</p>
+          <p className="edit-hint"><span className="action-badge action-badge--suggestion" /> Click on any value to edit it directly</p>
         </div>
       </div>
 
@@ -559,7 +559,7 @@ if (process.env.NODE_ENV === 'development') {
       </section>
 
       <section className="section info-section">
-        <h3>💡 State Editing</h3>
+        <h3><span className="action-badge action-badge--suggestion" /> State Editing</h3>
         <p className="section-desc">
           Click any value in the state tree to edit it directly. Changes are applied immediately via Redux.
           Use the ⟲ button to reset all edited values.

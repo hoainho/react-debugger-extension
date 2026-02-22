@@ -19,7 +19,7 @@ export function UIStateTab({ issues, onClear }: UIStateTabProps) {
   return (
     <div className="tab-panel">
       <div className="tab-header">
-        <h2>🎯 UI & State Issues</h2>
+        <h2><span className="section-badge section-badge--ui-state" /> UI & State Issues</h2>
         <div className="tab-actions">
           <span className="issue-count">
             {filteredIssues.length} issue{filteredIssues.length !== 1 ? 's' : ''}
@@ -34,7 +34,7 @@ export function UIStateTab({ issues, onClear }: UIStateTabProps) {
 
       {filteredIssues.length === 0 ? (
         <div className="empty-state">
-          <span className="empty-icon">✅</span>
+          <span className="empty-state-icon empty-state-icon--check" />
           <p>No UI or state issues detected</p>
           <p className="hint">Keep coding! Issues will appear here when detected.</p>
         </div>

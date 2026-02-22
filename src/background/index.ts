@@ -640,10 +640,36 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   clearDebuggerState(tabId);
 });
 
-chrome.webNavigation.onCommitted.addListener((details) => {
-  if (details.frameId === 0) {
-    resetTabState(details.tabId);
-  }
-});
+if (chrome.webNavigation?.onCommitted) {
+  chrome.webNavigation.onCommitted.addListener((details) => {
+    if (details.frameId === 0) {
+      resetTabState(details.tabId);
+      // Re-send ENABLE_DEBUGGER to the new content script if debugger was previously enabled
+      getDebuggerState(details.tabId).then(wasEnabled => {
+        if (wasEnabled) {
+          // Delay to ensure the new content script is ready
+          setTimeout(() => {
+            chrome.tabs.sendMessage(details.tabId, { type: 'ENABLE_DEBUGGER' }).catch(() => {});
+          }, 100);
+        }
+      });
+    }
+  });
+} else {
+  // Fallback: use tabs.onUpdated if webNavigation permission is missing
+  chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+    if (changeInfo.status === 'loading') {
+      resetTabState(tabId);
+      // Re-send ENABLE_DEBUGGER to the new content script if debugger was previously enabled
+      getDebuggerState(tabId).then(wasEnabled => {
+        if (wasEnabled) {
+          setTimeout(() => {
+            chrome.tabs.sendMessage(tabId, { type: 'ENABLE_DEBUGGER' }).catch(() => {});
+          }, 100);
+        }
+      });
+    }
+  });
+}
 
 console.log('[React Debugger] Background service worker started');

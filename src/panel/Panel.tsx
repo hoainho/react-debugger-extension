@@ -7,8 +7,9 @@ import { CLSTab } from './tabs/CLSTab';
 import { ReduxTab } from './tabs/ReduxTab';
 import { MemoryTab } from './tabs/MemoryTab';
 import { TimelineTab } from './tabs/TimelineTab';
+import { AIAnalysisTab } from './tabs/AIAnalysisTab';
 
-type TabId = 'timeline' | 'ui-state' | 'performance' | 'side-effects' | 'cls' | 'redux' | 'memory';
+type TabId = 'timeline' | 'ui-state' | 'performance' | 'side-effects' | 'cls' | 'redux' | 'memory' | 'ai-analysis';
 
 function isExtensionContextValid(): boolean {
   try {
@@ -45,6 +46,7 @@ const TABS: TabConfig[] = [
   { id: 'side-effects', label: 'Side Effects' },
   { id: 'cls', label: 'CLS' },
   { id: 'redux', label: 'Redux' },
+  { id: 'ai-analysis', label: 'AI Analysis' },
 ];
 
 const createInitialState = (): TabState => ({
@@ -91,7 +93,6 @@ export function Panel() {
         setIsLoading(false);
         return;
       }
-
       if (stateResponse?.success && stateResponse.state) {
         const parsedState = {
           ...stateResponse.state,
@@ -100,8 +101,17 @@ export function Panel() {
         setState(parsedState);
       }
       
+      const wasEnabled = debuggerResponse?.success ? (debuggerResponse.enabled ?? false) : false;
       if (debuggerResponse?.success) {
-        setIsDebuggerEnabled(debuggerResponse.enabled ?? false);
+        setIsDebuggerEnabled(wasEnabled);
+      }
+
+      // Auto-enable debugger when panel opens so inject.js loads and detects React
+      // Without this, the panel shows "Waiting for React..." with no way to enable the debugger
+      const reactAlreadyDetected = stateResponse?.success && stateResponse.state?.reactDetected;
+      if (!wasEnabled && !reactAlreadyDetected) {
+        setIsDebuggerEnabled(true);
+        safeSendMessage({ type: 'ENABLE_DEBUGGER', tabId });
       }
     } catch (error) {
       if (!(error as Error)?.message?.includes('Extension context invalidated')) {
@@ -311,7 +321,7 @@ export function Panel() {
   if (!state.reactDetected) {
     return (
       <div className="panel-empty">
-        <div className="empty-icon">⚛️</div>
+        <div className="empty-state-icon empty-state-icon--react" />
         <h2>Waiting for React...</h2>
         <p>React has not been detected on this page.</p>
         <p className="hint">Make sure the page uses React 16+ and refresh if needed.</p>
@@ -353,6 +363,8 @@ export function Panel() {
             tabId={tabId}
           />
         );
+      case 'ai-analysis':
+        return <AIAnalysisTab state={state} />;
       default:
         return null;
     }
@@ -368,25 +380,10 @@ export function Panel() {
         </div>
         <div className="header-right">
           <div className="header-badges">
-            {isDebuggerEnabled ? (
-              <span className="mode-badge mode-active">Recording</span>
-            ) : (
-              <span className="mode-badge mode-paused">Paused</span>
-            )}
             {state.reduxDetected && (
               <span className="mode-badge mode-redux">Redux</span>
             )}
           </div>
-          <button 
-            className={`debugger-toggle ${isDebuggerEnabled ? 'enabled' : 'disabled'}`}
-            onClick={toggleDebugger}
-            title={isDebuggerEnabled ? 'Click to pause debugging' : 'Click to start debugging'}
-          >
-            <span className="toggle-track">
-              <span className="toggle-thumb" />
-            </span>
-            <span className="toggle-label">{isDebuggerEnabled ? 'ON' : 'OFF'}</span>
-          </button>
         </div>
       </header>
 
