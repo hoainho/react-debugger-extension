@@ -1,32 +1,40 @@
-# ⚛️ React Debugger - Chrome Extension
+# React Debugger - Chrome Extension
 
 [![npm version](https://img.shields.io/npm/v/react-debugger.svg)](https://www.npmjs.com/package/react-debugger)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/hoainho/react-debugger-extension)
 
 **Author:** NhoNH  
-**Version:** 1.0.0  
+**Version:** 2.0.1  
 **License:** MIT
 
 Advanced debugging & performance optimization tool for ReactJS applications.
 
-## 🎬 Demo
+## Demo
 
 [![React Debugger Demo](https://raw.githubusercontent.com/hoainho/react-debugger-extension/main/docs/video/react-ext-demo.gif)](https://raw.githubusercontent.com/hoainho/react-debugger-extension/main/docs/video/react-ext-demo-3x.mp4)
 
-## ✨ Features
+## Features
 
-- 🎯 **UI & State Issues** - Detect direct state mutation, missing keys, index as key
-- ⚡ **Performance Analysis** - Track re-renders, identify excessive renders
-- 🔄 **Side Effects** - Find missing cleanup, dependency issues in useEffect
-- 📐 **CLS Monitor** - Track Cumulative Layout Shift in real-time
-- 🗄️ **Redux DevTools** - View state tree, dispatch actions manually
-- 📊 **Timeline** - Visual timeline of all React events
-- 💾 **Memory** - Monitor memory usage and detect leaks
+- **UI & State Issues** - Detect direct state mutation, missing keys, index as key
+- **Performance Analysis** - Track re-renders, identify excessive renders
+- **Side Effects** - Find missing cleanup, dependency issues in useEffect
+- **CLS Monitor** - Track Cumulative Layout Shift in real-time
+- **Redux DevTools** - View state tree, dispatch actions manually
+- **Timeline** - Visual timeline of all React events
+- **Memory** - Monitor memory usage and detect leaks
+- **AI Analysis** [NEW] - AI-powered code analysis with security, performance, and crash risk detection
+
+### v2.0.0 Highlights
+
+- **AI Analysis Tab** - Analyze your React application with AI to identify security vulnerabilities, performance bottlenecks, and crash risks. 3 free analyses included; unlimited with a subscription key.
+- **Subscription System** - Enter a subscription key to unlock unlimited AI analysis. Keys are validated remotely via a secure Cloudflare Worker.
+- **UI Overhaul** - Redesigned dark blue theme with CSS badge indicators replacing all emojis for a cleaner, more professional look.
+- **New Exclusive Logo** - Custom-designed logo with broken orbital rings, hexagonal core, and diagnostic crosshair.
 
 ---
 
-## 🚀 Installation
+## Installation
 
 ### Option 1: Quick Install via NPX (Recommended)
 
@@ -65,7 +73,7 @@ Then load the `dist` folder in Chrome:
 
 ---
 
-## 📖 How to Test
+## How to Test
 
 ### Step 1: Open a React Application
 
@@ -82,39 +90,46 @@ Test on any React website or local development server:
 
 ### Step 3: Explore Features
 
-#### 🎯 UI & State Tab
+#### UI & State Tab
 
 - Shows issues with state management and list keys
 - Click on any issue to expand details
 - Follow suggestions to fix problems
 
-#### ⚡ Performance Tab
+#### Performance Tab
 
 - Shows component render statistics
 - Lists top re-rendering components
 - Identifies render triggers (props, state, context)
 
-#### 🔄 Side Effects Tab
+#### Side Effects Tab
 
 - Lists useEffect issues
 - Identifies missing cleanup functions
 - Shows dependency problems
 
-#### 📐 CLS Tab
+#### CLS Tab
 
 - Real-time CLS score monitoring
 - Shows top layout shift contributors
 - Timeline of shift events
 
-#### 🗄️ Redux Tab
+#### Redux Tab
 
 - View Redux state tree (if Redux is detected)
 - See action history
 - Dispatch custom actions for testing
 
+#### AI Analysis Tab
+
+- Select an AI model (GPT-4o, Claude, Gemini, etc.)
+- Click "Analyze" to get AI-powered insights
+- View categorized results: Security, Performance, Crash Risk
+- 3 free analyses per session; unlock unlimited with a subscription key
+
 ---
 
-## 🧪 Test Scenarios
+## Test Scenarios
 
 ### Test 1: Missing Key Detection
 
@@ -183,7 +198,7 @@ Load a page with images without dimensions:
 
 ---
 
-## 🛠️ Development
+## Development
 
 ### Setup
 
@@ -211,31 +226,31 @@ npm run package
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 react-debugger-extension/
-├── src/
-│   ├── background/     # Service worker
-│   ├── content/        # Content script (CLS monitoring)
-│   ├── inject/         # Page script (React fiber hook)
-│   ├── devtools/       # DevTools page entry
-│   ├── panel/          # React panel UI
-│   │   ├── components/ # Reusable components
-│   │   ├── tabs/       # Tab content components
-│   │   └── styles/     # CSS styles
-│   ├── types/          # TypeScript types
-│   └── utils/          # Utility functions
-├── public/
-│   ├── manifest.json   # Extension manifest
-│   └── icons/          # Extension icons
-├── dist/               # Build output (load this in Chrome)
-└── package.json
+    src/
+        background/     # Service worker
+        content/        # Content script (CLS monitoring)
+        inject/         # Page script (React fiber hook)
+        devtools/       # DevTools page entry
+        panel/          # React panel UI
+            components/   # Reusable components
+            tabs/         # Tab content components (8 tabs incl. AI Analysis)
+            styles/       # CSS styles
+        services/       # AI client, token optimizer, snapshot builder
+        types/          # TypeScript types
+        utils/          # Utility functions
+    public/
+        manifest.json   # Extension manifest
+        icons/          # Extension icons (custom logo)
+    dist/             # Build output (load this in Chrome)
 ```
 
 ---
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 ### Extension not showing in DevTools?
 
@@ -257,7 +272,7 @@ react-debugger-extension/
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 For a comprehensive debugging guide covering all tabs, metrics, and debugging strategies for developers at every skill level, see:
 
@@ -273,10 +288,10 @@ The guide includes:
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## 📄 License
+## License
 
 MIT License - Copyright (c) 2025 NhoNH

@@ -1,4 +1,4 @@
-# ⚛️ React Debugger Extension
+# React Debugger Extension
 
 [![npm version](https://img.shields.io/npm/v/@nhonh/react-debugger.svg)](https://www.npmjs.com/package/@nhonh/react-debugger)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -11,7 +11,7 @@
 
 ---
 
-## 🚀 Quick Install
+## Quick Install
 
 ```bash
 npx @nhonh/react-debugger
@@ -25,21 +25,22 @@ npx @nhonh/react-debugger ./my-extension
 
 ---
 
-## 📦 What's Included
+## What's Included
 
 | Tab | Purpose | Key Metrics |
 |-----|---------|-------------|
-| 📊 **Timeline** | Visual timeline of all React events | Renders, state changes, effects, errors |
-| 🎯 **UI & State** | Detect React anti-patterns | State mutations, missing/duplicate keys |
-| ⚡ **Performance** | Track component performance | Render count, duration, Core Web Vitals |
-| 💾 **Memory** | Monitor memory usage | Heap size, growth rate, leak detection |
-| 🔄 **Side Effects** | Analyze useEffect hooks | Missing cleanups, dependency issues |
-| 📐 **CLS** | Layout stability monitoring | Cumulative Layout Shift score |
-| 🗄️ **Redux** | Redux state debugging | State tree, action history |
+| **Timeline** | Visual timeline of all React events | Renders, state changes, effects, errors |
+| **UI & State** | Detect React anti-patterns | State mutations, missing/duplicate keys |
+| **Performance** | Track component performance | Render count, duration, Core Web Vitals |
+| **Memory** | Monitor memory usage | Heap size, growth rate, leak detection |
+| **Side Effects** | Analyze useEffect hooks | Missing cleanups, dependency issues |
+| **CLS** | Layout stability monitoring | Cumulative Layout Shift score |
+| **Redux** | Redux state debugging | State tree, action history |
+| **AI Analysis** [NEW] | AI-powered code analysis | Security, performance, crash risk detection |
 
 ---
 
-## 🔧 Installation Guide
+## Installation Guide
 
 ### Step 1: Download the Extension
 
@@ -74,7 +75,7 @@ npx @nhonh/react-debugger
 
 ---
 
-## 📖 Quick Start Guide
+## Quick Start Guide
 
 ### Finding Performance Issues
 
@@ -158,15 +159,15 @@ setItems([...items, newItem]);
 
 | Icon | Type | What it captures |
 |------|------|------------------|
-| 🔄 | Render | Component mounts and re-renders |
-| 📦 | State | useState and Redux state changes |
-| ⚡ | Effect | useEffect runs and cleanups |
-| ❌ | Error | JavaScript errors and crashes |
-| 🧠 | Memory | Memory usage snapshots |
+| RENDER | Render | Component mounts and re-renders |
+| STATE | State | useState and Redux state changes |
+| EFFECT | Effect | useEffect runs and cleanups |
+| ERROR | Error | JavaScript errors and crashes |
+| MEMORY | Memory | Memory usage snapshots |
 
 ---
 
-### 🔄 Side Effects Tab
+### Side Effects Tab
 
 Find issues with `useEffect` hooks that cause bugs and memory leaks.
 
@@ -217,7 +218,7 @@ useEffect(() => {
 
 ---
 
-### 📐 CLS Tab (Layout Stability)
+### CLS Tab (Layout Stability)
 
 Monitor **Cumulative Layout Shift** - elements jumping around causes poor UX.
 
@@ -257,7 +258,33 @@ Monitor **Cumulative Layout Shift** - elements jumping around causes poor UX.
 
 ---
 
-## 🎯 Common Debugging Scenarios
+### AI Analysis Tab [NEW in v2.0.0]
+
+Get AI-powered insights into your React application's code quality.
+
+**Features:**
+
+- Select from multiple AI models (GPT-4o, Claude, Gemini, DeepSeek, etc.)
+- Automatic code snapshot analysis
+- Categorized results: Security vulnerabilities, Performance bottlenecks, Crash risks
+- 3 free analyses per session
+- Unlimited analyses with a subscription key
+
+**How to use:**
+
+1. Open the **AI Analysis** tab
+2. Select your preferred AI model from the dropdown
+3. Click **"Analyze"** to start analysis
+4. Review categorized results with severity indicators
+
+**Subscription:**
+
+- 3 free AI analyses are included per session
+- To unlock unlimited analyses, enter your subscription key in the Settings panel
+- Contact nhoxtvt@gmail.com for subscription key inquiries
+---
+
+## Common Debugging Scenarios
 
 ### "My app feels slow"
 
@@ -296,7 +323,7 @@ Monitor **Cumulative Layout Shift** - elements jumping around causes poor UX.
 
 ---
 
-## 🗄️ Redux DevTools (Powerful Feature!)
+## Redux DevTools (Powerful Feature!)
 
 The Redux tab provides a complete debugging experience:
 
@@ -348,7 +375,7 @@ Payload: { "productId": 123, "quantity": 2 }
 
 ---
 
-## ⌨️ CLI Options
+## CLI Options
 
 ```bash
 npx @nhonh/react-debugger [destination] [options]
@@ -364,7 +391,7 @@ Examples:
 
 ---
 
-## 📚 Full Documentation
+## Full Documentation
 
 - [Getting Started Guide](./docs/GETTING-STARTED.md) - Detailed setup instructions
 - [Understanding Each Tab](./docs/TABS-GUIDE.md) - Deep dive into all features
@@ -372,7 +399,7 @@ Examples:
 
 ---
 
-## 🔗 Links
+## Links
 
 - [GitHub Repository](https://github.com/hoainho/react-debugger-extension)
 - [Report Issues](https://github.com/hoainho/react-debugger-extension/issues)
@@ -380,7 +407,7 @@ Examples:
 
 ---
 
-## 📋 Requirements
+## Requirements
 
 - Node.js >= 18.0.0
 - Chrome, Brave, Edge, or any Chromium-based browser
@@ -388,6 +415,6 @@ Examples:
 
 ---
 
-## 📄 License
+## License
 
 MIT © NhoNH
