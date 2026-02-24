@@ -76,10 +76,11 @@ export async function downloadAndExtract(dest) {
 
   const files = await fs.readdir(dest);
   if (!files.includes('manifest.json')) {
-    const subDirs = files.filter(async (f) => {
+    const subDirs = [];
+    for (const f of files) {
       const stat = await fs.stat(path.join(dest, f));
-      return stat.isDirectory();
-    });
+      if (stat.isDirectory()) subDirs.push(f);
+    }
     
     if (subDirs.length === 1) {
       const subDir = path.join(dest, subDirs[0]);
