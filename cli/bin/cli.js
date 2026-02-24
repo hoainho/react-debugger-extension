@@ -5,7 +5,7 @@ import { downloadAndExtract } from '../src/install.js';
 import path from 'node:path';
 import fs from 'node:fs';
 
-const VERSION = '2.1.0';
+const VERSION = '2.1.1';
 const EXTENSION_NAME = 'React Debugger';
 const DEFAULT_DEST = './react-debugger';
 

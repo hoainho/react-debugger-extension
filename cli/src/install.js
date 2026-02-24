@@ -4,30 +4,41 @@ import path from 'node:path';
 import decompress from 'decompress';
 
 const GITHUB_REPO = 'hoainho/react-debugger-extension';
-const RELEASE_TAG = 'latest';
+
+function parseSemver(tag) {
+  const match = tag.replace(/^v/, '').match(/^(\d+)\.(\d+)\.(\d+)/);
+  if (!match) return null;
+  return [Number(match[1]), Number(match[2]), Number(match[3])];
+}
+
+function compareSemver(a, b) {
+  for (let i = 0; i < 3; i++) {
+    if (a[i] !== b[i]) return b[i] - a[i];
+  }
+  return 0;
+}
 
 async function getLatestReleaseUrl() {
-  const apiUrl = `https://api.github.com/repos/${GITHUB_REPO}/releases/${RELEASE_TAG}`;
-  
+  const apiUrl = `https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=20`;
   const response = await fetch(apiUrl, {
     headers: {
       'Accept': 'application/vnd.github.v3+json',
       'User-Agent': 'react-debugger-cli',
     },
   });
-
   if (!response.ok) {
-    if (response.status === 404) {
-      return getFallbackUrl();
-    }
-    throw new Error(`Failed to fetch release info: ${response.statusText}`);
+    return getFallbackUrl();
   }
 
-  const release = await response.json();
-  const asset = release.assets?.find(a => a.name === 'react-debugger.zip');
-  
-  if (asset) {
-    return asset.browser_download_url;
+  const releases = await response.json();
+
+  const candidates = releases
+    .filter(r => !r.draft && !r.prerelease && parseSemver(r.tag_name))
+    .sort((a, b) => compareSemver(parseSemver(a.tag_name), parseSemver(b.tag_name)));
+
+  for (const release of candidates) {
+    const asset = release.assets?.find(a => a.name === 'react-debugger.zip');
+    if (asset) return asset.browser_download_url;
   }
 
   return getFallbackUrl();
