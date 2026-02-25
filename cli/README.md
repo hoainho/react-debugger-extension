@@ -5,9 +5,7 @@
 
 **Advanced debugging & performance optimization tool for ReactJS applications.**
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/hoainho/react-debugger-extension/main/docs/images/preview.png" alt="React Debugger Preview" width="800">
-</p>
+[![React Debugger Demo](https://raw.githubusercontent.com/hoainho/react-debugger-extension/main/docs/video/react-ext-demo.gif)](https://raw.githubusercontent.com/hoainho/react-debugger-extension/main/docs/video/react-ext-demo-3x.mp4)
 
 ---
 
