@@ -114,7 +114,10 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.25rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: white;
+      letter-spacing: 0.5px;
     }
 
     .nav-links {
@@ -319,16 +322,19 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.5rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
       margin-bottom: 20px;
     }
 
-    .feature-icon.blue { background: rgba(59, 130, 246, 0.15); }
-    .feature-icon.purple { background: rgba(139, 92, 246, 0.15); }
-    .feature-icon.cyan { background: rgba(6, 182, 212, 0.15); }
-    .feature-icon.green { background: rgba(16, 185, 129, 0.15); }
-    .feature-icon.orange { background: rgba(245, 158, 11, 0.15); }
-    .feature-icon.red { background: rgba(239, 68, 68, 0.15); }
+    .feature-icon.blue { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+    .feature-icon.purple { background: rgba(139, 92, 246, 0.2); color: #a78bfa; }
+    .feature-icon.cyan { background: rgba(6, 182, 212, 0.2); color: #22d3ee; }
+    .feature-icon.green { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .feature-icon.orange { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .feature-icon.red { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+    .feature-icon.ai { background: linear-gradient(135deg, #8b5cf6, #3b82f6); color: #fff; font-size: 0.9rem; }
 
     .feature-card h3 {
       font-size: 1.25rem;
@@ -339,6 +345,58 @@
     .feature-card p {
       color: var(--text-secondary);
       font-size: 0.95rem;
+    }
+
+    .feature-card.featured {
+      grid-column: 1 / -1;
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(59, 130, 246, 0.08));
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      padding: 40px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      grid-template-rows: auto auto auto;
+      column-gap: 20px;
+    }
+
+    .feature-card.featured .feature-icon {
+      grid-row: 1 / 3;
+    }
+
+    .feature-card.featured:hover {
+      border-color: var(--accent-purple);
+      box-shadow: 0 8px 32px rgba(139, 92, 246, 0.15);
+    }
+
+    .badge-new {
+      display: inline-block;
+      background: var(--accent-green);
+      color: var(--bg-primary);
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 100px;
+      vertical-align: middle;
+      margin-left: 8px;
+      letter-spacing: 0.5px;
+    }
+
+    .model-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+      grid-column: 1 / -1;
+    }
+
+    .model-tag {
+      background: rgba(139, 92, 246, 0.15);
+      color: #a78bfa;
+      border: 1px solid rgba(139, 92, 246, 0.25);
+      padding: 4px 12px;
+      border-radius: 100px;
+      font-size: 0.8rem;
+      font-weight: 500;
     }
 
     /* Installation Section */
@@ -471,11 +529,7 @@
       background: var(--bg-tertiary);
       border: 1px solid var(--border-color);
       border-radius: 16px;
-      padding: 24px;
-      aspect-ratio: 16/10;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      overflow: hidden;
     }
 
     .demo-placeholder {
@@ -587,7 +641,7 @@
   <nav>
     <div class="container">
       <div class="logo">
-        <div class="logo-icon">⚛</div>
+        <div class="logo-icon">RD</div>
         React Debugger
       </div>
       <ul class="nav-links">
@@ -629,35 +683,47 @@
       </div>
       <div class="features-grid">
         <div class="feature-card">
-          <div class="feature-icon blue">🎯</div>
-          <h3>UI & State Issues</h3>
+          <div class="feature-icon blue">UI</div>
+          <h3>UI &amp; State Issues</h3>
           <p>Detect direct state mutations, missing keys, and index-as-key anti-patterns automatically.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon purple">⚡</div>
+          <div class="feature-icon purple">PERF</div>
           <h3>Performance Analysis</h3>
           <p>Track component re-renders, identify excessive renders, and find performance bottlenecks.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon cyan">🔄</div>
+          <div class="feature-icon cyan">FX</div>
           <h3>Side Effects</h3>
           <p>Find missing cleanup functions and dependency issues in useEffect hooks.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon green">📐</div>
+          <div class="feature-icon green">CLS</div>
           <h3>CLS Monitor</h3>
           <p>Track Cumulative Layout Shift in real-time and identify layout shift sources.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon orange">🗄️</div>
+          <div class="feature-icon orange">RDX</div>
           <h3>Redux DevTools</h3>
           <p>View state tree, dispatch actions manually, and debug Redux state changes.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon red">💾</div>
+          <div class="feature-icon red">MEM</div>
           <h3>Memory Monitor</h3>
           <p>Monitor memory usage, detect leaks, and track heap size over time.</p>
         </div>
+        <div class="feature-card featured">
+          <div class="feature-icon ai">AI</div>
+          <h3>AI Analysis <span class="badge-new">NEW</span></h3>
+          <p>AI-powered code analysis detects security vulnerabilities, performance bottlenecks, and crash risks. 3 free analyses per session &mdash; unlimited with a subscription key.</p>
+          <div class="model-tags">
+            <span class="model-tag">Gemini 2.5 Flash Lite</span>
+            <span class="model-tag">Gemini 2.5 Flash</span>
+            <span class="model-tag">Gemini 3 Flash Preview</span>
+            <span class="model-tag">Claude Sonnet 4.6</span>
+            <span class="model-tag">GPT-5</span>
+            <span class="model-tag">GPT-5.1 Codex Mini</span>
+          </div>
       </div>
     </div>
   </section>
@@ -712,10 +778,7 @@
           </ul>
         </div>
         <div class="demo-visual">
-          <div class="demo-placeholder">
-            <div class="icon">🖥️</div>
-            <p>Open DevTools → React Debugger tab</p>
-          </div>
+          <img src="https://raw.githubusercontent.com/hoainho/react-debugger-extension/main/docs/video/react-ext-demo.gif" alt="React Debugger Demo - Open DevTools and find React Debugger tab" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;">
         </div>
       </div>
     </div>
@@ -746,7 +809,7 @@
       <div class="footer-content">
         <div class="footer-left">
           <div class="logo">
-            <div class="logo-icon">⚛</div>
+            <div class="logo-icon">RD</div>
             React Debugger
           </div>
           <ul class="footer-links">
@@ -756,7 +819,7 @@
           </ul>
         </div>
         <div class="footer-right">
-          Made with ❤️ by <a href="https://github.com/hoainho">NhoNH</a>
+          Made with &hearts; by <a href="https://github.com/hoainho">NhoNH</a>
         </div>
       </div>
     </div>
