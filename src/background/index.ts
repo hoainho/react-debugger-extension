@@ -27,7 +27,7 @@ const VALID_MESSAGE_TYPES = new Set([
   'ENABLE_DEBUGGER', 'DISABLE_DEBUGGER', 'GET_DEBUGGER_STATE', 'MEMORY_SNAPSHOT',
   'START_MEMORY_MONITORING', 'STOP_MEMORY_MONITORING', 'PAGE_LOAD_METRICS',
   'CRASH_DETECTED', 'TIMELINE_EVENTS', 'GET_CORRELATION', 'DEBUGGER_STATE_CHANGED',
-  'REDUX_OVERRIDES_CLEARED'
+  'REDUX_OVERRIDES_CLEARED', 'SEARCH_REDUX'
 ]);
 
 function isValidMessage(message: unknown): message is Message {
@@ -351,6 +351,11 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) =>
       safeSendToTab(tabId, {
         type: 'CLEAR_REDUX_OVERRIDES',
       });
+      break;
+    }
+    
+    case 'SEARCH_REDUX': {
+      safeSendToTab(tabId, { type: 'SEARCH_REDUX' });
       break;
     }
     

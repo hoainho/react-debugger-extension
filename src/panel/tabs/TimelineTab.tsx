@@ -73,8 +73,11 @@ export function TimelineTab({ events, tabId, onClear }: TimelineTabProps) {
   const [snapshots, setSnapshots] = useState<TimelineSnapshot[]>([]);
   const [expandedSnapshotId, setExpandedSnapshotId] = useState<string | null>(null);
   const [snapshotPanelOpen, setSnapshotPanelOpen] = useState(true);
+  const [isCreatingSnapshot, setIsCreatingSnapshot] = useState(false);
+  const [isCorrelating, setIsCorrelating] = useState(false);
 
   const fetchCorrelation = useCallback((eventId: string) => {
+    setIsCorrelating(true);
     chrome.runtime.sendMessage(
       { type: 'GET_CORRELATION', tabId, payload: { eventId } },
       (response) => {
@@ -83,8 +86,10 @@ export function TimelineTab({ events, tabId, onClear }: TimelineTabProps) {
           setCorrelatedIds(new Set(result.correlatedIds));
           setCorrelationExplanation(result.explanation);
         }
+        setIsCorrelating(false);
       }
     );
+    setTimeout(() => setIsCorrelating(false), 3000);
   }, [tabId]);
 
   const clearCorrelation = useCallback(() => {
@@ -110,8 +115,10 @@ export function TimelineTab({ events, tabId, onClear }: TimelineTabProps) {
   }, []);
 
   const createSnapshot = useCallback(() => {
+    setIsCreatingSnapshot(true);
     const renderEvents = events.filter(e => e.type === 'render');
     if (renderEvents.length === 0) {
+      setIsCreatingSnapshot(false);
       return;
     }
 
@@ -132,6 +139,7 @@ export function TimelineTab({ events, tabId, onClear }: TimelineTabProps) {
     };
 
     setSnapshots(prev => [...prev, newSnapshot]);
+    setTimeout(() => setIsCreatingSnapshot(false), 500);
   }, [events]);
 
   const exportSnapshot = useCallback((snapshot: TimelineSnapshot) => {
@@ -550,14 +558,14 @@ export function TimelineTab({ events, tabId, onClear }: TimelineTabProps) {
           <span className="snapshot-toggle">{snapshotPanelOpen ? '▼' : '▶'}</span>
           <span className="snapshot-title">Snapshots ({snapshots.length})</span>
           <button 
-            className="snapshot-create-btn"
+            className={`snapshot-create-btn ${isCreatingSnapshot ? 'btn-loading' : ''}`}
             onClick={(e) => {
               e.stopPropagation();
               createSnapshot();
             }}
-            disabled={events.filter(e => e.type === 'render').length === 0}
+            disabled={events.filter(e => e.type === 'render').length === 0 || isCreatingSnapshot}
           >
-            Create Snapshot
+            {isCreatingSnapshot ? <><span className="btn-spinner"></span> Creating...</> : 'Create Snapshot'}
           </button>
         </div>
         
@@ -683,7 +691,12 @@ export function TimelineTab({ events, tabId, onClear }: TimelineTabProps) {
                 {isExpanded && (
                   <>
                     {renderEventDetails(event)}
-                    {correlationExplanation.length > 0 && (
+                    {isCorrelating && (
+                      <div className="correlation-panel">
+                        <span className="loading-text"><span className="btn-spinner"></span> Finding related events...</span>
+                      </div>
+                    )}
+                    {!isCorrelating && correlationExplanation.length > 0 && (
                       <div className="correlation-panel">
                         <strong>Related Events:</strong>
                         <ul className="correlation-list">

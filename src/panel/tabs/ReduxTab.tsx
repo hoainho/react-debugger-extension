@@ -6,6 +6,7 @@ interface ReduxTabProps {
   state: unknown;
   actions: ReduxAction[];
   tabId: number;
+  isSearching?: boolean;
 }
 
 interface EditingStateData {
@@ -16,7 +17,7 @@ interface EditingStateData {
 
 type EditingState = EditingStateData | null;
 
-export function ReduxTab({ detected, state, actions, tabId }: ReduxTabProps) {
+export function ReduxTab({ detected, state, actions, tabId, isSearching }: ReduxTabProps) {
   const [actionType, setActionType] = useState('');
   const [actionPayload, setActionPayload] = useState('{}');
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
@@ -24,20 +25,29 @@ export function ReduxTab({ detected, state, actions, tabId }: ReduxTabProps) {
   const [editingState, setEditingState] = useState<EditingState>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isDispatching, setIsDispatching] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
 
   const refreshState = useCallback(() => {
+    setIsRefreshing(true);
     chrome.runtime.sendMessage({
       type: 'REFRESH_REDUX_STATE',
       tabId,
     });
+    setTimeout(() => setIsRefreshing(false), 1000);
   }, [tabId]);
 
   const clearOverrides = useCallback(() => {
+    setIsClearing(true);
     chrome.runtime.sendMessage({
       type: 'CLEAR_REDUX_OVERRIDES',
       tabId,
     });
-    setTimeout(refreshState, 100);
+    setTimeout(() => {
+      refreshState();
+      setIsClearing(false);
+    }, 500);
   }, [tabId, refreshState]);
 
   if (!detected) {
@@ -46,22 +56,29 @@ export function ReduxTab({ detected, state, actions, tabId }: ReduxTabProps) {
         <div className="tab-header">
           <h2><span className="section-badge section-badge--redux" /> Redux DevTools</h2>
         </div>
-        <div className="empty-state">
-          <span className="empty-state-icon empty-state-icon--redux" />
-          <p>Redux not detected</p>
-          <p className="hint">
-            Make sure your app uses Redux and the store is accessible via one of the methods below.
-          </p>
-        </div>
-        <div className="redux-setup-guide">
-          <h3>Setup Guide</h3>
-          <p className="setup-intro">
-            To enable Redux debugging, expose your store using one of these methods:
-          </p>
-          
-          <div className="setup-method">
-            <h4>Option 1: window.store (Recommended)</h4>
-            <pre className="code-snippet">{`// In your store configuration file
+        {isSearching ? (
+          <div className="empty-state">
+            <div className="mini-spinner"></div>
+            <p>Searching for Redux store...</p>
+          </div>
+        ) : (
+          <>
+            <div className="empty-state">
+              <span className="empty-state-icon empty-state-icon--redux" />
+              <p>Redux not detected</p>
+              <p className="hint">
+                Make sure your app uses Redux and the store is accessible via one of the methods below.
+              </p>
+            </div>
+            <div className="redux-setup-guide">
+              <h3>Setup Guide</h3>
+              <p className="setup-intro">
+                To enable Redux debugging, expose your store using one of these methods:
+              </p>
+              
+              <div className="setup-method">
+                <h4>Option 1: window.store (Recommended)</h4>
+                <pre className="code-snippet">{`// In your store configuration file
 const store = configureStore({ reducer: rootReducer });
 
 // Expose for debugging (development only)
@@ -70,33 +87,35 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 export default store;`}</pre>
-          </div>
-          
-          <div className="setup-method">
-            <h4>Option 2: window.__REDUX_STORE__</h4>
-            <pre className="code-snippet">{`// Alternative naming convention
+              </div>
+              
+              <div className="setup-method">
+                <h4>Option 2: window.__REDUX_STORE__</h4>
+                <pre className="code-snippet">{`// Alternative naming convention
 if (process.env.NODE_ENV === 'development') {
   window.__REDUX_STORE__ = store;
 }`}</pre>
-          </div>
-          
-          <div className="setup-method">
-            <h4>Option 3: Redux DevTools Extension</h4>
-            <p className="method-desc">
-              If you have the Redux DevTools browser extension installed, this debugger will automatically detect it.
-            </p>
-          </div>
-          
-          <div className="detection-status">
-            <h4>Detection Methods Checked:</h4>
-            <ul className="detection-checklist">
-              <li><span className="check-icon">✗</span> window.store</li>
-              <li><span className="check-icon">✗</span> window.__REDUX_STORE__</li>
-              <li><span className="check-icon">✗</span> Redux DevTools Extension</li>
-              <li><span className="check-icon">✗</span> React-Redux Provider context</li>
-            </ul>
-          </div>
-        </div>
+              </div>
+              
+              <div className="setup-method">
+                <h4>Option 3: Redux DevTools Extension</h4>
+                <p className="method-desc">
+                  If you have the Redux DevTools browser extension installed, this debugger will automatically detect it.
+                </p>
+              </div>
+              
+              <div className="detection-status">
+                <h4>Detection Methods Checked:</h4>
+                <ul className="detection-checklist">
+                  <li><span className="check-icon">✗</span> window.store</li>
+                  <li><span className="check-icon">✗</span> window.__REDUX_STORE__</li>
+                  <li><span className="check-icon">✗</span> Redux DevTools Extension</li>
+                  <li><span className="check-icon">✗</span> React-Redux Provider context</li>
+                </ul>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     );
   }
@@ -104,6 +123,7 @@ if (process.env.NODE_ENV === 'development') {
   const dispatchAction = () => {
     if (!actionType.trim()) return;
     
+    setIsDispatching(true);
     try {
       const payload = JSON.parse(actionPayload);
       chrome.runtime.sendMessage({
@@ -116,6 +136,7 @@ if (process.env.NODE_ENV === 'development') {
     } catch {
       alert('Invalid JSON payload');
     }
+    setTimeout(() => setIsDispatching(false), 800);
   };
 
   const togglePath = (path: string) => {
@@ -458,8 +479,8 @@ if (process.env.NODE_ENV === 'development') {
       <div className="tab-header">
         <h2><span className="section-badge section-badge--redux" /> Redux DevTools</h2>
         <div className="header-actions">
-          <button className="icon-btn" onClick={refreshState} title="Refresh State">
-            <span className="action-badge action-badge--refresh" />
+          <button className={`icon-btn ${isRefreshing ? 'btn-loading' : ''}`} onClick={refreshState} title="Refresh State" disabled={isRefreshing}>
+            {isRefreshing ? <span className="btn-spinner"></span> : <span className="action-badge action-badge--refresh" />}
           </button>
         </div>
       </div>
@@ -513,7 +534,7 @@ if (process.env.NODE_ENV === 'development') {
               />
               <button className="small-btn" onClick={expandAll} title="Expand All" disabled={isSaving}>+</button>
               <button className="small-btn" onClick={collapseAll} title="Collapse All" disabled={isSaving}>−</button>
-              <button className="small-btn danger" onClick={clearOverrides} title="Reset all edited values" disabled={isSaving}>⟲</button>
+              <button className={`small-btn danger ${isClearing ? 'btn-loading' : ''}`} onClick={clearOverrides} title="Reset all edited values" disabled={isSaving || isClearing}>{isClearing ? <span className="btn-spinner btn-spinner--red"></span> : '⟲'}</button>
             </div>
           </div>
           <div className={`state-tree ${isSaving ? 'state-tree-saving' : ''}`}>
@@ -552,8 +573,8 @@ if (process.env.NODE_ENV === 'development') {
               rows={3}
             />
           </div>
-          <button className="dispatch-btn" onClick={dispatchAction}>
-            Dispatch Action
+          <button className={`dispatch-btn ${isDispatching ? 'btn-loading' : ''}`} onClick={dispatchAction} disabled={isDispatching}>
+            {isDispatching ? <><span className="btn-spinner"></span> Dispatching...</> : 'Dispatch Action'}
           </button>
         </div>
       </section>
