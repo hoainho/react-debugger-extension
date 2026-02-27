@@ -38,9 +38,11 @@ function formatMs(ms: number | null): string {
 
 export function PerformanceTab({ issues, components, renders, tabId, pageLoadMetrics }: PerformanceTabProps) {
   const [scanEnabled, setScanEnabled] = useState(false);
+  const [isTogglingScan, setIsTogglingScan] = useState(false);
   const filteredIssues = issues.filter(i => PERF_ISSUE_TYPES.includes(i.type));
   
   const toggleScan = () => {
+    setIsTogglingScan(true);
     const newState = !scanEnabled;
     setScanEnabled(newState);
     
@@ -48,6 +50,7 @@ export function PerformanceTab({ issues, components, renders, tabId, pageLoadMet
       type: 'TOGGLE_SCAN',
       payload: { enabled: newState },
     });
+    setTimeout(() => setIsTogglingScan(false), 800);
   };
 
   const renderStats = useMemo(() => {
@@ -100,11 +103,12 @@ export function PerformanceTab({ issues, components, renders, tabId, pageLoadMet
       <div className="tab-header">
         <h2><span className="section-badge section-badge--performance" /> Performance Analysis</h2>
         <button 
-          className={`scan-toggle ${scanEnabled ? 'active' : ''}`}
+          className={`scan-toggle ${scanEnabled ? 'active' : ''} ${isTogglingScan ? 'btn-loading' : ''}`}
           onClick={toggleScan}
+          disabled={isTogglingScan}
           title="Toggle React Scan - highlights component re-renders on the page"
         >
-          {scanEnabled ? <><span className="action-badge action-badge--scan" /> Scan ON</> : <><span className="action-badge action-badge--scan" /> Scan OFF</>}
+          {isTogglingScan ? <><span className="btn-spinner"></span> Toggling...</> : scanEnabled ? <><span className="action-badge action-badge--scan" /> Scan ON</> : <><span className="action-badge action-badge--scan" /> Scan OFF</>}
         </button>
       </div>
 

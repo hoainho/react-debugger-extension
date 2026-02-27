@@ -3832,3 +3832,40 @@ body {
   background: var(--accent-yellow);
   border-radius: 1px;
 }
+
+/* --- Button Loading State --- */
+.btn-loading {
+  position: relative;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.btn-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid var(--border-color);
+  border-top-color: var(--accent-blue);
+  border-radius: 50%;
+  animation: mini-spin 0.8s linear infinite;
+  vertical-align: middle;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.btn-spinner--green {
+  border-top-color: var(--accent-green);
+}
+
+.btn-spinner--red {
+  border-top-color: var(--accent-red);
+}
+
+.loading-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  animation: pulse-opacity 1s ease-in-out infinite;
+}

@@ -27,8 +27,10 @@ function formatGrowthRate(rate: number | null | undefined): string {
 
 export function MemoryTab({ report, tabId }: MemoryTabProps) {
   const [isMonitoring, setIsMonitoring] = useState(false);
+  const [isTogglingMonitor, setIsTogglingMonitor] = useState(false);
 
   const toggleMonitoring = () => {
+    setIsTogglingMonitor(true);
     const newState = !isMonitoring;
     setIsMonitoring(newState);
     
@@ -36,6 +38,7 @@ export function MemoryTab({ report, tabId }: MemoryTabProps) {
       type: newState ? 'START_MEMORY_MONITORING' : 'STOP_MEMORY_MONITORING',
       tabId,
     });
+    setTimeout(() => setIsTogglingMonitor(false), 1000);
   };
 
   useEffect(() => {
@@ -84,10 +87,11 @@ export function MemoryTab({ report, tabId }: MemoryTabProps) {
         <div className="tab-header">
           <h2><span className="section-badge section-badge--memory" /> Memory Monitor</h2>
           <button
-            className={`scan-toggle ${isMonitoring ? 'active' : ''}`}
+            className={`scan-toggle ${isMonitoring ? 'active' : ''} ${isTogglingMonitor ? 'btn-loading' : ''}`}
             onClick={toggleMonitoring}
+            disabled={isTogglingMonitor}
           >
-            {isMonitoring ? <><span className="action-badge action-badge--stop" /> Stop Monitoring</> : <><span className="action-badge action-badge--play" /> Start Monitoring</>}
+            {isTogglingMonitor ? <><span className="btn-spinner"></span> {isMonitoring ? 'Starting...' : 'Stopping...'}</> : isMonitoring ? <><span className="action-badge action-badge--stop" /> Stop Monitoring</> : <><span className="action-badge action-badge--play" /> Start Monitoring</>}
           </button>
         </div>
 
@@ -108,10 +112,11 @@ export function MemoryTab({ report, tabId }: MemoryTabProps) {
       <div className="tab-header">
         <h2><span className="section-badge section-badge--memory" /> Memory Monitor</h2>
         <button
-          className={`scan-toggle ${isMonitoring ? 'active' : ''}`}
+          className={`scan-toggle ${isMonitoring ? 'active' : ''} ${isTogglingMonitor ? 'btn-loading' : ''}`}
           onClick={toggleMonitoring}
+          disabled={isTogglingMonitor}
         >
-          {isMonitoring ? <><span className="action-badge action-badge--stop" /> Stop Monitoring</> : <><span className="action-badge action-badge--play" /> Start Monitoring</>}
+          {isTogglingMonitor ? <><span className="btn-spinner"></span> {isMonitoring ? 'Starting...' : 'Stopping...'}</> : isMonitoring ? <><span className="action-badge action-badge--stop" /> Stop Monitoring</> : <><span className="action-badge action-badge--play" /> Start Monitoring</>}
         </button>
       </div>
 

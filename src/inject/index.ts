@@ -8,6 +8,10 @@
   // Global debugger enable/disable flag (default: OFF for performance)
   let debuggerEnabled = false;
   
+  // Grace period: skip fiber commits for first N ms after enabling debugger
+  let navigationStartTime = 0;
+  const NAVIGATION_GRACE_MS = 3000;
+  
   let extensionAlive = true;
   let messageQueue: Array<{type: string; payload?: unknown}> = [];
   let flushTimeout: number | null = null;
@@ -16,6 +20,7 @@
   let lastCountReset = Date.now();
   let currentThrottle = 100;
   const MAX_BATCH_SIZE = 100;
+  const MAX_QUEUE_SIZE = 500;
   
   function getAdaptiveThrottle(): number {
     const now = Date.now();
@@ -26,7 +31,7 @@
       
       if (rate < 5) currentThrottle = 200;
       else if (rate < 20) currentThrottle = 100;
-      else currentThrottle = 50;
+      else currentThrottle = 100;
       
       if (DEBUG) log('Adaptive throttle:', currentThrottle, 'ms (rate:', rate, '/s)');
     }
@@ -91,6 +96,12 @@
         extensionAlive = false;
       }
       return;
+    }
+    
+    // Backpressure: drop oldest non-critical messages when queue is full
+    if (messageQueue.length >= MAX_QUEUE_SIZE) {
+      messageQueue = messageQueue.slice(-Math.floor(MAX_QUEUE_SIZE / 2));
+      if (DEBUG) log('Queue overflow — dropped oldest messages');
     }
     
     messageQueue.push({ type, payload });
@@ -1159,7 +1170,7 @@
     }
   }
 
-  function traverseFiber(fiber: FiberNode | null, callback: (fiber: FiberNode, path: string) => void, path = '', maxNodes = 500): void {
+  function traverseFiber(fiber: FiberNode | null, callback: (fiber: FiberNode, path: string) => void, path = '', maxNodes = 300): void {
     if (!fiber) return;
     const stack: Array<{fiber: FiberNode; path: string}> = [{fiber, path}];
     let nodeCount = 0;
@@ -1546,7 +1557,7 @@
     traverseFiber(fiber, (node) => {
       checkListKeys(node, issues);
       checkEffectHooks(node, issues);
-    });
+    }, '', 200);
 
     if (issues.length > 0 || components.length > 0) {
       sendFromPage('FIBER_COMMIT', { components, issues, renders, timestamp: getUniqueTimestamp() });
@@ -1646,6 +1657,9 @@
       }
       
       if (!debuggerEnabled) return;
+      
+      // Skip analysis during initial page load grace period
+      if (Date.now() - navigationStartTime < NAVIGATION_GRACE_MS) return;
       
       scheduleAnalyze(root);
       
@@ -2521,25 +2535,8 @@
       };
     }
 
-    const onReady = () => {
-      if (reduxStore || reduxSearchStopped) return;
-      setTimeout(() => {
-        if (!reduxStore && !reduxSearchStopped) {
-          const store = findReduxStore();
-          if (store) {
-            setupReduxStore(store);
-          } else {
-            startReduxPolling();
-          }
-        }
-      }, 1000);
-    };
-
-    if (document.readyState === 'complete') {
-      onReady();
-    } else {
-      window.addEventListener('load', onReady, { once: true });
-    }
+    // Don't auto-search on load — wait for panel to request via SEARCH_REDUX
+    // Store will still be detected reactively via monkey-patched createStore/connect
   }
 
   let scanEnabled = false;
@@ -3038,8 +3035,15 @@
       stopMemoryMonitoring();
     }
     
+    if (message.type === 'SEARCH_REDUX') {
+      if (!reduxStore) {
+        restartReduxSearch();
+      }
+    }
+    
     if (message.type === 'ENABLE_DEBUGGER') {
       debuggerEnabled = true;
+      navigationStartTime = Date.now();
       // Re-send REACT_DETECTED since inject.js may have loaded after React initialized
       const hook = (window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__;
       if (hook?.renderers?.size > 0) {
@@ -3049,7 +3053,7 @@
         });
       }
       installReduxHook();
-      restartReduxSearch();
+      installErrorHandlers();
       forceReanalyze();
       sendFromPage('DEBUGGER_STATE_CHANGED', { enabled: true });
       log('Debugger enabled');
@@ -3067,21 +3071,13 @@
     }
   });
 
+  // Only install React hook eagerly (lightweight — just sets up the devtools hook stub)
+  // Redux hook and error handlers are deferred to ENABLE_DEBUGGER for performance
   installReactHook();
-  installReduxHook();
-  installErrorHandlers();
   
   (window as any).__REACT_DEBUGGER_ENABLE_CLOSURE_TRACKING__ = _installClosureTracking;
 
-  setTimeout(() => {
-    const hook = (window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__;
-    if (hook?.renderers?.size > 0) {
-      sendFromPage('REACT_DETECTED', {
-        version: detectReactVersion(),
-        mode: detectReactMode(),
-      });
-    }
-  }, 500);
+  // React auto-detection deferred to ENABLE_DEBUGGER handler
 
   console.log('[React Debugger] Inject script loaded');
 })();

@@ -71,6 +71,8 @@ export function Panel() {
   const [isLoading, setIsLoading] = useState(true);
   const [extensionVersion] = useState(() => chrome.runtime.getManifest().version);
   const [isDebuggerEnabled, setIsDebuggerEnabled] = useState(false);
+  const [isTogglingDebugger, setIsTogglingDebugger] = useState(false);
+  const [isSearchingRedux, setIsSearchingRedux] = useState(false);
 
   const tabId = chrome.devtools.inspectedWindow.tabId;
   
@@ -125,13 +127,25 @@ export function Panel() {
   const toggleDebugger = useCallback(() => {
     if (!isExtensionContextValid()) return;
     
+    setIsTogglingDebugger(true);
     const newEnabled = !isDebuggerEnabled;
     setIsDebuggerEnabled(newEnabled);
     safeSendMessage({
       type: newEnabled ? 'ENABLE_DEBUGGER' : 'DISABLE_DEBUGGER',
       tabId,
     });
+    setTimeout(() => setIsTogglingDebugger(false), 3000);
   }, [tabId, isDebuggerEnabled]);
+
+  const handleTabChange = useCallback((newTab: TabId) => {
+    setActiveTab(newTab);
+    // Lazy Redux detection: only search for Redux store when user opens the Redux tab
+    if (newTab === 'redux' && !state.reduxDetected) {
+      setIsSearchingRedux(true);
+      safeSendMessage({ type: 'SEARCH_REDUX', tabId });
+      setTimeout(() => setIsSearchingRedux(false), 5000);
+    }
+  }, [tabId, state.reduxDetected]);
 
   useEffect(() => {
     fetchState();
@@ -160,6 +174,7 @@ export function Panel() {
             reduxDetected: true,
             reduxState: message.payload,
           }));
+          setIsSearchingRedux(false);
           break;
 
         case 'FIBER_COMMIT':
@@ -267,6 +282,7 @@ export function Panel() {
           
         case 'DEBUGGER_STATE_CHANGED':
           setIsDebuggerEnabled(message.payload?.enabled ?? false);
+          setIsTogglingDebugger(false);
           break;
       }
     };
@@ -361,6 +377,7 @@ export function Panel() {
             state={state.reduxState}
             actions={state.reduxActions}
             tabId={tabId}
+            isSearching={isSearchingRedux}
           />
         );
       case 'ai-analysis':
@@ -394,7 +411,7 @@ export function Panel() {
             <button
               key={tab.id}
               className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabChange(tab.id)}
             >
               <span className="tab-label">{tab.label}</span>
               {badge !== undefined && badge > 0 && (
@@ -416,8 +433,8 @@ export function Panel() {
             </div>
             <h2>Debugger Paused</h2>
             <p>Enable debugging to start capturing React renders, state changes, and performance data.</p>
-            <button className="enable-btn" onClick={toggleDebugger}>
-              Enable Debugging
+            <button className="enable-btn" onClick={toggleDebugger} disabled={isTogglingDebugger}>
+              {isTogglingDebugger ? <><span className="btn-spinner btn-spinner--green"></span> Enabling...</> : 'Enable Debugging'}
             </button>
           </div>
         ) : (
