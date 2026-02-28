@@ -59,7 +59,7 @@ export interface ComponentInfo {
   id: string;
   name: string;
   path: string;
-  props: Record<string, unknown>;
+  props: Record<string, unknown> | null;
   state: unknown;
   renderCount: number;
   lastRenderTime: number;
@@ -311,7 +311,8 @@ export type MessageType =
   | 'DISABLE_DEBUGGER'
   | 'GET_DEBUGGER_STATE'
   | 'DEBUGGER_STATE_CHANGED'
-  | 'PAGE_NAVIGATING';
+  | 'PAGE_NAVIGATING'
+  | 'POLL_DATA';
 
 export interface Message<T = unknown> {
   type: MessageType;

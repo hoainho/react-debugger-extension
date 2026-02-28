@@ -27,9 +27,12 @@ const VALID_MESSAGE_TYPES = new Set([
   'ENABLE_DEBUGGER', 'DISABLE_DEBUGGER', 'GET_DEBUGGER_STATE', 'MEMORY_SNAPSHOT',
   'START_MEMORY_MONITORING', 'STOP_MEMORY_MONITORING', 'PAGE_LOAD_METRICS',
   'CRASH_DETECTED', 'TIMELINE_EVENTS', 'GET_CORRELATION', 'DEBUGGER_STATE_CHANGED',
-  'REDUX_OVERRIDES_CLEARED', 'SEARCH_REDUX'
+  'REDUX_OVERRIDES_CLEARED', 'SEARCH_REDUX', 'POLL_DATA'
 ]);
 
+
+// POLL_DATA: Relay directly to tab (panel → background → content → inject)
+// No state tracking needed — just forward to the tab
 function isValidMessage(message: unknown): message is Message {
   if (!message || typeof message !== 'object') return false;
   const msg = message as Record<string, unknown>;
@@ -359,6 +362,11 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) =>
       break;
     }
     
+    case 'POLL_DATA': {
+      safeSendToTab(tabId, { type: 'POLL_DATA' });
+      break;
+    }
+    
     case 'CLEAR_ISSUES': {
       state.issues = [];
       broadcastToPanel(tabId, 'CLEAR_ISSUES', null);
@@ -647,30 +655,34 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
 if (chrome.webNavigation?.onCommitted) {
   chrome.webNavigation.onCommitted.addListener((details) => {
-    if (details.frameId === 0) {
-      resetTabState(details.tabId);
-      // Re-send ENABLE_DEBUGGER to the new content script if debugger was previously enabled
-      getDebuggerState(details.tabId).then(wasEnabled => {
-        if (wasEnabled) {
-          // Delay to ensure the new content script is ready
-          setTimeout(() => {
-            chrome.tabs.sendMessage(details.tabId, { type: 'ENABLE_DEBUGGER' }).catch(() => {});
-          }, 100);
-        }
-      });
-    }
+    // Only handle top-frame, real navigations (not SPA pushState/replaceState)
+    if (details.frameId !== 0) return;
+    const isRealNavigation = details.transitionType === 'typed' || 
+      details.transitionType === 'auto_bookmark' || 
+      details.transitionType === 'reload' || 
+      details.transitionType === 'link' ||
+      details.transitionType === 'form_submit' ||
+      details.transitionType === 'auto_toplevel';
+    if (!isRealNavigation) return;
+    
+    resetTabState(details.tabId);
+    getDebuggerState(details.tabId).then(wasEnabled => {
+      if (wasEnabled) {
+        setTimeout(() => {
+          chrome.tabs.sendMessage(details.tabId, { type: 'ENABLE_DEBUGGER' }).catch(() => {});
+        }, 300);
+      }
+    });
   });
 } else {
-  // Fallback: use tabs.onUpdated if webNavigation permission is missing
   chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
     if (changeInfo.status === 'loading') {
       resetTabState(tabId);
-      // Re-send ENABLE_DEBUGGER to the new content script if debugger was previously enabled
       getDebuggerState(tabId).then(wasEnabled => {
         if (wasEnabled) {
           setTimeout(() => {
             chrome.tabs.sendMessage(tabId, { type: 'ENABLE_DEBUGGER' }).catch(() => {});
-          }, 100);
+          }, 300);
         }
       });
     }
