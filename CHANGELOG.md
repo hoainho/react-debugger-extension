@@ -5,6 +5,56 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.3] - 2026-02-28
+
+### Improved
+
+#### Zero-Lag Host Page Performance
+- **Eliminated host page jank** caused by extension running analysis on every React commit
+- `webNavigation.onCommitted` now filters by `transitionType` — only real navigations (typed, link, reload) trigger re-initialization, SPA `pushState` no longer floods `ENABLE_DEBUGGER`
+- Added `enableInProgress` guard in content script to prevent duplicate `handleEnableDebugger` calls on rapid navigation
+- Deferred heavy initialization (`installReduxHook`, `installErrorHandlers`, `forceReanalyze`) to idle callback (500ms) instead of running synchronously on enable
+- `periodicCleanup` interval moved inside `ENABLE_DEBUGGER` handler and reduced frequency (30s → 60s)
+- POLL_DATA `scheduleIdleWork` timeout increased from 50ms → 1000ms to reduce main thread contention
+- Panel poll interval reduced from 2s → 5s
+
+#### Hybrid Render Detection Architecture
+- **New synchronous render snapshot system** — lightweight fiber tree walk in `onCommitFiberRoot` captures render info (component name, duration, render change details, `WeakRef` to fiber) within a 2ms budget
+- Deferred `analyzeFiberTree` in POLL_DATA uses captured snapshot data instead of stale `fiber.alternate` (which gets overwritten by React's double-buffering after the next commit)
+- `forceReanalyze` still uses live `didFiberRender()` as fallback when no snapshot is available
+- Render detection now works reliably regardless of poll timing
+
+#### Accurate Render Detection (aligned with react-scan/bippy)
+- **Rewrote `didFiberRender`** to match [bippy](https://github.com/AidenBai/bippy)'s battle-tested approach used by react-scan
+- For composite components (function, class, memo, forwardRef): primary check is `PerformedWork` flag (0x01) — the only flag React sets when it actually executes a render function
+- Added `memoizedProps`/`memoizedState` reference-inequality fallback for React versions/builds where `PerformedWork` may not be set
+- **Removed false-positive triggers**: `Update`, `Placement`, `Passive` flags, `actualDuration > 0`, and `lanes !== 0` no longer count as renders — these indicate side effects, not actual component re-renders
+
+#### Scan Overlay (Visual Re-render Flash)
+- Scan overlay now fires **synchronously at commit time** inside `onCommitFiberRoot` using `traverseFiber` — immediate visual feedback matching the original v2.0.0 behavior
+- Removed duplicate scan overlay from deferred POLL_DATA handler that caused double-flash and delayed feedback
+- Overlay correctly shows render intensity colors: green (×1), yellow (×2–3), orange (×5), red (×10+)
+
+### Fixed
+- Fixed scan overlay not appearing on large React apps (e.g., game apps with deep component trees) — previously limited by the 2ms snapshot capture budget
+- Fixed overlay flashing continuously on every commit even when data hadn't changed — caused by overly broad `didFiberRender` detecting passive effects as renders
+- Fixed build error from missing closing brace in `analyzeFiberTree` block structure
+- Added `WeakRef` type declaration to resolve TypeScript lib target mismatch (WeakRef is ES2021+, available in all modern browsers)
+- `stopAllMonitoring` now clears `pendingRenderSnapshots` buffer
+
+### Technical Details
+
+| Component | Before (v2.0.2) | After (v2.0.3) |
+|-----------|----------------|----------------|
+| `onCommitFiberRoot` | Full analysis on every commit | Lightweight snapshot only (~2ms) |
+| `POLL_DATA` interval | 2s | 5s |
+| `scheduleIdleWork` timeout | 50ms | 1000ms |
+| `didFiberRender` checks | 7 conditions (many false positives) | PerformedWork + props/state fallback |
+| Scan overlay trigger | Deferred in POLL_DATA (seconds late) | Synchronous at commit time |
+| Navigation re-init | Every `pushState` | Real navigations only |
+| `periodicCleanup` | Every 30s, on every message | Every 60s, only after enable |
+
+
 ## [2.0.0] - 2026-02-22
 
 ### Added
