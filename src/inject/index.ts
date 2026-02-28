@@ -1,3 +1,6 @@
+// @ts-ignore: WeakRef is available in all modern browsers (ES2021+)
+declare class WeakRef<T extends object> { constructor(target: T); deref(): T | undefined; }
+
 (function() {
   'use strict';
 
@@ -143,9 +146,15 @@
 
   function scheduleIdleWork(callback: () => void, timeoutMs = 500): void {
     if ('requestIdleCallback' in window) {
-      (window as any).requestIdleCallback(callback, { timeout: timeoutMs });
+      (window as any).requestIdleCallback((deadline: any) => {
+        if (deadline.timeRemaining() > 5 || deadline.didTimeout) {
+          callback();
+        } else {
+          scheduleIdleWork(callback, timeoutMs);
+        }
+      }, { timeout: timeoutMs });
     } else {
-      setTimeout(callback, 0);
+      setTimeout(callback, 16);
     }
   }
 
@@ -257,35 +266,70 @@
   
   const lastEffectStates = new Map<string, Map<number, { hasEffect: boolean; hasDestroy: boolean }>>();
 
+  // Render detection aligned with bippy/react-scan's approach.
+  // Primary signal: PerformedWork flag (0x01) — React sets this when it actually
+  // executes a component's render function. This works in both dev and production.
+  // Fallback: If PerformedWork is not set (some React versions/configs), check
+  // memoizedState/memoizedProps changes as a secondary signal.
   function didFiberRender(fiber: FiberNode): boolean {
     const alternate = fiber.alternate;
-    
-    if (!alternate) return true;
-    
+    if (!alternate) return true; // Mount — always counts as render
+
     const flags = (fiber as any).flags ?? (fiber as any).effectTag ?? 0;
-    if (flags & (FIBER_FLAGS.PerformedWork | FIBER_FLAGS.Update | FIBER_FLAGS.Placement | FIBER_FLAGS.Passive)) {
-      return true;
+
+    switch (fiber.tag) {
+      case FIBER_TAGS.FunctionComponent:
+      case FIBER_TAGS.ClassComponent:
+      case FIBER_TAGS.ForwardRef:
+      case FIBER_TAGS.MemoComponent:
+      case FIBER_TAGS.SimpleMemoComponent: {
+        // PerformedWork is the primary, most reliable signal.
+        if ((flags & FIBER_FLAGS.PerformedWork) === FIBER_FLAGS.PerformedWork) {
+          return true;
+        }
+        // Fallback for React versions/builds where PerformedWork may not be set:
+        // Check if props or state actually changed (reference inequality).
+        // This catches renders that PerformedWork misses without the false positives
+        // of checking Update/Passive/Placement flags.
+        if (fiber.memoizedProps !== alternate.memoizedProps) return true;
+        if (fiber.memoizedState !== alternate.memoizedState) return true;
+        return false;
+      }
+      default:
+        // Host components (div, span) and others: check props/state/ref changes.
+        return (
+          fiber.memoizedProps !== alternate.memoizedProps ||
+          fiber.memoizedState !== alternate.memoizedState ||
+          (fiber as any).ref !== (alternate as any).ref
+        );
     }
-    
-    if ((fiber as any).actualDuration > 0) {
-      return true;
+  }
+
+  // HYBRID ARCHITECTURE: Render snapshot captured synchronously in onCommitFiberRoot.
+  // fiber.alternate is only valid at commit time — we capture render info NOW and
+  // defer heavy analysis (issues, timeline, messaging) to POLL_DATA.
+  interface RenderSnapshotEntry {
+    fiberId: string;
+    componentName: string;
+    path: string;
+    actualDuration: number;
+    selfBaseDuration: number;
+    renderChange: EnhancedRenderChange;
+    fiberRef: WeakRef<FiberNode>;
+  }
+
+  const pendingRenderSnapshots: Array<Map<string, RenderSnapshotEntry>> = [];
+  const MAX_PENDING_SNAPSHOTS = 30;
+
+  function drainRenderSnapshots(): Map<string, RenderSnapshotEntry> {
+    const merged = new Map<string, RenderSnapshotEntry>();
+    for (const snapshot of pendingRenderSnapshots) {
+      for (const [key, entry] of snapshot) {
+        merged.set(key, entry);
+      }
     }
-    
-    const lanes = (fiber as any).lanes ?? 0;
-    if (lanes !== 0) {
-      return true;
-    }
-    
-    if (fiber.memoizedProps !== alternate.memoizedProps) return true;
-    if (fiber.memoizedState !== alternate.memoizedState) return true;
-    
-    const currentContext = (fiber as any).dependencies?.firstContext;
-    const alternateContext = (alternate as any).dependencies?.firstContext;
-    if (currentContext !== alternateContext) return true;
-    
-    if (fiber.type !== alternate.type) return true;
-    
-    return false;
+    pendingRenderSnapshots.length = 0;
+    return merged;
   }
 
   const renderCounts = new Map<string, number>();
@@ -1170,11 +1214,14 @@
     }
   }
 
-  function traverseFiber(fiber: FiberNode | null, callback: (fiber: FiberNode, path: string) => void, path = '', maxNodes = 300): void {
+  function traverseFiber(fiber: FiberNode | null, callback: (fiber: FiberNode, path: string) => void, path = '', maxNodes = 150): void {
     if (!fiber) return;
     const stack: Array<{fiber: FiberNode; path: string}> = [{fiber, path}];
     let nodeCount = 0;
+    const startTime = performance.now();
     while (stack.length > 0 && nodeCount < maxNodes) {
+      // Time budget: stop if we've been running > 8ms to avoid jank
+      if (nodeCount > 0 && nodeCount % 20 === 0 && performance.now() - startTime > 8) break;
       const item = stack.pop()!;
       nodeCount++;
       callback(item.fiber, item.path);
@@ -1341,10 +1388,11 @@
     return undefined;
   }
   
-  function analyzeFiberTree(root: FiberRoot): void {
+  function analyzeFiberTree(root: FiberRoot, renderSnapshot?: Map<string, RenderSnapshotEntry>): void {
     const fiber = root.current;
     const components: any[] = [];
     const renders: any[] = [];
+    const issues: any[] = [];
     const effectEvents: Array<{ componentName: string } & EffectChangeInfo> = [];
     const localStateChanges: LocalStateChangeInfo[] = [];
     const contextChanges: ContextChangeInfo[] = [];
@@ -1363,20 +1411,32 @@
         const currentRenderId = (componentRenderIds.get(componentPathKey) || 0) + 1;
         componentRenderIds.set(componentPathKey, currentRenderId);
 
-        const effectChanges = detectEffectChanges(node);
-        for (const change of effectChanges) {
-          effectEvents.push({ componentName, ...change });
-        }
-        
-        const stateChanges = detectLocalStateChanges(node);
-        localStateChanges.push(...stateChanges);
-        
-        const ctxChanges = detectContextChanges(node);
-        contextChanges.push(...ctxChanges);
-
-        const actuallyRendered = didFiberRender(node);
+        // HYBRID: Use snapshot for render detection if available (snapshot has valid alternate data).
+        // Fallback to didFiberRender for forceReanalyze (no snapshot, fibers are fresh).
+        const snapshotEntry = renderSnapshot?.get(fiberId);
+        const actuallyRendered = snapshotEntry != null || (!renderSnapshot && didFiberRender(node));
         
         if (actuallyRendered) {
+          // Effect detection uses fiber.memoizedState (current tree, still valid)
+          try {
+            const effectChanges = detectEffectChanges(node);
+            for (const change of effectChanges) {
+              effectEvents.push({ componentName, ...change });
+            }
+          } catch { /* Effect detection may fail on stale fibers — acceptable */ }
+          
+          // State/context changes use fiber.alternate — may be stale when using snapshot.
+          // Try anyway, wrap in try-catch. These are nice-to-have, not critical.
+          try {
+            const stateChanges = detectLocalStateChanges(node);
+            localStateChanges.push(...stateChanges);
+          } catch { /* Stale alternate — skip */ }
+          
+          try {
+            const ctxChanges = detectContextChanges(node);
+            contextChanges.push(...ctxChanges);
+          } catch { /* Stale alternate — skip */ }
+
           const now = Date.now();
           renderOrder++;
           
@@ -1389,17 +1449,19 @@
           timestamps = timestamps.filter(t => now - t < EXCESSIVE_RENDER_WINDOW_MS);
           recentRenderTimestamps.set(fiberId, timestamps);
 
-          const renderChange = detectRenderChanges(node);
-          const actualDuration = (node as any).actualDuration ?? 0;
-          const selfBaseDuration = (node as any).selfBaseDuration ?? 0;
+          // Use snapshot data for render change/duration (captured when alternate was valid).
+          // Fallback to live detection for forceReanalyze (no snapshot).
+          const renderChange = snapshotEntry ? snapshotEntry.renderChange : detectRenderChanges(node);
+          const actualDuration = snapshotEntry ? snapshotEntry.actualDuration : ((node as any).actualDuration ?? 0);
+          const selfBaseDuration = snapshotEntry ? snapshotEntry.selfBaseDuration : ((node as any).selfBaseDuration ?? 0);
           const parentComponent = getParentComponentName(node);
 
           components.push({
             id: fiberId,
             name: componentName,
             path,
-            props: sanitizeValue(node.memoizedProps),
-            state: sanitizeValue(node.memoizedState),
+            props: null,
+            state: null,
             renderCount: count,
             lastRenderTime: now,
             children: [],
@@ -1425,8 +1487,12 @@
             rendersInLastSecond: timestamps.length,
             actualDuration,
           });
+          }
         }
-      }
+
+      // Fix 2: Issue checking during main traversal (avoids second pass)
+      checkListKeys(node, issues);
+      checkEffectHooks(node, issues);
     });
 
     const renderTimelineEvents = renders.map(r => ({
@@ -1494,24 +1560,26 @@
     }));
     
     const timelineEvents = [...renderTimelineEvents, ...effectTimelineEvents, ...localStateTimelineEvents, ...contextTimelineEvents];
+    // Cap timeline events to prevent massive payloads
+    const cappedEvents = timelineEvents.length > 50 ? timelineEvents.slice(0, 50) : timelineEvents;
     
-    if (timelineEvents.length > 0) {
-      sendFromPage('TIMELINE_EVENTS', timelineEvents);
+    if (cappedEvents.length > 0) {
+      sendFromPage('TIMELINE_EVENTS', cappedEvents);
     }
 
     scheduleIdleWork(() => {
       if (!debuggerEnabled) return;
-      analyzeIssuesDeferred(fiber, renderData, components, renders);
+      analyzeIssuesDeferred(renderData, components, renders, issues);
     }, 500);
   }
 
   function analyzeIssuesDeferred(
-    fiber: FiberNode,
     renderData: Array<{ fiberId: string; componentName: string; node: FiberNode; rendersInLastSecond: number; actualDuration: number }>,
     components: any[],
-    renders: any[]
+    renders: any[],
+    preCollectedIssues: any[]
   ): void {
-    const issues: any[] = [];
+    const issues: any[] = [...preCollectedIssues];
 
     for (const data of renderData) {
       const { fiberId, componentName, node, rendersInLastSecond, actualDuration } = data;
@@ -1554,13 +1622,15 @@
       }
     }
 
-    traverseFiber(fiber, (node) => {
-      checkListKeys(node, issues);
-      checkEffectHooks(node, issues);
-    }, '', 200);
+    // Fix 2: Second traverseFiber removed — issue checking merged into main traversal
 
     if (issues.length > 0 || components.length > 0) {
-      sendFromPage('FIBER_COMMIT', { components, issues, renders, timestamp: getUniqueTimestamp() });
+      sendFromPage('FIBER_COMMIT', { 
+        components: components.slice(0, 50), 
+        issues: issues.slice(0, 20), 
+        renders: renders.slice(0, 50), 
+        timestamp: getUniqueTimestamp() 
+      });
     }
   }
 
@@ -1618,38 +1688,11 @@
       return id;
     };
     
-    let lastAnalyzeTime = 0;
-    let pendingRoot: FiberRoot | null = null;
-    let analyzeTimeout: number | null = null;
-    const ANALYZE_THROTTLE_MS = 250;
-    
-    const scheduleAnalyze = (root: FiberRoot) => {
-      pendingRoot = root;
-      const now = Date.now();
-      
-      if (now - lastAnalyzeTime >= ANALYZE_THROTTLE_MS) {
-        lastAnalyzeTime = now;
-        try {
-          analyzeFiberTree(root);
-        } catch (e) {
-          if (DEBUG) console.error('[React Debugger] Analyze error:', e);
-        }
-        pendingRoot = null;
-      } else if (!analyzeTimeout) {
-        analyzeTimeout = window.setTimeout(() => {
-          analyzeTimeout = null;
-          if (pendingRoot) {
-            lastAnalyzeTime = Date.now();
-            try {
-              analyzeFiberTree(pendingRoot);
-            } catch (e) {
-              if (DEBUG) console.error('[React Debugger] Analyze error:', e);
-            }
-            pendingRoot = null;
-          }
-        }, ANALYZE_THROTTLE_MS - (now - lastAnalyzeTime));
-      }
-    };
+    // HYBRID ARCHITECTURE: onCommitFiberRoot does lightweight synchronous capture.
+    // fiber.alternate is only valid NOW — capture render info before React overwrites it.
+    // Heavy analysis (issues, messaging) is deferred to POLL_DATA.
+    let latestRoot: FiberRoot | null = null;
+    let commitsSinceLastPoll = 0;
     
     hook.onCommitFiberRoot = function(rendererID: number, root: FiberRoot, priorityLevel?: unknown, didError?: boolean) {
       if (typeof originalOnCommitFiberRoot === 'function') {
@@ -1657,12 +1700,63 @@
       }
       
       if (!debuggerEnabled) return;
+      latestRoot = root;
+      commitsSinceLastPoll++;
       
-      // Skip analysis during initial page load grace period
-      if (Date.now() - navigationStartTime < NAVIGATION_GRACE_MS) return;
+      // Lightweight synchronous capture: walk fiber tree and snapshot render info.
+      // Budget: ~2ms max. Only captures user components that actually rendered.
+      const snapshot = new Map<string, RenderSnapshotEntry>();
+      const fiber = root.current;
+      const captureStack: Array<{fiber: FiberNode; path: string}> = [{fiber, path: ''}];
+      let captureCount = 0;
+      const MAX_CAPTURE_NODES = 200;
+      const captureStart = performance.now();
       
-      scheduleAnalyze(root);
+      while (captureStack.length > 0 && captureCount < MAX_CAPTURE_NODES) {
+        // Time guard: bail if we've exceeded 2ms
+        if (captureCount > 0 && captureCount % 30 === 0 && performance.now() - captureStart > 2) break;
+        
+        const item = captureStack.pop()!;
+        captureCount++;
+        
+        if (isUserComponent(item.fiber) && didFiberRender(item.fiber)) {
+          const componentName = getComponentName(item.fiber);
+          const fiberId = `${componentName}_${item.path}`;
+          const renderChange = detectRenderChanges(item.fiber);
+          const actualDuration = (item.fiber as any).actualDuration ?? 0;
+          const selfBaseDuration = (item.fiber as any).selfBaseDuration ?? 0;
+          
+          snapshot.set(fiberId, {
+            fiberId,
+            componentName,
+            path: item.path,
+            actualDuration,
+            selfBaseDuration,
+            renderChange,
+            fiberRef: new WeakRef(item.fiber),
+          });
+        }
+        
+        if (item.fiber.sibling) {
+          const parts = item.path.split('/');
+          const index = parseInt(parts.pop() || '0', 10) + 1;
+          captureStack.push({fiber: item.fiber.sibling, path: `${parts.join('/')}/${index}`});
+        }
+        if (item.fiber.child) {
+          captureStack.push({fiber: item.fiber.child, path: `${item.path}/0`});
+        }
+      }
       
+      if (snapshot.size > 0) {
+        if (pendingRenderSnapshots.length >= MAX_PENDING_SNAPSHOTS) {
+          pendingRenderSnapshots.shift();
+        }
+        pendingRenderSnapshots.push(snapshot);
+      }
+
+      // Scan overlay: traverse fiber tree directly at commit time (like v2.0.0).
+      // NOT tied to snapshot's 2ms budget — scan gets its own traversal with higher limits.
+      // Only runs when scan is enabled (no perf impact otherwise).
       if (scanEnabled) {
         try {
           traverseFiber(root.current, (node, path) => {
@@ -1677,6 +1771,14 @@
           if (DEBUG) console.error('[React Debugger] Scan error:', e);
         }
       }
+    };
+    
+    // Expose for POLL_DATA handler
+    (window as any).__REACT_DEBUGGER_LATEST_ROOT__ = () => latestRoot;
+    (window as any).__REACT_DEBUGGER_COMMITS_SINCE_POLL__ = () => {
+      const count = commitsSinceLastPoll;
+      commitsSinceLastPoll = 0;
+      return count;
     };
     
     if (hook.renderers && hook.renderers.size > 0) {
@@ -1797,7 +1899,7 @@
     };
     
     scheduleIdleWork(doAnalyze, 100);
-    setTimeout(doAnalyze, 200);
+    // Fix 3: Removed redundant setTimeout(doAnalyze, 200) that caused double analysis
   }
 
   function isReduxStore(obj: any): boolean {
@@ -2542,6 +2644,7 @@
   let scanEnabled = false;
   const overlayElements = new Map<string, HTMLElement>();
   const renderFlashTimers = new Map<string, number>();
+  const lastOverlayFlashTime = new Map<string, number>();
   
   function createOverlayContainer(): HTMLElement {
     let container = document.getElementById('react-debugger-overlay-container');
@@ -2597,8 +2700,13 @@
     
     const container = createOverlayContainer();
     const fiberId = `${componentName}_${fiber.key || 'nokey'}_${Math.round(rect.top)}_${Math.round(rect.left)}`;
+
+    // Fix 4: Debounce overlay — skip if same fiber was flashed <300ms ago
+    const nowFlash = Date.now();
+    if (lastOverlayFlashTime.has(fiberId) && nowFlash - lastOverlayFlashTime.get(fiberId)! < 300) return;
+    lastOverlayFlashTime.set(fiberId, nowFlash);
     
-    const renderChange = detectRenderChanges(fiber);
+    const renderChange = { type: 'render' as string, changedKeys: undefined as string[] | undefined, renderReasonSummary: '' };
     
     let overlay = overlayElements.get(fiberId);
     if (!overlay) {
@@ -2682,6 +2790,7 @@
     overlayElements.clear();
     renderFlashTimers.forEach(timer => clearTimeout(timer));
     renderFlashTimers.clear();
+    lastOverlayFlashTime.clear();
   }
 
   function toggleScan(enabled: boolean): void {
@@ -2791,6 +2900,11 @@
   }
 
   function stopAllMonitoring(): void {
+    // Fix 5: Stop periodic cleanup
+    if ((window as any).__REACT_DEBUGGER_CLEANUP_INTERVAL__) {
+      clearInterval((window as any).__REACT_DEBUGGER_CLEANUP_INTERVAL__);
+      (window as any).__REACT_DEBUGGER_CLEANUP_INTERVAL__ = null;
+    }
     stopMemoryMonitoring();
     toggleScan(false);
     reduxSearchStopped = true;
@@ -2814,7 +2928,41 @@
     overlayElements.clear();
     renderFlashTimers.forEach(timer => clearTimeout(timer));
     renderFlashTimers.clear();
+    pendingRenderSnapshots.length = 0;
     log('All monitoring stopped');
+  }
+
+  // Fix 5: Periodic cleanup of unbounded Maps/Sets
+  function periodicCleanup(): void {
+    if (!debuggerEnabled) return;
+    const now = Date.now();
+    const STALE_THRESHOLD = 30000;
+    
+    for (const [key, timestamps] of recentRenderTimestamps) {
+      const filtered = timestamps.filter(t => now - t < EXCESSIVE_RENDER_WINDOW_MS);
+      if (filtered.length === 0) {
+        recentRenderTimestamps.delete(key);
+      } else {
+        recentRenderTimestamps.set(key, filtered);
+      }
+    }
+    
+    for (const [key, time] of lastRenderTimes) {
+      if (now - time > STALE_THRESHOLD) {
+        lastRenderTimes.delete(key);
+        renderCounts.delete(key);
+      }
+    }
+    
+    for (const [id, tracker] of trackedClosures) {
+      if (now - tracker.createdAt > 60000) {
+        trackedClosures.delete(id);
+      }
+    }
+    
+    if (pathCache.size > PATH_CACHE_LIMIT) {
+      clearPathCache();
+    }
   }
 
   (window as any).__REACT_DEBUGGER_MEMORY__ = {
@@ -3041,7 +3189,38 @@
       }
     }
     
+    // POLL_DATA: Panel requests analysis. Drains render snapshots captured synchronously
+    // in onCommitFiberRoot, then runs full analysis with snapshot-based render detection.
+    if (message.type === 'POLL_DATA') {
+      if (!debuggerEnabled) return;
+      const getRoot = (window as any).__REACT_DEBUGGER_LATEST_ROOT__;
+      const getCommits = (window as any).__REACT_DEBUGGER_COMMITS_SINCE_POLL__;
+      const root = getRoot ? getRoot() : null;
+      const commits = getCommits ? getCommits() : 0;
+      
+      // Drain snapshots captured during synchronous commits
+      const renderSnapshot = drainRenderSnapshots();
+      
+      // Analyze if there were new commits OR we have snapshot data
+      if (root && (commits > 0 || renderSnapshot.size > 0)) {
+        scheduleIdleWork(() => {
+          if (!debuggerEnabled) return;
+          try {
+            analyzeFiberTree(root, renderSnapshot);
+          } catch (e) {
+            if (DEBUG) console.error('[React Debugger] Poll analyze error:', e);
+          }
+        }, 1000);
+      }
+      return;
+    }
+    
     if (message.type === 'ENABLE_DEBUGGER') {
+      // Guard: skip if already enabled to prevent duplicate work
+      if (debuggerEnabled) {
+        sendFromPage('DEBUGGER_STATE_CHANGED', { enabled: true });
+        return;
+      }
       debuggerEnabled = true;
       navigationStartTime = Date.now();
       // Re-send REACT_DETECTED since inject.js may have loaded after React initialized
@@ -3052,9 +3231,17 @@
           mode: detectReactMode(),
         });
       }
-      installReduxHook();
-      installErrorHandlers();
-      forceReanalyze();
+      // Defer heavy initialization to idle time
+      scheduleIdleWork(() => {
+        if (!debuggerEnabled) return;
+        installReduxHook();
+        installErrorHandlers();
+        forceReanalyze();
+      }, 500);
+      // Start periodic cleanup (inside ENABLE_DEBUGGER, not on every message)
+      if (!(window as any).__REACT_DEBUGGER_CLEANUP_INTERVAL__) {
+        (window as any).__REACT_DEBUGGER_CLEANUP_INTERVAL__ = window.setInterval(periodicCleanup, 60000);
+      }
       sendFromPage('DEBUGGER_STATE_CHANGED', { enabled: true });
       log('Debugger enabled');
     }
