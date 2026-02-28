@@ -297,6 +297,24 @@ export function Panel() {
     };
   }, [tabId, fetchState]);
 
+  // POLL_DATA: Pull-based architecture — request analysis from inject script
+  // instead of inject auto-pushing on every React commit.
+  // This ensures ZERO work on the host page's main thread between polls.
+  useEffect(() => {
+    if (!isDebuggerEnabled || !isExtensionContextValid()) return;
+    
+    const POLL_INTERVAL = 5000; // 5 seconds — balanced between data freshness and host page impact
+    const pollTimer = setInterval(() => {
+      if (!isExtensionContextValid()) return;
+      safeSendMessage({ type: 'POLL_DATA', tabId });
+    }, POLL_INTERVAL);
+    
+    // Initial poll
+    safeSendMessage({ type: 'POLL_DATA', tabId });
+    
+    return () => clearInterval(pollTimer);
+  }, [tabId, isDebuggerEnabled]);
+
   const clearIssues = useCallback(() => {
     safeSendMessage({ type: 'CLEAR_ISSUES', tabId });
     setState(prev => ({ ...prev, issues: [] }));

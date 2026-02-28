@@ -96,16 +96,30 @@ function removePageMessageListener(): void {
   }
 }
 
+let enableInProgress = false;
+
 async function handleEnableDebugger(message: { type: string; payload?: unknown }): Promise<void> {
-  isEnabled = await checkIfSiteEnabled();
-  if (!isEnabled) return;
-  debuggerEnabled = true;
-  setupPageMessageListener();
-  // Wait for inject.js to fully load before sending ENABLE_DEBUGGER to the page
-  await injectPageScript();
-  sendToPage(message.type, message.payload);
-  initCLSObserver();
-  capturePageLoadMetrics();
+  // Guard: skip if already enabled or enable is in progress
+  if (debuggerEnabled || enableInProgress) {
+    // If already enabled, just forward the message to re-sync state
+    if (debuggerEnabled && isInitialized) {
+      sendToPage(message.type, message.payload);
+    }
+    return;
+  }
+  enableInProgress = true;
+  try {
+    isEnabled = await checkIfSiteEnabled();
+    if (!isEnabled) return;
+    debuggerEnabled = true;
+    setupPageMessageListener();
+    await injectPageScript();
+    sendToPage(message.type, message.payload);
+    initCLSObserver();
+    capturePageLoadMetrics();
+  } finally {
+    enableInProgress = false;
+  }
 }
 
 function handleDisableDebugger(message: { type: string; payload?: unknown }): void {
