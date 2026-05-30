@@ -13,7 +13,8 @@
     "package": "npm run build && cd dist && zip -r ../react-debugger.zip .",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:fixture:basic": "npm --prefix test/fixtures/basic run dev"
   },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",
