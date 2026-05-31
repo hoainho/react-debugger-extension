@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and general discussion
+    url: https://github.com/hoainho/react-debugger-extension/discussions
+    about: Ask questions, share ideas, or chat about React debugging
+  - name: Security vulnerability
+    url: https://github.com/hoainho/react-debugger-extension/security/policy
+    about: See our security policy for responsible disclosure
