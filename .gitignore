@@ -3,4 +3,7 @@ dist
 .sisyphus
 .agent
 worker
-node_modules
+node_modules*.tsbuildinfo
+
+# macOS noise
+.DS_Store
