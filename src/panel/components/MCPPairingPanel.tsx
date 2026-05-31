@@ -53,30 +53,29 @@ export const MCPPairingPanel: React.FC = () => {
   const [errors, setErrors] = useState<PairingError[]>([]);
   const [paired, setPaired] = useState(false);
 
-  useEffect(() => {
+  const performPairing = () => {
     const hash = window.location.hash;
     const found = validatePairingParams(hash);
 
     if (found.length === 0) {
       const { token, port } = parseHash(hash);
-      chrome.storage?.local?.set({ mcpToken: token, mcpPort: port });
+      if (typeof chrome !== "undefined" && chrome.storage?.local) {
+        chrome.storage.local.set({ mcpToken: token, mcpPort: port });
+      }
       setPaired(true);
+      setErrors([]);
     } else {
       setErrors(found);
+      setPaired(false);
     }
+  };
+
+  useEffect(() => {
+    performPairing();
   }, []);
 
   const handleRetry = () => {
-    setErrors([]);
-    setPaired(false);
-    const found = validatePairingParams(window.location.hash);
-    if (found.length === 0) {
-      const { token, port } = parseHash(window.location.hash);
-      chrome.storage?.local?.set({ mcpToken: token, mcpPort: port });
-      setPaired(true);
-    } else {
-      setErrors(found);
-    }
+    performPairing();
   };
 
   if (paired) {
