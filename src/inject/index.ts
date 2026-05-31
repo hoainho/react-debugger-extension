@@ -16,10 +16,6 @@ import { sanitizeValue as sanitizeForRegistry } from '../utils/sanitize';
   // Global debugger enable/disable flag (default: OFF for performance)
   let debuggerEnabled = false;
   
-  // Grace period: skip fiber commits for first N ms after enabling debugger
-  let navigationStartTime = 0;
-  const NAVIGATION_GRACE_MS = 3000;
-  
   let extensionAlive = true;
   let messageQueue: Array<{type: string; payload?: unknown}> = [];
   let flushTimeout: number | null = null;
@@ -3346,7 +3342,6 @@ import { sanitizeValue as sanitizeForRegistry } from '../utils/sanitize';
         return;
       }
       debuggerEnabled = true;
-      navigationStartTime = Date.now();
       // Re-send REACT_DETECTED since inject.js may have loaded after React initialized
       const hook = (window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__;
       if (hook?.renderers?.size > 0) {
