@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import type { Issue } from '@/types';
 
 interface IssueCardProps {
@@ -79,13 +79,14 @@ const ISSUE_INFO: Record<string, { title: string; why: string; learnUrl?: string
   },
 };
 
-export function IssueCard({ issue }: IssueCardProps) {
+export const IssueCard = React.memo(function IssueCard({
+  issue,
+}: IssueCardProps) {
   const [expanded, setExpanded] = useState(false);
-
   const severity = SEVERITY_CONFIG[issue.severity];
   const info = ISSUE_INFO[issue.type] || { title: issue.type, why: '' };
   const location = issue.location;
-  
+
   const renderCountMatch = issue.message.match(/Rendered (\d+) times/);
   const renderCount = renderCountMatch ? parseInt(renderCountMatch[1], 10) : null;
 
@@ -99,12 +100,12 @@ export function IssueCard({ issue }: IssueCardProps) {
         <div className="issue-info">
           <div className="issue-title-row">
             <h4 className="issue-title">{info.title}</h4>
-            <span 
-              className="severity-badge" 
-              style={{ 
-                backgroundColor: severity.bgColor, 
+            <span
+              className="severity-badge"
+              style={{
+                backgroundColor: severity.bgColor,
                 color: severity.color,
-                border: `1px solid ${severity.color}`
+                border: `1px solid ${severity.color}`,
               }}
             >
               {severity.label}
@@ -160,7 +161,7 @@ export function IssueCard({ issue }: IssueCardProps) {
 
           {location?.closureInfo && (
             <div className="closure-info">
-              <strong><span className="action-badge action-badge--search" /> Closure Timeline:</strong>
+              <strong>🔍 Closure Timeline:</strong>
               <div className="closure-timeline">
                 <div className="timeline-item created">
                   <span className="timeline-badge">Created</span>
@@ -176,7 +177,7 @@ export function IssueCard({ issue }: IssueCardProps) {
                   </span>
                 </div>
               </div>
-              
+
               <div className="closure-details">
                 <div className="closure-row">
                   <span className="closure-label">Function:</span>
@@ -219,7 +220,7 @@ export function IssueCard({ issue }: IssueCardProps) {
           )}
 
           <div className="issue-suggestion">
-            <strong><span className="action-badge action-badge--suggestion" /> Suggestion:</strong>
+            <strong>💡 Suggestion:</strong>
             <p>{issue.suggestion}</p>
           </div>
 
@@ -232,20 +233,18 @@ export function IssueCard({ issue }: IssueCardProps) {
             </div>
           )}
 
-          <div className="issue-actions">
-            {info.learnUrl && (
-              <a
-                href={info.learnUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="learn-link"
-              >
-                <span className="action-badge action-badge--learn" /> Learn more
-              </a>
-            )}
-          </div>
+          {info.learnUrl && (
+            <a
+            href={info.learnUrl}
+            target="_blank"
+             rel="noopener noreferrer"
+             className="learn-more-link"
+            >
+         📚 Learn more
+        </a>
+        )}
         </div>
       )}
     </div>
   );
-}
+});
