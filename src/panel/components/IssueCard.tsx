@@ -79,9 +79,8 @@ const ISSUE_INFO: Record<string, { title: string; why: string; learnUrl?: string
   },
 };
 
-export const IssueCard = React.memo(function IssueCard({
-  issue,
-}: IssueCardProps) {
+export const IssueCard = React.memo(function IssueCard({ issue }: IssueCardProps) {
+
   const [expanded, setExpanded] = useState(false);
   const severity = SEVERITY_CONFIG[issue.severity];
   const info = ISSUE_INFO[issue.type] || { title: issue.type, why: '' };
