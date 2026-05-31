@@ -1,0 +1,75 @@
+title: "[Idea] "
+labels: ["idea"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Got an idea for the extension? Great. Use this template to make it actionable.
+
+        **Note:** This is for **discussion**, not for committing to build. If the idea reaches consensus and is scoped enough, a maintainer (or you!) will promote it to an issue via the [feature request template](https://github.com/hoainho/react-debugger-extension/issues/new?template=feature_request.yml).
+
+        **Search first:** [existing ideas](https://github.com/hoainho/react-debugger-extension/discussions/categories/ideas) and [open feature requests](https://github.com/hoainho/react-debugger-extension/issues?q=is%3Aissue+label%3Aenhancement).
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: The pain you've personally felt or seen. Not the feature itself.
+      placeholder: |
+        When debugging Redux state changes in a large app, I need to compare state before/after an action. Today I screenshot the Redux tab twice and diff manually — slow and error-prone.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: One paragraph describing what you'd build. Be specific about which tab/panel it affects.
+      placeholder: |
+        Add a "Diff" toggle to the Redux tab that shows what changed between consecutive states. Highlight added/removed/changed keys with color coding.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+      description: What workarounds exist? How do other tools solve this?
+      placeholder: |
+        - Redux DevTools has a built-in Diff tab — could we match its UX?
+        - I tried writing custom middleware to log diffs to the console — works but isn't portable.
+    validations:
+      required: false
+  - type: dropdown
+    id: tab
+    attributes:
+      label: Which tab does this affect?
+      multiple: true
+      options:
+        - Timeline
+        - UI & State
+        - Performance
+        - Memory
+        - Side Effects
+        - CLS
+        - Redux
+        - AI Analysis
+        - Panel-wide / cross-cutting
+        - New tab/panel
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: How much would this help you?
+      options:
+        - Nice to have
+        - Would use weekly
+        - Would use daily
+        - Blocking my workflow today
+    validations:
+      required: true
+  - type: textarea
+    id: mockup
+    attributes:
+      label: Mockup or example (optional)
+      description: Screenshot, link to a similar feature in another tool, or rough sketch.
+    validations:
+      required: false

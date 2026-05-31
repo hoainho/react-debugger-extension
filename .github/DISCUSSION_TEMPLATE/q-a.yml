@@ -1,0 +1,71 @@
+title: "[Q&A] "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for asking. The more context you give, the faster someone can help.
+
+        **Before posting:**
+        - Searched [existing discussions](https://github.com/hoainho/react-debugger-extension/discussions)
+        - Read [DEBUGGING-GUIDE.md](https://github.com/hoainho/react-debugger-extension/blob/main/DEBUGGING-GUIDE.md) if your question is about tab usage
+        - Confirmed this is a usage question, not a bug (bugs → [open an issue](https://github.com/hoainho/react-debugger-extension/issues/new?template=bug_report.yml))
+  - type: textarea
+    id: what
+    attributes:
+      label: What are you trying to do?
+      description: One paragraph describing the goal, not the symptom.
+      placeholder: |
+        I want to understand why my MemoizedList component re-renders every time its parent updates, even though I wrapped it in React.memo.
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: What you've already tried
+      description: Show the steps you took and what you saw.
+      placeholder: |
+        - Opened Performance tab → saw 47 renders in 5 seconds
+        - Clicked into MemoizedList row → "render reason: props changed"
+        - But the props look identical when I log them
+    validations:
+      required: true
+  - type: input
+    id: extension-version
+    attributes:
+      label: Extension version
+      description: From `chrome://extensions/`
+      placeholder: "e.g., 2.0.3"
+    validations:
+      required: true
+  - type: input
+    id: react-version
+    attributes:
+      label: React version on the inspected page
+      placeholder: "e.g., 18.3.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: tab
+    attributes:
+      label: Which tab does this question relate to?
+      options:
+        - Timeline
+        - UI & State
+        - Performance
+        - Memory
+        - Side Effects
+        - CLS
+        - Redux
+        - AI Analysis
+        - General (not tab-specific)
+    validations:
+      required: true
+  - type: textarea
+    id: code
+    attributes:
+      label: Minimal reproduction (optional but very helpful)
+      description: A 10-20 line code snippet that reproduces what you're seeing. Use the Performance tab's "Export render log" button if relevant.
+      render: tsx
+    validations:
+      required: false
