@@ -1,10 +1,34 @@
 {
   "name": "react-debugger-extension",
   "version": "2.0.3",
-  "description": "Advanced debugging & performance optimization tool for ReactJS applications",
+  "description": "Chrome DevTools panel for React debugging: Timeline, Performance, Memory, Side Effects, Redux, CLS, AI analysis.",
   "author": "NhoNH",
   "license": "MIT",
   "type": "module",
+  "keywords": [
+    "react",
+    "react-devtools",
+    "react-debugger",
+    "chrome-extension",
+    "performance",
+    "redux-devtools",
+    "profiler",
+    "memory-leak",
+    "side-effects",
+    "developer-tools"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hoainho/react-debugger-extension.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hoainho/react-debugger-extension/issues"
+  },
+  "homepage": "https://hoainho.github.io/react-debugger-extension/",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/hoainho"
+  },
   "scripts": {
     "dev": "vite build --watch --mode development",
     "build": "vite build --mode production",
