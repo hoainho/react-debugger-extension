@@ -321,4 +321,74 @@ describe('createRegistry', () => {
       expect(onCommit).toHaveBeenCalledWith({ tag: 'root' }, 102.5);
     });
   });
+
+  describe('dispatchIdle', () => {
+    function makeDeadline(timeRemaining = 50, didTimeout = false): IdleDeadline {
+      return {
+        didTimeout,
+        timeRemaining: () => timeRemaining,
+      } as IdleDeadline;
+    }
+
+    it('invokes onIdle for every active detector that defines it', () => {
+      const registry = createRegistry(makeOptions());
+      const onIdleA = vi.fn();
+      const onIdleB = vi.fn();
+
+      registry.register(makeDetector({ id: 'a', onIdle: onIdleA }));
+      registry.register(makeDetector({ id: 'b', onIdle: onIdleB }));
+
+      const deadline = makeDeadline(42, false);
+      registry.dispatchIdle(deadline);
+
+      expect(onIdleA).toHaveBeenCalledTimes(1);
+      expect(onIdleA).toHaveBeenCalledWith(deadline);
+      expect(onIdleB).toHaveBeenCalledTimes(1);
+      expect(onIdleB).toHaveBeenCalledWith(deadline);
+    });
+
+    it('skips detectors that do not define onIdle (does not crash)', () => {
+      const registry = createRegistry(makeOptions());
+      const onIdleA = vi.fn();
+
+      registry.register(makeDetector({ id: 'withIdle', onIdle: onIdleA }));
+      registry.register(makeDetector({ id: 'noIdle' }));
+
+      expect(() => registry.dispatchIdle(makeDeadline())).not.toThrow();
+      expect(onIdleA).toHaveBeenCalledTimes(1);
+    });
+
+    it('skips disabled detectors', () => {
+      const registry = createRegistry(makeOptions());
+      const onIdleA = vi.fn();
+      registry.register(makeDetector({ id: 'd', onIdle: onIdleA }));
+      registry.disable('d');
+
+      registry.dispatchIdle(makeDeadline());
+
+      expect(onIdleA).not.toHaveBeenCalled();
+    });
+
+    it('isolates a throwing onIdle: peer detectors still run, thrower is disabled', () => {
+      const registry = createRegistry(makeOptions());
+      const onIdleB = vi.fn();
+
+      registry.register(
+        makeDetector({
+          id: 'thrower',
+          onIdle: () => {
+            throw new Error('idle boom');
+          },
+        }),
+      );
+      registry.register(makeDetector({ id: 'b', onIdle: onIdleB }));
+
+      registry.dispatchIdle(makeDeadline());
+
+      expect(onIdleB).toHaveBeenCalledTimes(1);
+      const listed = registry.list();
+      expect(listed.find((e) => e.id === 'thrower')?.enabled).toBe(false);
+      expect(listed.find((e) => e.id === 'thrower')?.disabledReason).toContain('idle boom');
+    });
+  });
 });

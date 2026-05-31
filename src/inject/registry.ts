@@ -53,6 +53,17 @@ export interface Registry {
   disable(id: DetectorId): void;
   list(): RegistryListEntry[];
   dispatch(commit: { fiberRoot: unknown }): void;
+  /**
+   * Fire each active detector's `onIdle(deadline)` hook (T9). Detectors that
+   * don't define `onIdle` are skipped. The caller is responsible for
+   * scheduling — typically via `requestIdleCallback` from the inject script.
+   *
+   * Same try/catch isolation as `dispatch`: a throwing detector is disabled
+   * for the session and its peers run regardless. Staged writes from a
+   * thrown `onIdle` are discarded; staged writes from a successful one
+   * commit on return.
+   */
+  dispatchIdle(deadline: IdleDeadline): void;
   drainAll(): DrainAllEntry[];
 }
 
@@ -294,6 +305,16 @@ export function createRegistry(options: CreateRegistryOptions): Registry {
         const deadline = perf.now() + entry.detector.budgetMs;
         runLifecycle(entry, 'onCommit', () => {
           entry.detector.onCommit!(commit.fiberRoot, deadline);
+        });
+      }
+    },
+
+    dispatchIdle(deadline: IdleDeadline): void {
+      for (const entry of entries.values()) {
+        if (!entry.enabled) continue;
+        if (!entry.detector.onIdle) continue;
+        runLifecycle(entry, 'onIdle', () => {
+          entry.detector.onIdle!(deadline);
         });
       }
     },
