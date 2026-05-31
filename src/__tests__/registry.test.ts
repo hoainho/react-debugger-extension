@@ -391,4 +391,43 @@ describe('createRegistry', () => {
       expect(listed.find((e) => e.id === 'thrower')?.disabledReason).toContain('idle boom');
     });
   });
+
+  describe('drainAll', () => {
+    it('returns {detectorId, issues[]} for all enabled detectors with non-empty drain results, and skips disabled detectors', () => {
+      const registry = createRegistry(makeOptions());
+
+      const enabledIssues = [{ type: 'UNSTABLE_LIST_KEY', component: 'List' }];
+      const enabledDetector = makeDetector({
+        id: 'enabled-with-issues',
+        drain: vi.fn(() => enabledIssues),
+      });
+      const emptyDetector = makeDetector({
+        id: 'enabled-no-issues',
+        drain: vi.fn(() => []),
+      });
+      const disabledDetector = makeDetector({
+        id: 'disabled-detector',
+        drain: vi.fn(() => [{ type: 'SHOULD_NOT_APPEAR' }]),
+      });
+
+      registry.register(enabledDetector);
+      registry.register(emptyDetector);
+      registry.register(disabledDetector);
+      registry.disable('disabled-detector');
+
+      const result = registry.drainAll();
+
+      const enabledEntry = result.find((e) => e.detectorId === 'enabled-with-issues');
+      expect(enabledEntry).toBeDefined();
+      expect(enabledEntry?.issues).toEqual(enabledIssues);
+
+      const emptyEntry = result.find((e) => e.detectorId === 'enabled-no-issues');
+      expect(emptyEntry).toBeDefined();
+      expect(emptyEntry?.issues).toEqual([]);
+
+      const disabledEntry = result.find((e) => e.detectorId === 'disabled-detector');
+      expect(disabledEntry?.issues).toEqual([]);
+      expect((disabledDetector.drain as ReturnType<typeof vi.fn>)).not.toHaveBeenCalled();
+    });
+  });
 });

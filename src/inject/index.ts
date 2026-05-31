@@ -1835,7 +1835,7 @@ import { sanitizeValue as sanitizeForRegistry } from '../utils/sanitize';
       // uses this to run getBoundingClientRect + overlay paint off the
       // commit path).
       if ('requestIdleCallback' in window) {
-        (window as any).requestIdleCallback((deadline: IdleDeadline) => {
+        requestIdleCallback((deadline: IdleDeadline) => {
           try {
             registry.dispatchIdle(deadline);
           } catch (err) {
@@ -3085,6 +3085,8 @@ import { sanitizeValue as sanitizeForRegistry } from '../utils/sanitize';
         reportedSlowRenders.delete(key);
       }
     }
+
+    try { registry.drainAll(); } catch (err) { log('[registry] drainAll cleanup error:', err); }
   }
 
   (window as any).__REACT_DEBUGGER_MEMORY__ = {
