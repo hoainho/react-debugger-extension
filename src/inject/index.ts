@@ -382,6 +382,9 @@ import { sanitizeValue as sanitizeForRegistry } from '../utils/sanitize';
   const originalSetTimeout = window.setTimeout;
   const originalSetInterval = window.setInterval;
   const originalAddEventListener = EventTarget.prototype.addEventListener;
+
+  let closureTrackingInstalled = false;
+  let closureLeakSink: ((issue: any) => void) | null = null;
   
   function getCurrentComponentContext(): { name: string; path: string[]; renderId: number } | null {
     const hook = (window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__;
@@ -487,6 +490,13 @@ import { sanitizeValue as sanitizeForRegistry } from '../utils/sanitize';
         
         staleClosureIssues.set(issueKey, issue);
         sendFromPage('STALE_CLOSURE_DETECTED', issue);
+        if (closureLeakSink) {
+          try {
+            closureLeakSink(issue);
+          } catch {
+            // Sink failures must not break legacy emission path.
+          }
+        }
       }
     }
     
@@ -496,6 +506,8 @@ import { sanitizeValue as sanitizeForRegistry } from '../utils/sanitize';
   }
   
   function _installClosureTracking(): void {
+    if (closureTrackingInstalled) return;
+    closureTrackingInstalled = true;
     (window as any).setTimeout = function(callback: Function, delay?: number, ...args: any[]) {
       if (typeof callback !== 'function') {
         return originalSetTimeout.call(window, callback, delay, ...args);
@@ -3326,6 +3338,24 @@ import { sanitizeValue as sanitizeForRegistry } from '../utils/sanitize';
   installReactHook();
   
   (window as any).__REACT_DEBUGGER_ENABLE_CLOSURE_TRACKING__ = _installClosureTracking;
+
+  (window as any).__REACT_DEBUGGER_CLOSURE_BRIDGE__ = {
+    install: _installClosureTracking,
+    restoreOriginals: () => {
+      if (!closureTrackingInstalled) return;
+      (window as any).setTimeout = originalSetTimeout;
+      (window as any).setInterval = originalSetInterval;
+      EventTarget.prototype.addEventListener = originalAddEventListener;
+      closureTrackingInstalled = false;
+    },
+    clear: () => {
+      trackedClosures.clear();
+      staleClosureIssues.clear();
+    },
+    setSink: (fn: ((issue: any) => void) | null) => {
+      closureLeakSink = fn;
+    },
+  };
 
   // React auto-detection deferred to ENABLE_DEBUGGER handler
 
