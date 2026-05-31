@@ -43,6 +43,15 @@
   --font-mono: 'SF Mono', 'Cascadia Code', 'Consolas', 'Monaco', monospace;
 }
 
+button:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
+button:focus:not(:focus-visible) {
+  outline: none;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -1554,7 +1563,8 @@ body {
 
 .form-row input:focus,
 .form-row textarea:focus {
-  outline: none;
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
   border-color: var(--accent-blue);
 }
 
@@ -1599,7 +1609,8 @@ body {
 }
 
 .search-input:focus {
-  outline: none;
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
   border-color: var(--accent-blue);
 }
 
@@ -1691,9 +1702,9 @@ body {
 }
 
 .edit-input:focus {
-  outline: none;
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
   border-color: var(--accent-blue);
-  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
 }
 
 .edit-actions {
@@ -3079,7 +3090,8 @@ body {
 
 .ai-settings-field input:focus,
 .ai-settings-field select:focus {
-  outline: none;
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
   border-color: var(--accent-blue);
 }
 
