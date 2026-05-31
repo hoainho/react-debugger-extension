@@ -1,17 +1,12 @@
 export type IssueSeverity = 'error' | 'warning' | 'info';
 
 export type IssueType =
-  | 'DIRECT_STATE_MUTATION'
   | 'MISSING_KEY'
   | 'INDEX_AS_KEY'
-  | 'DUPLICATE_KEY'
   | 'MISSING_CLEANUP'
   | 'MISSING_DEP'
-  | 'EXTRA_DEP'
   | 'INFINITE_LOOP_RISK'
   | 'EXCESSIVE_RERENDERS'
-  | 'UNNECESSARY_RERENDER'
-  | 'DEV_MODE_IN_PROD'
   | 'STALE_CLOSURE'
   | 'STALE_CLOSURE_RISK'
   | 'SLOW_RENDER'
