@@ -3,6 +3,7 @@ declare class WeakRef<T extends object> { constructor(target: T); deref(): T | u
 
 import { installCleanupInterval, uninstallCleanupInterval } from './lifecycle';
 import { createRegistry } from './registry';
+import { registerAllDetectors } from './detectors';
 import { sanitizeValue as sanitizeForRegistry } from '../utils/sanitize';
 
 (function() {
@@ -123,7 +124,7 @@ import { sanitizeValue as sanitizeForRegistry } from '../utils/sanitize';
     }
   }
 
-  // M-B T2: detector registry singleton. Dormant until T7-T9 call `registry.register(...)`.
+  // M-B T2: detector registry singleton. T7+ register detectors via `registerAllDetectors`.
   const registry = createRegistry({
     emit: (payload) => {
       const type = (payload as { type?: string })?.type ?? 'DETECTOR_EVENT';
@@ -133,6 +134,11 @@ import { sanitizeValue as sanitizeForRegistry } from '../utils/sanitize';
     sanitize: sanitizeForRegistry,
     performance: window.performance,
   });
+  try {
+    registerAllDetectors(registry);
+  } catch (err) {
+    log('[registry] registerAllDetectors failed:', err);
+  }
 
   function listenFromContent(callback: (message: { type: string; payload?: unknown }) => void): void {
     window.addEventListener('message', (event) => {
