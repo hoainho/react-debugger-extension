@@ -1,0 +1,73 @@
+title: "[Show & Tell] "
+labels: ["showcase"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Built something with React Debugger? Found a clever workflow? Caught a bug in production using it? Share it here — case studies help everyone learn.
+
+        These posts also feed our blog and conference-talk material (we'll always credit + ask before quoting).
+  - type: input
+    id: what
+    attributes:
+      label: What did you do?
+      description: One sentence headline.
+      placeholder: "e.g., Caught a 47x re-render bug on our pricing page in 3 minutes"
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: What app/team/scale? Production or dev? What were you trying to do?
+      placeholder: |
+        Mid-sized SaaS dashboard, ~800 components, React 18 + Redux Toolkit. We were investigating a 3s lag on the pricing page that started after a recent refactor.
+    validations:
+      required: true
+  - type: textarea
+    id: workflow
+    attributes:
+      label: How you used the extension
+      description: Which tabs, in what order, what surfaced the issue?
+      placeholder: |
+        1. Opened Performance tab → spotted PricingCard at 47 renders in 5s
+        2. Clicked into the row → render reason "props.discountConfig changed"
+        3. Checked Redux tab → discountConfig was being respread on every dispatch
+        4. Fixed by adding shallowEqual selector in useSelector
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: What changed? Numbers if you have them.
+      placeholder: |
+        - Renders went from 47 → 2 per dispatch
+        - Pricing page load: 3.2s → 0.8s LCP
+        - Estimated impact: ~5% bounce rate reduction on that funnel step
+    validations:
+      required: true
+  - type: textarea
+    id: gotchas
+    attributes:
+      label: Gotchas / lessons learned (optional)
+      description: What surprised you? What would you do differently? This is the highest-value section for other developers.
+    validations:
+      required: false
+  - type: input
+    id: stack
+    attributes:
+      label: Stack
+      description: React version, Redux/Zustand/Jotai/etc, Next.js/Vite/CRA, anything else relevant
+      placeholder: "React 18.3 + Redux Toolkit 2.2 + Next.js 14 + Vercel"
+    validations:
+      required: false
+  - type: checkboxes
+    id: permissions
+    attributes:
+      label: Sharing permissions
+      options:
+        - label: "OK to quote this post (with credit) in blog posts / conference talks"
+          required: false
+        - label: "OK to feature this in our README as a case study"
+          required: false

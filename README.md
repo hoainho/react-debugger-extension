@@ -194,7 +194,8 @@ We also have [`help wanted` items](https://github.com/hoainho/react-debugger-ext
 
 ### Community
 
-- 💬 [GitHub Discussions](https://github.com/hoainho/react-debugger-extension/discussions) — questions, ideas, general chat
+- 💬 [GitHub Discussions](https://github.com/hoainho/react-debugger-extension/discussions) — questions, ideas, show-and-tell. Five categories with structured templates: [Q&A](https://github.com/hoainho/react-debugger-extension/discussions/categories/q-a), [Ideas](https://github.com/hoainho/react-debugger-extension/discussions/categories/ideas), [Show & Tell](https://github.com/hoainho/react-debugger-extension/discussions/categories/show-and-tell), [General](https://github.com/hoainho/react-debugger-extension/discussions/categories/general), [Announcements](https://github.com/hoainho/react-debugger-extension/discussions/categories/announcements).
+- 📚 [Wiki](https://github.com/hoainho/react-debugger-extension/wiki) — living docs: architecture overview, FAQ, debugging cookbook, glossary
 - 🐛 [Issues](https://github.com/hoainho/react-debugger-extension/issues) — bug reports, feature requests
 - 🔒 [Security policy](./SECURITY.md) — responsible disclosure (90-day timeline)
 - 📜 [Code of Conduct](./.github/CODE_OF_CONDUCT.md) — Contributor Covenant v2.1
