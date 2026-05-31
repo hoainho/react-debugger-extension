@@ -1651,8 +1651,27 @@ import { sanitizeValue as sanitizeForRegistry } from '../utils/sanitize';
   }
 
   function detectReactVersion(): string {
-    return (window as any).React?.version || 'unknown';
-  }
+      const hook = (window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__;
+      // Priority 1: renderer.version — works for ESM, Next.js App Router, bundled React
+      // Source: https://github.com/facebook/react/blob/05ca66ad9c/packages/react-devtools-shared/src/backend/types.js#L131
+      if (hook?.renderers instanceof Map && hook.renderers.size > 0) {
+        const renderer = hook.renderers.values().next().value;
+        if (typeof renderer?.version === 'string' && renderer.version) {
+          return renderer.version;
+        }
+      }
+      // Priority 2: window.React.version (fails for ESM-only bundles)
+      const reactVersion = (window as any).React?.version;
+      if (typeof reactVersion === 'string' && reactVersion) return reactVersion;
+      // Priority 3: reconcilerVersion
+      if (hook?.renderers instanceof Map && hook.renderers.size > 0) {
+        const renderer = hook.renderers.values().next().value;
+        if (typeof renderer?.reconcilerVersion === 'string' && renderer.reconcilerVersion) {
+          return renderer.reconcilerVersion;
+        }
+      }
+      return 'unknown';
+    }
 
   function detectReactMode(): 'development' | 'production' {
     const React = (window as any).React;
