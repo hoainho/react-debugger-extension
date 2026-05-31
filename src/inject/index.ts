@@ -2,6 +2,8 @@
 declare class WeakRef<T extends object> { constructor(target: T); deref(): T | undefined; }
 
 import { installCleanupInterval, uninstallCleanupInterval } from './lifecycle';
+import { createRegistry } from './registry';
+import { sanitizeValue as sanitizeForRegistry } from '../utils/sanitize';
 
 (function() {
   'use strict';
@@ -120,6 +122,17 @@ import { installCleanupInterval, uninstallCleanupInterval } from './lifecycle';
       log('Sent message:', type, payload);
     }
   }
+
+  // M-B T2: detector registry singleton. Dormant until T7-T9 call `registry.register(...)`.
+  const registry = createRegistry({
+    emit: (payload) => {
+      const type = (payload as { type?: string })?.type ?? 'DETECTOR_EVENT';
+      sendFromPage(type, payload);
+    },
+    log: log,
+    sanitize: sanitizeForRegistry,
+    performance: window.performance,
+  });
 
   function listenFromContent(callback: (message: { type: string; payload?: unknown }) => void): void {
     window.addEventListener('message', (event) => {
@@ -1773,6 +1786,15 @@ import { installCleanupInterval, uninstallCleanupInterval } from './lifecycle';
         } catch (e) {
           if (DEBUG) console.error('[React Debugger] Scan error:', e);
         }
+      }
+
+      // M-B T2: registry dispatch runs after snapshot capture + scan overlay.
+      // Each registered detector gets its own deadline budget from registry.
+      // No detectors registered yet (T7-T9 add them); this dispatch is dormant but wired.
+      try {
+        registry.dispatch({ fiberRoot: root });
+      } catch (err) {
+        log('[registry] dispatch top-level error:', err);
       }
     };
     
