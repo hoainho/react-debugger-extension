@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 type ErrorCode = "token-malformed" | "port-out-of-range" | "missing-params";
 
@@ -37,19 +37,27 @@ export function validatePairingParams(hash: string): PairingError[] {
     });
   }
 
-  const portNum = port !== undefined ? Number(port) : NaN;
-  if (!port || isNaN(portNum) || portNum < 1024 || portNum > 65535) {
+  if (!port || !/^\d+$/.test(port)) {
     errors.push({
       code: "port-out-of-range",
       message: "Port is out of range.",
       fix: "Port must be a number between 1024 and 65535.",
     });
+  } else {
+    const portNum = Number(port);
+    if (portNum < 1024 || portNum > 65535) {
+      errors.push({
+        code: "port-out-of-range",
+        message: "Port is out of range.",
+        fix: "Port must be a number between 1024 and 65535.",
+      });
+    }
   }
 
   return errors;
 }
 
-export const MCPPairingPanel: React.FC = () => {
+export function MCPPairingPanel() {
   const [errors, setErrors] = useState<PairingError[]>([]);
   const [paired, setPaired] = useState(false);
 
@@ -80,30 +88,21 @@ export const MCPPairingPanel: React.FC = () => {
 
   if (paired) {
     return (
-      <div style={{ padding: 16, color: "green" }}>
+      <div className="pairing-panel-container">
         MCP pairing successful!
       </div>
     );
   }
 
-  if (errors.length === 0) return null;
+  if (errors.length === 0) return <></>;
 
   return (
-    <div style={{ padding: 16 }}>
+    <div className="pairing-panel-container">
       <h3>MCP Pairing Failed</h3>
       {errors.map((err) => (
-        <div
-          key={err.code}
-          style={{
-            marginBottom: 12,
-            padding: 12,
-            border: "1px solid #f00",
-            borderRadius: 6,
-            background: "#fff0f0",
-          }}
-        >
+        <div key={err.code} className="pairing-panel-error">
           <strong>{err.message}</strong>
-          <p style={{ margin: "4px 0 0", fontSize: 13, color: "#555" }}>
+          <p className="pairing-panel-error-fix">
             How to fix: {err.fix}
           </p>
         </div>
@@ -111,4 +110,4 @@ export const MCPPairingPanel: React.FC = () => {
       <button onClick={handleRetry}>Retry</button>
     </div>
   );
-};
+}
