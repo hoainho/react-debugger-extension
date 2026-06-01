@@ -32,6 +32,15 @@ $ npm run build
 ...
 ```
 
+## Claim confirmation
+
+If this PR closes a `good first issue` or `help wanted` issue, please confirm:
+
+- [ ] I starred the repo ⭐ — see [CONTRIBUTING.md → How to claim](../blob/main/.github/CONTRIBUTING.md#-how-to-claim-an-issue-required-before-opening-a-pr) (low-friction signal that you intend to follow through)
+- [ ] I commented `I'll take this` (or similar) on the issue before starting work, so two people don't accidentally race on the same issue
+
+If this PR is from a maintainer or a follow-up to a tracked plan, both can be skipped — just delete this section.
+
 ## Checklist
 
 - [ ] `npm run test:run` passes locally (or pre-existing failures are unrelated to this change)

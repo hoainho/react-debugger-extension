@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **Contributor claim policy** — contributors must now (1) star the repo and (2) comment `"I'll take this"` (or similar) before opening a PR that claims a `good first issue` or `help wanted` issue. PRs that skip these steps get a friendly retroactive request, not a hard block. See [CONTRIBUTING.md → How to claim](.github/CONTRIBUTING.md#-how-to-claim-an-issue-required-before-opening-a-pr).
+- PR template adds a "Claim confirmation" section with checkboxes for the two required steps. Maintainer / tracked-plan PRs can delete this section.
+
 ## [2.0.3] - 2026-02-28
 
 ### Improved
