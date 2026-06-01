@@ -36,10 +36,10 @@ $ npm run build
 
 If this PR closes a `good first issue` or `help wanted` issue, please confirm:
 
-- [ ] I starred the repo ⭐ — see [CONTRIBUTING.md → How to claim](../blob/main/.github/CONTRIBUTING.md#-how-to-claim-an-issue-required-before-opening-a-pr) (low-friction signal that you intend to follow through)
-- [ ] I commented `I'll take this` (or similar) on the issue before starting work, so two people don't accidentally race on the same issue
+- [ ] **I starred the repo ⭐** — see [CONTRIBUTING.md → How to claim](../blob/main/.github/CONTRIBUTING.md#-how-to-claim-an-issue-required-before-opening-a-pr). **This is now enforced by CI** ([`.github/workflows/star-check.yml`](../blob/main/.github/workflows/star-check.yml)) — the "Star Check" status will block merge until you star.
+- [ ] I commented `I'll take this` (or similar) on the issue before starting work, so two people don't accidentally race on the same issue. (Honor-system; not CI-enforced.)
 
-If this PR is from a maintainer or a follow-up to a tracked plan, both can be skipped — just delete this section.
+If this PR is from a maintainer or a follow-up to a tracked plan, both can be skipped — just delete this section. Maintainer/bot/`tracked-plan`-labeled PRs are auto-exempted by the Star Check workflow.
 
 ## Checklist
 

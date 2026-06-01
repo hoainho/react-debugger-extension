@@ -7,10 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`Star Check` CI workflow** (`.github/workflows/star-check.yml`) — runs on every PR and blocks merge if the author hasn't starred the repository. Auto-exempts maintainer (`@hoainho`), bots (Dependabot, gemini-code-assist, google-cla, github-actions, renovate), `tracked-plan`-labeled PRs (maintainer-driven milestone work), and `pre-star-rule`-labeled PRs (grandfathered pre-policy). Uses the public `GET /users/{login}/starred/{owner}/{repo}` API — no extra auth scope.
+
 ### Changed
 
-- **Contributor claim policy** — contributors must now (1) star the repo and (2) comment `"I'll take this"` (or similar) before opening a PR that claims a `good first issue` or `help wanted` issue. PRs that skip these steps get a friendly retroactive request, not a hard block. See [CONTRIBUTING.md → How to claim](.github/CONTRIBUTING.md#-how-to-claim-an-issue-required-before-opening-a-pr).
-- PR template adds a "Claim confirmation" section with checkboxes for the two required steps. Maintainer / tracked-plan PRs can delete this section.
+- **Contributor claim policy hardened** — starring the repo is now a **hard precondition for merge**, enforced by CI (see Star Check workflow above). The previous "comment `I'll take this`" rule stays honor-system + reviewer-checked. See [CONTRIBUTING.md → How to claim](.github/CONTRIBUTING.md#-how-to-claim-an-issue-required-before-opening-a-pr).
+- PR template "Claim confirmation" section updated to flag the star as CI-enforced.
+
+### Migration
+
+- 4 PRs that were already open when this policy landed (#17, #36, #37, #38) labeled `pre-star-rule` and grandfathered through the check.
 
 ## [2.0.3] - 2026-02-28
 
