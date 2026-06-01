@@ -10,7 +10,7 @@ interface PerformanceTabProps {
   pageLoadMetrics: PageLoadMetrics | null;
 }
 
-const PERF_ISSUE_TYPES = ['EXCESSIVE_RERENDERS', 'UNNECESSARY_RERENDER', 'DEV_MODE_IN_PROD', 'SLOW_RENDER'];
+const PERF_ISSUE_TYPES = ['EXCESSIVE_RERENDERS', 'SLOW_RENDER'];
 
 function getTimeColor(ms: number): string {
   if (ms > 50) return 'var(--accent-red)';

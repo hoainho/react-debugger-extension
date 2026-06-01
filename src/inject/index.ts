@@ -1,6 +1,8 @@
 // @ts-ignore: WeakRef is available in all modern browsers (ES2021+)
 declare class WeakRef<T extends object> { constructor(target: T); deref(): T | undefined; }
 
+import { installCleanupInterval, uninstallCleanupInterval } from './lifecycle';
+
 (function() {
   'use strict';
 
@@ -11,10 +13,6 @@ declare class WeakRef<T extends object> { constructor(target: T); deref(): T | u
   // Global debugger enable/disable flag (default: OFF for performance)
   let debuggerEnabled = false;
   
-  // Grace period: skip fiber commits for first N ms after enabling debugger
-  let navigationStartTime = 0;
-  const NAVIGATION_GRACE_MS = 3000;
-  
   let extensionAlive = true;
   let messageQueue: Array<{type: string; payload?: unknown}> = [];
   let flushTimeout: number | null = null;
@@ -24,6 +22,7 @@ declare class WeakRef<T extends object> { constructor(target: T); deref(): T | u
   let currentThrottle = 100;
   const MAX_BATCH_SIZE = 100;
   const MAX_QUEUE_SIZE = 500;
+  const LEAKY_SET_TTL_MS = 5 * 60 * 1000;
   
   function getAdaptiveThrottle(): number {
     const now = Date.now();
@@ -335,9 +334,9 @@ declare class WeakRef<T extends object> { constructor(target: T); deref(): T | u
   const renderCounts = new Map<string, number>();
   const lastRenderTimes = new Map<string, number>();
   const recentRenderTimestamps = new Map<string, number[]>();
-  const reportedEffectIssues = new Set<string>();
-  const reportedExcessiveRerenders = new Set<string>();
-  const reportedSlowRenders = new Set<string>();
+  const reportedEffectIssues = new Map<string, number>();
+  const reportedExcessiveRerenders = new Map<string, number>();
+  const reportedSlowRenders = new Map<string, number>();
   
   const EXCESSIVE_RENDER_THRESHOLD = 10;
   const EXCESSIVE_RENDER_WINDOW_MS = 1000;
@@ -700,7 +699,7 @@ declare class WeakRef<T extends object> { constructor(target: T); deref(): T | u
       if (needsCleanup && destroyFn === undefined) {
         const issueKey = `${componentName}_MISSING_CLEANUP_${effectIndex}`;
         if (!reportedEffectIssues.has(issueKey)) {
-          reportedEffectIssues.add(issueKey);
+          reportedEffectIssues.set(issueKey, Date.now());
           let resourceType = 'resource';
           if (hasTimerPattern) resourceType = 'timer (setInterval/setTimeout)';
           else if (hasEventListenerPattern) resourceType = 'event listener';
@@ -731,7 +730,7 @@ declare class WeakRef<T extends object> { constructor(target: T); deref(): T | u
         if (!hasTimerPattern && !hasEventListenerPattern) {
           const issueKey = `${componentName}_INFINITE_LOOP_RISK_${effectIndex}`;
           if (!reportedEffectIssues.has(issueKey)) {
-            reportedEffectIssues.add(issueKey);
+            reportedEffectIssues.set(issueKey, Date.now());
             issues.push({
               id: generateId(),
               type: 'INFINITE_LOOP_RISK',
@@ -755,7 +754,7 @@ declare class WeakRef<T extends object> { constructor(target: T); deref(): T | u
         if (usesPropsOrState) {
           const issueKey = `${componentName}_MISSING_DEP_${effectIndex}`;
           if (!reportedEffectIssues.has(issueKey)) {
-            reportedEffectIssues.add(issueKey);
+            reportedEffectIssues.set(issueKey, Date.now());
             issues.push({
               id: generateId(),
               type: 'MISSING_DEP',
@@ -1588,7 +1587,7 @@ declare class WeakRef<T extends object> { constructor(target: T); deref(): T | u
       if (rendersInLastSecond >= EXCESSIVE_RENDER_THRESHOLD) {
         const issueKey = `excessive_${fiberId}`;
         if (!reportedExcessiveRerenders.has(issueKey)) {
-          reportedExcessiveRerenders.add(issueKey);
+          reportedExcessiveRerenders.set(issueKey, Date.now());
         }
         issues.push({
           id: issueKey,
@@ -1604,7 +1603,7 @@ declare class WeakRef<T extends object> { constructor(target: T); deref(): T | u
       
       if (actualDuration > 16) {
         if (!reportedSlowRenders.has(fiberId)) {
-          reportedSlowRenders.add(fiberId);
+          reportedSlowRenders.set(fiberId, Date.now());
           issues.push({
             id: generateId(),
             type: 'SLOW_RENDER',
@@ -2901,10 +2900,7 @@ declare class WeakRef<T extends object> { constructor(target: T); deref(): T | u
 
   function stopAllMonitoring(): void {
     // Fix 5: Stop periodic cleanup
-    if ((window as any).__REACT_DEBUGGER_CLEANUP_INTERVAL__) {
-      clearInterval((window as any).__REACT_DEBUGGER_CLEANUP_INTERVAL__);
-      (window as any).__REACT_DEBUGGER_CLEANUP_INTERVAL__ = null;
-    }
+    uninstallCleanupInterval();
     stopMemoryMonitoring();
     toggleScan(false);
     reduxSearchStopped = true;
@@ -2962,6 +2958,24 @@ declare class WeakRef<T extends object> { constructor(target: T); deref(): T | u
     
     if (pathCache.size > PATH_CACHE_LIMIT) {
       clearPathCache();
+    }
+
+    for (const [key, ts] of reportedEffectIssues) {
+      if (now - ts > LEAKY_SET_TTL_MS) {
+        reportedEffectIssues.delete(key);
+      }
+    }
+
+    for (const [key, ts] of reportedExcessiveRerenders) {
+      if (now - ts > LEAKY_SET_TTL_MS) {
+        reportedExcessiveRerenders.delete(key);
+      }
+    }
+
+    for (const [key, ts] of reportedSlowRenders) {
+      if (now - ts > LEAKY_SET_TTL_MS) {
+        reportedSlowRenders.delete(key);
+      }
     }
   }
 
@@ -3222,7 +3236,6 @@ declare class WeakRef<T extends object> { constructor(target: T); deref(): T | u
         return;
       }
       debuggerEnabled = true;
-      navigationStartTime = Date.now();
       // Re-send REACT_DETECTED since inject.js may have loaded after React initialized
       const hook = (window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__;
       if (hook?.renderers?.size > 0) {
@@ -3239,9 +3252,7 @@ declare class WeakRef<T extends object> { constructor(target: T); deref(): T | u
         forceReanalyze();
       }, 500);
       // Start periodic cleanup (inside ENABLE_DEBUGGER, not on every message)
-      if (!(window as any).__REACT_DEBUGGER_CLEANUP_INTERVAL__) {
-        (window as any).__REACT_DEBUGGER_CLEANUP_INTERVAL__ = window.setInterval(periodicCleanup, 60000);
-      }
+      installCleanupInterval(periodicCleanup);
       sendFromPage('DEBUGGER_STATE_CHANGED', { enabled: true });
       log('Debugger enabled');
     }
