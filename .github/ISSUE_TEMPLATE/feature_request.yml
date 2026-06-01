@@ -9,6 +9,8 @@ body:
         Thanks for suggesting an improvement. Please describe the problem first, then the solution. Feature requests grounded in a real workflow are much more likely to be accepted.
 
         Before submitting, search [existing issues](https://github.com/hoainho/react-debugger-extension/issues?q=is%3Aissue+label%3Aenhancement) and [Discussions](https://github.com/hoainho/react-debugger-extension/discussions) for prior conversation on this idea.
+
+        > 💡 **Want to implement this yourself?** Great! Read [CONTRIBUTING.md → How to claim](https://github.com/hoainho/react-debugger-extension/blob/main/.github/CONTRIBUTING.md#-how-to-claim-an-issue-required-before-opening-a-pr) for the 2-step claim process (star the repo ⭐ + comment "I'll take this") before opening a PR.
   - type: textarea
     id: problem
     attributes:
