@@ -36,7 +36,7 @@ const mockWarningIssue: Issue = {
 
 const mockInfoIssue: Issue = {
   id: 'issue-3',
-  type: 'DEV_MODE_IN_PROD',
+  type: 'SLOW_RENDER',
   severity: 'info',
   component: 'App',
   message: 'React is running in development mode',

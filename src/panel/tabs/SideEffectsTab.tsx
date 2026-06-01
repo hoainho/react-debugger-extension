@@ -5,14 +5,14 @@ interface SideEffectsTabProps {
   issues: Issue[];
 }
 
-const EFFECT_ISSUE_TYPES = ['MISSING_CLEANUP', 'MISSING_DEP', 'EXTRA_DEP', 'INFINITE_LOOP_RISK', 'STALE_CLOSURE', 'STALE_CLOSURE_RISK'];
+const EFFECT_ISSUE_TYPES = ['MISSING_CLEANUP', 'MISSING_DEP', 'INFINITE_LOOP_RISK', 'STALE_CLOSURE', 'STALE_CLOSURE_RISK'];
 
 export function SideEffectsTab({ issues }: SideEffectsTabProps) {
   const filteredIssues = issues.filter(i => EFFECT_ISSUE_TYPES.includes(i.type));
 
   const cleanupIssues = filteredIssues.filter(i => i.type === 'MISSING_CLEANUP');
   const depIssues = filteredIssues.filter(i => 
-    i.type === 'MISSING_DEP' || i.type === 'EXTRA_DEP'
+    i.type === 'MISSING_DEP'
   );
   const loopIssues = filteredIssues.filter(i => i.type === 'INFINITE_LOOP_RISK');
   const staleClosureIssues = filteredIssues.filter(i => 

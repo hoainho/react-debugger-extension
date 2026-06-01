@@ -338,10 +338,10 @@ const OptimizedChild = React.memo(function OptimizedChild({
  * Scenario 2: INDEX_AS_KEY warning in UI & State tab
  * Scenario 3: STALE_CLOSURE warning in Side Effects tab
  * Scenario 4: MISSING_CLEANUP warning in Side Effects tab
- * Scenario 5: UNNECESSARY_RERENDER in Performance tab
+ * Scenario 5: (removed ghost type) in Performance tab
  * Scenario 6: SLOW_RENDER (>16ms) in Performance tab
  * Scenario 7: Memory growth in Memory tab
- * Scenario 8: DIRECT_STATE_MUTATION in UI & State tab
+ * Scenario 8: (removed ghost type) in UI & State tab
  * Scenario 9: INFINITE_LOOP_RISK in Side Effects tab
  * Scenario 10: Clean - no warnings (reference for good code)
  */

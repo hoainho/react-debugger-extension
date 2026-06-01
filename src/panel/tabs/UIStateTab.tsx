@@ -7,10 +7,8 @@ interface UIStateTabProps {
 }
 
 const UI_STATE_ISSUE_TYPES = [
-  'DIRECT_STATE_MUTATION',
   'MISSING_KEY',
   'INDEX_AS_KEY',
-  'DUPLICATE_KEY',
 ];
 
 export function UIStateTab({ issues, onClear }: UIStateTabProps) {
