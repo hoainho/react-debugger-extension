@@ -160,7 +160,7 @@ export const IssueCard = React.memo(function IssueCard({ issue }: IssueCardProps
 
           {location?.closureInfo && (
             <div className="closure-info">
-              <strong>🔍 Closure Timeline:</strong>
+              <strong><span className="action-badge action-badge--search" /> Closure Timeline:</strong>
               <div className="closure-timeline">
                 <div className="timeline-item created">
                   <span className="timeline-badge">Created</span>
@@ -219,7 +219,7 @@ export const IssueCard = React.memo(function IssueCard({ issue }: IssueCardProps
           )}
 
           <div className="issue-suggestion">
-            <strong>💡 Suggestion:</strong>
+            <strong><span className="action-badge action-badge--suggestion" /> Suggestion:</strong>
             <p>{issue.suggestion}</p>
           </div>
 
@@ -232,16 +232,18 @@ export const IssueCard = React.memo(function IssueCard({ issue }: IssueCardProps
             </div>
           )}
 
-          {info.learnUrl && (
-            <a
-            href={info.learnUrl}
-            target="_blank"
-             rel="noopener noreferrer"
-             className="learn-more-link"
-            >
-         📚 Learn more
-        </a>
-        )}
+         <div className="issue-actions">
+            {info.learnUrl && (
+              <a
+                href={info.learnUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="learn-link"
+              >
+                <span className="action-badge action-badge--learn" /> Learn more
+              </a>
+            )}
+          </div>
         </div>
       )}
     </div>
