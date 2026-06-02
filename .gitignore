@@ -4,3 +4,7 @@ dist
 .agent
 worker
 node_modules
+*.tsbuildinfo
+
+# macOS noise
+.DS_Store

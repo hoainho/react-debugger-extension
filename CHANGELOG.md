@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`Star Check` CI workflow** (`.github/workflows/star-check.yml`) — runs on every PR and blocks merge if the author hasn't starred the repository. Auto-exempts maintainer (`@hoainho`), bots (Dependabot, gemini-code-assist, google-cla, github-actions, renovate), `tracked-plan`-labeled PRs (maintainer-driven milestone work), and `pre-star-rule`-labeled PRs (grandfathered pre-policy). Uses the public `GET /users/{login}/starred/{owner}/{repo}` API — no extra auth scope.
+- **Detector registry foundation (M-B)** — pluggable `Detector<TIssue>` lifecycle interface (`id`, `category`, `budgetMs`, `confidence`, `prodCapable`, `init`, `onCommit`, `onIdle`, `drain`, `teardown`, `recover`). Per-detector try/catch isolation + staged-write transactionality + bounded LRU dedupe.
+- **React version adapter** scaffolding for r17/r18/r19/r19.2 with version-aware fiber tag enums + `getDisplayName`. Handles `OffscreenComponent` / `LegacyHiddenComponent` / `IndeterminateComponent` landmines across React versions.
+- **Settings storage** with zod schema validation, v0→v1 migration (from legacy `react_debugger_disabled_sites` array), and `chrome.storage.local` persistence under `react_debugger_settings_v1`.
+- **Settings UI** — new panel tab with per-detector toggles + confidence badges + per-site override list.
+- **Hero detector #1 — reconciler-keys**: detects `Math.random()` / `Date.now()` keys (emit on first commit) AND numeric-index keys with verified cross-commit reorder. Emits new `UNSTABLE_LIST_KEY` issue type. Confidence: high (defaults ON). Production-capable.
+- **Registry `onIdle` driver** (`Registry.dispatchIdle`) — scheduled via `requestIdleCallback` after every commit, enables detectors to do deferred work off the hot path.
+
+### Changed
+
+- **Contributor claim policy hardened** — starring the repo is now a **hard precondition for merge**, enforced by CI. See [CONTRIBUTING.md → How to claim](.github/CONTRIBUTING.md#-how-to-claim-an-issue-required-before-opening-a-pr). The previous "comment `I'll take this`" rule stays honor-system + reviewer-checked.
+- PR template adds a "Claim confirmation" section with checkboxes for the two required steps. Maintainer / tracked-plan PRs can delete this section.
+- **closure-leak detector** migrated to registry pattern via Strategy A (thin adapter through `window.__REACT_DEBUGGER_CLOSURE_BRIDGE__`). Legacy `_installClosureTracking` body unchanged; existing behavior preserved end-to-end. Confidence: medium (defaults OFF).
+- **scan-overlay detector** migrated to registry pattern. **`getBoundingClientRect()` moved from synchronous `onCommit` to deferred `onIdle`** — the biggest live perf-budget violation flagged by the M-A audit is now closed. Confidence: high (defaults ON). Behavior preserved with a one-idle-callback-tick delay.
+
+### Fixed
+
+- Periodic cleanup now drains the detector registry's per-detector buffers every 60s, preventing unbounded buffer growth if users opt in to medium/low-confidence detectors.
+
+### Migration
+
+- First run after upgrade: existing per-site disabled list (`react_debugger_disabled_sites`) is migrated to the new `Settings.perSite` shape. Migration is idempotent; legacy key is removed after successful migration.
+- Default-policy applied on first install: high-confidence detectors (reconciler-keys, scan-overlay) default ON; medium/low (closure-leak) default OFF.
+- 4 PRs that were already open when the Star Check policy landed (#17, #36, #37, #38) labeled `pre-star-rule` and grandfathered through the check.
+
 ## [2.0.3] - 2026-02-28
 
 ### Improved

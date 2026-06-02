@@ -1,17 +1,27 @@
 # React Debugger — Chrome DevTools Extension
 
+[![GitHub stars](https://img.shields.io/github/stars/hoainho/react-debugger-extension?style=social)](https://github.com/hoainho/react-debugger-extension/stargazers)
 [![npm version](https://img.shields.io/npm/v/%40nhonh%2Freact-debugger.svg)](https://www.npmjs.com/package/@nhonh/react-debugger)
+[![npm downloads](https://img.shields.io/npm/dw/%40nhonh%2Freact-debugger.svg)](https://www.npmjs.com/package/@nhonh/react-debugger)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![CI](https://github.com/hoainho/react-debugger-extension/actions/workflows/ci.yml/badge.svg)](https://github.com/hoainho/react-debugger-extension/actions/workflows/ci.yml)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/hoainho/react-debugger-extension)
 
-> **Chrome DevTools panel for React debugging:** Timeline, Performance, Memory, Side Effects, Redux, CLS, and AI-powered analysis — all in one tab.
+> **The only Chrome extension that unifies React Timeline + Performance + Memory + Side Effects + Redux + CLS + AI analysis into a single DevTools tab — zero install in your app.**
 
 **Extension version:** 2.0.3 · **CLI version:** 2.1.2 · **Author:** [NhoNH](https://github.com/hoainho) · **License:** MIT
 
+## ⚡ Try it in 30 seconds
+
+```bash
+npx @nhonh/react-debugger@latest
+```
+
+Then load the built extension as unpacked in `chrome://extensions`. _Chrome Web Store listing coming soon — `npx` is the fastest path today._
+
 ## Demo
 
-[![React Debugger Demo](https://raw.githubusercontent.com/hoainho/react-debugger-extension/main/docs/video/react-ext-demo.gif)](https://raw.githubusercontent.com/hoainho/react-debugger-extension/main/docs/video/react-ext-demo-3x.mp4)
+![React Debugger Demo](https://raw.githubusercontent.com/hoainho/react-debugger-extension/main/docs/video/react-ext-demo.gif)
 
 ---
 
@@ -19,12 +29,15 @@
 
 If you debug React apps in production today, you're probably switching between four tools to chase one bug:
 
-- **React DevTools** — component tree, but no timeline
+- **[React DevTools](https://github.com/facebook/react)** — component tree, but no timeline, no CLS, no memory leak detection
 - **Chrome Performance tab** — renders, but no React context
-- **Redux DevTools** — state, but isolated from render cycle
-- **Console + Memory tab** — leaks, but manual hunting
+- **[Redux DevTools](https://github.com/reduxjs/redux-devtools)** — state, but isolated from render cycle
+- **[react-scan](https://github.com/aidenybai/react-scan)** — great render overlay, but requires app-code changes; no Redux, no CLS, no memory
+- **[why-did-you-render](https://github.com/welldone-software/why-did-you-render)** — precise render logs, but console-only and needs Babel config
 
-**React Debugger unifies all of this into a single DevTools tab** with seven analyzers and an optional AI layer for security/perf/crash insight.
+**React Debugger unifies all of this into a single DevTools tab** — zero code changes in your app, with seven analyzers and an optional AI layer for security/perf/crash insight.
+
+The **defensible triple-lock** no competitor combines: **CLS overlay + `useEffect` audit + AI analysis**, all in one zero-install browser panel.
 
 ## Features
 
@@ -38,6 +51,35 @@ If you debug React apps in production today, you're probably switching between f
 | **CLS** | Real-time Cumulative Layout Shift score + per-element attribution |
 | **Redux** | State tree, action history, manual action dispatch (no separate Redux DevTools needed) |
 | **AI Analysis** | LLM-powered security, performance, and crash-risk scan. 3 free analyses per session; unlimited with a subscription key. Requires no API key from you. |
+
+## Screenshots
+
+| Timeline | Performance |
+|---|---|
+| ![Timeline tab](./docs/images/timeline-tab.png) | ![Performance tab](./docs/images/performance-tab.png) |
+
+| Memory | Side Effects |
+|---|---|
+| ![Memory tab](./docs/images/memory-tab.png) | ![Side Effects tab](./docs/images/side-effects-tab.png) |
+
+| CLS | Redux |
+|---|---|
+| ![CLS tab](./docs/images/cls-tab.png) | ![Redux tab](./docs/images/redux-tab.png) |
+
+## How it compares
+
+| Feature | **React Debugger** | react-devtools | react-scan | why-did-you-render | redux-devtools |
+|---|:---:|:---:|:---:|:---:|:---:|
+| Render timeline (ambient) | ✅ | ⚠️ (manual record) | ⚠️ overlay only | ❌ | ❌ |
+| Render reasons (prop/state diff) | ✅ | ⚠️ (no values) | ✅ | ✅ console | ❌ |
+| **Memory leak detection** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **`useEffect` audit** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Redux integrated | ✅ | ❌ | ❌ | ⚠️ | ✅ time-travel |
+| **CLS overlay** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **AI analysis** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Install method | Chrome extension (no app changes) | Chrome extension | npm/script tag (app code) | npm + Babel | Chrome extension |
+
+**Bold rows** = features no other tool combines into one panel.
 
 ### Recent release: v2.0.3 — Zero-Lag Performance
 
@@ -210,6 +252,14 @@ Active design work lives in [openspec/changes/](./openspec/changes/):
 - **`growth-and-contributor-attraction/`** — 90-day plan to grow the project and contributor base. Week 1 (license + on-ramp) shipped May 2026.
 
 ---
+
+## ⭐ If this saves you time, please star the repo
+
+Every star helps more React developers discover the project — and it's the single most useful signal you can send the maintainer that the work matters. **One click. Big difference.**
+
+[![Star History Chart](https://api.star-history.com/svg?repos=hoainho/react-debugger-extension&type=Date)](https://star-history.com/#hoainho/react-debugger-extension&Date)
+
+You can also [👀 Watch releases](https://github.com/hoainho/react-debugger-extension/subscription) to get notified when new tabs (or the MCP server) ship.
 
 ## License
 

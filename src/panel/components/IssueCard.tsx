@@ -12,7 +12,7 @@ const SEVERITY_CONFIG = {
 };
 
 const ISSUE_INFO: Record<string, { title: string; why: string; learnUrl?: string }> = {
-  
+
   MISSING_KEY: {
     title: 'Missing Key in List',
     why: 'Keys help React identify which items have changed, are added, or removed.',
@@ -23,7 +23,6 @@ const ISSUE_INFO: Record<string, { title: string; why: string; learnUrl?: string
     why: 'Using index as key can cause issues when list items are reordered or filtered.',
     learnUrl: 'https://react.dev/learn/rendering-lists#why-does-react-need-keys',
   },
-
   MISSING_CLEANUP: {
     title: 'Missing Effect Cleanup',
     why: 'Effects with subscriptions, timers, or event listeners need cleanup to prevent memory leaks.',
@@ -34,7 +33,6 @@ const ISSUE_INFO: Record<string, { title: string; why: string; learnUrl?: string
     why: 'Missing dependencies can cause stale closures and bugs.',
     learnUrl: 'https://react.dev/reference/react/useEffect#specifying-reactive-dependencies',
   },
- 
   INFINITE_LOOP_RISK: {
     title: 'Infinite Loop Risk',
     why: 'This effect may cause infinite re-renders if state is updated without proper guards.',
@@ -45,7 +43,6 @@ const ISSUE_INFO: Record<string, { title: string; why: string; learnUrl?: string
     why: 'Too many re-renders can cause performance issues and poor user experience.',
     learnUrl: 'https://react.dev/reference/react/memo',
   },
-
   STALE_CLOSURE: {
     title: 'Stale Closure Detected',
     why: 'This callback was created in an earlier render and may be using outdated state or props values. This is one of the most common and hard-to-debug React bugs.',

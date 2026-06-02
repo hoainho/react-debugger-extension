@@ -54,10 +54,53 @@ Each issue includes:
 - **Where to look** — exact file paths + relevant spec scenarios
 - **Expected outcome** — measurable deliverables
 - **Estimated effort** — `S (1-2h)`, `M (3-6h)`, or `L (6-12h)`
-- **How to claim** — comment `@hoainho I'll take this` to claim it
 - **Acceptance criteria** — testable assertions for review
 
-If a `good first issue` has been open for 10 days without a claim, it's likely the description has friction we missed — please open a Discussion to ask for clarity instead of staying silent.
+## 🌟 How to claim an issue (required before opening a PR)
+
+Before opening a PR that claims a `good first issue` or `help wanted` issue, please do **both** of the following:
+
+### 1. Star the repository ⭐ (required — hard gate)
+
+Click the **Star** button at the top of the repo. This isn't a vanity gate — it's a low-friction signal that you've actually looked at the project and intend to follow through, not just farm a PR for a profile stat.
+
+**⚠️ This is now enforced by CI.** A workflow ([`.github/workflows/star-check.yml`](../blob/main/.github/workflows/star-check.yml)) runs on every PR. If the author hasn't starred the repo, the **Star Check** status will fail and the PR cannot be merged until you star and re-run the check (or push a new commit, which automatically re-runs).
+
+If you've already starred and the check is failing, click "Re-run failed jobs" in the GitHub Actions tab — the API takes a few seconds to propagate.
+
+### 2. Comment on the issue with **"I'll take this"** (or similar)
+
+A short comment claiming the issue before you start coding. Examples that work:
+
+- `I'll take this`
+- `I'll take this — should be done by Friday`
+- `@hoainho I'm on it`
+- `Claiming this one`
+
+This prevents two contributors from working on the same issue in parallel, and lets the maintainer mentally assign it to you.
+
+This step is honor-system + reviewer-checked, not CI-enforced — but PRs that skip it usually get a request to add the claim comment retroactively before review.
+
+### Why these two conditions
+
+We've been burned by drive-by PRs that didn't read the issue description, didn't read the linked spec, and broke other things in the process. The star + claim combo is a 30-second filter that selects for contributors who'll actually engage with the project.
+
+### Exemptions (auto-detected by the Star Check workflow)
+
+The CI check skips automatically in these cases:
+
+- **Maintainer PRs** (`@hoainho`) — the maintainer doesn't need to star their own repo
+- **Bot PRs** — Dependabot, gemini-code-assist, google-cla, github-actions, renovate
+- **Tracked-plan PRs** — PRs labeled `tracked-plan` (used for maintainer-driven milestone work like M-A / M-B / future Self-Roadmap milestones)
+- **Grandfathered PRs** — PRs labeled `pre-star-rule` (used for PRs that were already open when this policy landed on 2026-06-01)
+
+If your PR fits one of these and is being blocked, ping `@hoainho` and we'll apply the appropriate label.
+
+### What if someone else claimed it but hasn't opened a PR?
+
+If a claim is **older than 7 days with no PR or visible progress comment**, you can claim it yourself with a comment like `Picking this up since the earlier claim has gone quiet`. Be polite. The original claimer can object within 24 hours; otherwise it's yours.
+
+If a `good first issue` has been open for 10 days **with no claim at all**, it's likely the description has friction we missed — please open a Discussion to ask for clarity instead of staying silent.
 
 ## PR conventions
 
