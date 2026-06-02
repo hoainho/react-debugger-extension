@@ -12,11 +12,7 @@ const SEVERITY_CONFIG = {
 };
 
 const ISSUE_INFO: Record<string, { title: string; why: string; learnUrl?: string }> = {
-  DIRECT_STATE_MUTATION: {
-    title: 'Direct State Mutation',
-    why: 'React cannot detect direct state mutations and will not re-render the component.',
-    learnUrl: 'https://react.dev/learn/updating-objects-in-state',
-  },
+  
   MISSING_KEY: {
     title: 'Missing Key in List',
     why: 'Keys help React identify which items have changed, are added, or removed.',
@@ -27,11 +23,7 @@ const ISSUE_INFO: Record<string, { title: string; why: string; learnUrl?: string
     why: 'Using index as key can cause issues when list items are reordered or filtered.',
     learnUrl: 'https://react.dev/learn/rendering-lists#why-does-react-need-keys',
   },
-  DUPLICATE_KEY: {
-    title: 'Duplicate Keys',
-    why: 'Duplicate keys will cause React to incorrectly update and render components.',
-    learnUrl: 'https://react.dev/learn/rendering-lists',
-  },
+
   MISSING_CLEANUP: {
     title: 'Missing Effect Cleanup',
     why: 'Effects with subscriptions, timers, or event listeners need cleanup to prevent memory leaks.',
@@ -42,11 +34,7 @@ const ISSUE_INFO: Record<string, { title: string; why: string; learnUrl?: string
     why: 'Missing dependencies can cause stale closures and bugs.',
     learnUrl: 'https://react.dev/reference/react/useEffect#specifying-reactive-dependencies',
   },
-  EXTRA_DEP: {
-    title: 'Unnecessary Dependencies',
-    why: 'Extra dependencies can cause effects to run more often than needed.',
-    learnUrl: 'https://react.dev/reference/react/useEffect#removing-unnecessary-dependencies',
-  },
+ 
   INFINITE_LOOP_RISK: {
     title: 'Infinite Loop Risk',
     why: 'This effect may cause infinite re-renders if state is updated without proper guards.',
@@ -57,16 +45,7 @@ const ISSUE_INFO: Record<string, { title: string; why: string; learnUrl?: string
     why: 'Too many re-renders can cause performance issues and poor user experience.',
     learnUrl: 'https://react.dev/reference/react/memo',
   },
-  UNNECESSARY_RERENDER: {
-    title: 'Unnecessary Re-render',
-    why: 'Component re-rendered when its props and state did not change.',
-    learnUrl: 'https://react.dev/reference/react/useMemo',
-  },
-  DEV_MODE_IN_PROD: {
-    title: 'Development Mode in Production',
-    why: 'Running React in development mode significantly impacts performance.',
-    learnUrl: 'https://react.dev/learn/react-developer-tools#development-vs-production-builds',
-  },
+
   STALE_CLOSURE: {
     title: 'Stale Closure Detected',
     why: 'This callback was created in an earlier render and may be using outdated state or props values. This is one of the most common and hard-to-debug React bugs.',
