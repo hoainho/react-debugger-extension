@@ -1,9 +1,12 @@
+import { migrate } from '../settings/migrate';
+
 const PAGE_SOURCE = 'REACT_DEBUGGER_PAGE';
 const CONTENT_SOURCE = 'REACT_DEBUGGER_CONTENT';
 const STORAGE_KEY = 'react_debugger_disabled_sites';
 
 let isEnabled = true;
 let isInitialized = false;
+let migrationDone = false;
 let extensionContextValid = true;
 let debuggerEnabled = false;
 let clsObserver: PerformanceObserver | null = null;
@@ -64,8 +67,20 @@ function injectPageScript(): Promise<void> {
 async function checkIfSiteEnabled(): Promise<boolean> {
   try {
     const hostname = window.location.hostname;
-    const result = await chrome.storage.local.get(STORAGE_KEY);
-    const disabledSites: string[] = result[STORAGE_KEY] || [];
+    if (!migrationDone) {
+      const result = await migrate();
+      migrationDone = true;
+      const siteOverride = result.settings.perSite[hostname];
+      if (siteOverride?.detectors) {
+        const allDisabled = Object.values(siteOverride.detectors).every(
+          (d) => !d.enabled
+        );
+        if (allDisabled) return false;
+      }
+      return true;
+    }
+    const legacyResult = await chrome.storage.local.get(STORAGE_KEY);
+    const disabledSites: string[] = legacyResult[STORAGE_KEY] || [];
     return !disabledSites.includes(hostname);
   } catch {
     return true;

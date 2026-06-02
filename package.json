@@ -30,19 +30,19 @@
     "url": "https://github.com/sponsors/hoainho"
   },
   "scripts": {
-  "dev": "vite build --watch --mode development",
-  "build": "vite build --mode production",
-  "build:dev": "vite build --mode development",
-  "clean": "rm -rf dist",
-  "package": "npm run build && cd dist && zip -r ../react-debugger.zip .",
-  "test": "vitest",
-  "test:run": "vitest run",
-  "test:coverage": "vitest run --coverage",
-  "fixture:basic:dev": "npm --prefix test/fixtures/basic run dev",
-  "typecheck": "tsc --noEmit",
-  "typecheck:node": "tsc -p tsconfig.node.json --noEmit",
-  "bench": "vitest bench --run"
-},
+    "dev": "vite build --watch --mode development",
+    "build": "vite build --mode production",
+    "build:dev": "vite build --mode development",
+    "clean": "rm -rf dist",
+    "package": "npm run build && cd dist && zip -r ../react-debugger.zip .",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "fixture:basic:dev": "npm --prefix test/fixtures/basic run dev",
+    "typecheck": "tsc --noEmit",
+    "typecheck:node": "tsc -p tsconfig.node.json --noEmit",
+    "bench": "vitest bench --run"
+  },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",
     "@testing-library/jest-dom": "^6.9.1",
@@ -62,6 +62,7 @@
   "dependencies": {
     "opencode-antigravity-auth": "^1.4.3",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "zod": "^4.4.3"
   }
 }

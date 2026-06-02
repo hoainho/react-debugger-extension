@@ -11,7 +11,8 @@ export type IssueType =
   | 'STALE_CLOSURE_RISK'
   | 'SLOW_RENDER'
   | 'MEMORY_GROWTH'
-  | 'POTENTIAL_MEMORY_LEAK';
+  | 'POTENTIAL_MEMORY_LEAK'
+  | 'UNSTABLE_LIST_KEY';
 
 export interface IssueLocation {
   componentName: string;
