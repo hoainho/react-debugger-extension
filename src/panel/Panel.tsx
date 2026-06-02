@@ -8,8 +8,9 @@ import { ReduxTab } from './tabs/ReduxTab';
 import { MemoryTab } from './tabs/MemoryTab';
 import { TimelineTab } from './tabs/TimelineTab';
 import { AIAnalysisTab } from './tabs/AIAnalysisTab';
+import { SettingsTab } from './tabs/SettingsTab';
 
-type TabId = 'timeline' | 'ui-state' | 'performance' | 'side-effects' | 'cls' | 'redux' | 'memory' | 'ai-analysis';
+type TabId = 'timeline' | 'ui-state' | 'performance' | 'side-effects' | 'cls' | 'redux' | 'memory' | 'ai-analysis' | 'settings';
 
 function isExtensionContextValid(): boolean {
   try {
@@ -47,6 +48,7 @@ const TABS: TabConfig[] = [
   { id: 'cls', label: 'CLS' },
   { id: 'redux', label: 'Redux' },
   { id: 'ai-analysis', label: 'AI Analysis' },
+  { id: 'settings', label: 'Settings' },
 ];
 
 const createInitialState = (): TabState => ({
@@ -400,6 +402,8 @@ export function Panel() {
         );
       case 'ai-analysis':
         return <AIAnalysisTab state={state} />;
+      case 'settings':
+        return <SettingsTab />;
       default:
         return null;
     }

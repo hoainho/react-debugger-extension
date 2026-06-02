@@ -2,6 +2,9 @@
 declare class WeakRef<T extends object> { constructor(target: T); deref(): T | undefined; }
 
 import { installCleanupInterval, uninstallCleanupInterval } from './lifecycle';
+import { createRegistry } from './registry';
+import { registerAllDetectors } from './detectors';
+import { sanitizeValue as sanitizeForRegistry } from '../utils/sanitize';
 
 (function() {
   'use strict';
@@ -116,6 +119,20 @@ import { installCleanupInterval, uninstallCleanupInterval } from './lifecycle';
       log('Sent message:', type, payload);
     }
   }
+
+  // M-B T2: detector registry singleton. T7+ register detectors via `registerAllDetectors`.
+  // Registration is deferred to the end of the IIFE so that host-page bridges
+  // (__REACT_DEBUGGER_CLOSURE_BRIDGE__, __REACT_DEBUGGER_SCAN_BRIDGE__) are
+  // wired BEFORE any detector init() runs — detectors look those up at init.
+  const registry = createRegistry({
+    emit: (payload) => {
+      const type = (payload as { type?: string })?.type ?? 'DETECTOR_EVENT';
+      sendFromPage(type, payload);
+    },
+    log: log,
+    sanitize: sanitizeForRegistry,
+    performance: window.performance,
+  });
 
   function listenFromContent(callback: (message: { type: string; payload?: unknown }) => void): void {
     window.addEventListener('message', (event) => {
@@ -359,6 +376,9 @@ import { installCleanupInterval, uninstallCleanupInterval } from './lifecycle';
   const originalSetTimeout = window.setTimeout;
   const originalSetInterval = window.setInterval;
   const originalAddEventListener = EventTarget.prototype.addEventListener;
+
+  let closureTrackingInstalled = false;
+  let closureLeakSink: ((issue: any) => void) | null = null;
   
   function getCurrentComponentContext(): { name: string; path: string[]; renderId: number } | null {
     const hook = (window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__;
@@ -464,6 +484,13 @@ import { installCleanupInterval, uninstallCleanupInterval } from './lifecycle';
         
         staleClosureIssues.set(issueKey, issue);
         sendFromPage('STALE_CLOSURE_DETECTED', issue);
+        if (closureLeakSink) {
+          try {
+            closureLeakSink(issue);
+          } catch {
+            // Sink failures must not break legacy emission path.
+          }
+        }
       }
     }
     
@@ -473,6 +500,8 @@ import { installCleanupInterval, uninstallCleanupInterval } from './lifecycle';
   }
   
   function _installClosureTracking(): void {
+    if (closureTrackingInstalled) return;
+    closureTrackingInstalled = true;
     (window as any).setTimeout = function(callback: Function, delay?: number, ...args: any[]) {
       if (typeof callback !== 'function') {
         return originalSetTimeout.call(window, callback, delay, ...args);
@@ -1634,8 +1663,27 @@ import { installCleanupInterval, uninstallCleanupInterval } from './lifecycle';
   }
 
   function detectReactVersion(): string {
-    return (window as any).React?.version || 'unknown';
-  }
+      const hook = (window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__;
+      // Priority 1: renderer.version — works for ESM, Next.js App Router, bundled React
+      // Source: https://github.com/facebook/react/blob/05ca66ad9c/packages/react-devtools-shared/src/backend/types.js#L131
+      if (hook?.renderers instanceof Map && hook.renderers.size > 0) {
+        const renderer = hook.renderers.values().next().value;
+        if (typeof renderer?.version === 'string' && renderer.version) {
+          return renderer.version;
+        }
+      }
+      // Priority 2: window.React.version (fails for ESM-only bundles)
+      const reactVersion = (window as any).React?.version;
+      if (typeof reactVersion === 'string' && reactVersion) return reactVersion;
+      // Priority 3: reconcilerVersion
+      if (hook?.renderers instanceof Map && hook.renderers.size > 0) {
+        const renderer = hook.renderers.values().next().value;
+        if (typeof renderer?.reconcilerVersion === 'string' && renderer.reconcilerVersion) {
+          return renderer.reconcilerVersion;
+        }
+      }
+      return 'unknown';
+    }
 
   function detectReactMode(): 'development' | 'production' {
     const React = (window as any).React;
@@ -1753,22 +1801,54 @@ import { installCleanupInterval, uninstallCleanupInterval } from './lifecycle';
         pendingRenderSnapshots.push(snapshot);
       }
 
-      // Scan overlay: traverse fiber tree directly at commit time (like v2.0.0).
-      // NOT tied to snapshot's 2ms budget — scan gets its own traversal with higher limits.
-      // Only runs when scan is enabled (no perf impact otherwise).
-      if (scanEnabled) {
+      // Scan overlay: traverse fiber tree at commit time, BUFFER fibers via
+      // the scan-overlay detector's recorder. NO DOM access here (T9 fix) —
+      // getBoundingClientRect is deferred to onIdle via bridge.paint().
+      if (scanEnabled && scanRecorder !== null) {
         try {
           traverseFiber(root.current, (node, path) => {
             if (isUserComponent(node) && didFiberRender(node)) {
               const componentName = getComponentName(node);
               const fiberId = `${componentName}_${path}`;
               const count = renderCounts.get(fiberId) || 1;
-              flashRenderOverlay(node, componentName, count);
+              scanRecorder!(node, componentName, count);
             }
           }, '', 200);
         } catch (e) {
           if (DEBUG) console.error('[React Debugger] Scan error:', e);
         }
+      }
+
+      // M-B T2: registry dispatch runs after snapshot capture + scan buffer.
+      // Each registered detector gets its own deadline budget from registry.
+      try {
+        registry.dispatch({ fiberRoot: root });
+      } catch (err) {
+        log('[registry] dispatch top-level error:', err);
+      }
+
+      // M-B T9: schedule onIdle for detectors that defer work (scan-overlay
+      // uses this to run getBoundingClientRect + overlay paint off the
+      // commit path).
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback((deadline: IdleDeadline) => {
+          try {
+            registry.dispatchIdle(deadline);
+          } catch (err) {
+            log('[registry] dispatchIdle top-level error:', err);
+          }
+        }, { timeout: 500 });
+      } else {
+        setTimeout(() => {
+          try {
+            registry.dispatchIdle({
+              didTimeout: true,
+              timeRemaining: () => 50,
+            } as IdleDeadline);
+          } catch (err) {
+            log('[registry] dispatchIdle top-level error:', err);
+          }
+        }, 16);
       }
     };
     
@@ -2641,6 +2721,7 @@ import { installCleanupInterval, uninstallCleanupInterval } from './lifecycle';
   }
 
   let scanEnabled = false;
+  let scanRecorder: ((fiber: FiberNode, name: string, count: number) => void) | null = null;
   const overlayElements = new Map<string, HTMLElement>();
   const renderFlashTimers = new Map<string, number>();
   const lastOverlayFlashTime = new Map<string, number>();
@@ -2805,6 +2886,29 @@ import { installCleanupInterval, uninstallCleanupInterval } from './lifecycle';
     disable: () => toggleScan(false),
     toggle: () => toggleScan(!scanEnabled),
     isEnabled: () => scanEnabled,
+  };
+
+  // M-B T9: scan-overlay detector bridge. The detector wires `setRecorder`
+  // at registration so that commit-time fiber traversal calls into the
+  // detector's buffer instead of synchronously running flashRenderOverlay.
+  // `paint` is what the detector's onIdle drives — DOM measurement lives here.
+  (window as any).__REACT_DEBUGGER_SCAN_BRIDGE__ = {
+    enable: () => toggleScan(true),
+    disable: () => toggleScan(false),
+    isEnabled: () => scanEnabled,
+    setRecorder: (fn: ((fiber: FiberNode, name: string, count: number) => void) | null) => {
+      scanRecorder = fn;
+    },
+    paint: (items: Array<{ fiber: unknown; componentName: string; renderCount: number }>) => {
+      for (const item of items) {
+        try {
+          flashRenderOverlay(item.fiber as FiberNode, item.componentName, item.renderCount);
+        } catch (e) {
+          if (DEBUG) console.error('[React Debugger] scan paint error:', e);
+        }
+      }
+    },
+    clear: () => clearAllOverlays(),
   };
 
   let memoryMonitoringEnabled = false;
@@ -2977,6 +3081,8 @@ import { installCleanupInterval, uninstallCleanupInterval } from './lifecycle';
         reportedSlowRenders.delete(key);
       }
     }
+
+    try { registry.drainAll(); } catch (err) { log('[registry] drainAll cleanup error:', err); }
   }
 
   (window as any).__REACT_DEBUGGER_MEMORY__ = {
@@ -3274,6 +3380,33 @@ import { installCleanupInterval, uninstallCleanupInterval } from './lifecycle';
   installReactHook();
   
   (window as any).__REACT_DEBUGGER_ENABLE_CLOSURE_TRACKING__ = _installClosureTracking;
+
+  (window as any).__REACT_DEBUGGER_CLOSURE_BRIDGE__ = {
+    install: _installClosureTracking,
+    restoreOriginals: () => {
+      if (!closureTrackingInstalled) return;
+      (window as any).setTimeout = originalSetTimeout;
+      (window as any).setInterval = originalSetInterval;
+      EventTarget.prototype.addEventListener = originalAddEventListener;
+      closureTrackingInstalled = false;
+    },
+    clear: () => {
+      trackedClosures.clear();
+      staleClosureIssues.clear();
+    },
+    setSink: (fn: ((issue: any) => void) | null) => {
+      closureLeakSink = fn;
+    },
+  };
+
+  // M-B T2/T8/T9: detector registration runs AFTER bridges are wired (see
+  // comment near `createRegistry`). Each detector's init() can now find its
+  // host-page bridge.
+  try {
+    registerAllDetectors(registry);
+  } catch (err) {
+    log('[registry] registerAllDetectors failed:', err);
+  }
 
   // React auto-detection deferred to ENABLE_DEBUGGER handler
 
