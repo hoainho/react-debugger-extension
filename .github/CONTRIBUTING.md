@@ -1,0 +1,168 @@
+# Contributing to react-debugger-extension
+
+Thanks for your interest in improving react-debugger-extension. This guide walks you from a fresh clone to a merged PR.
+
+## Code of Conduct
+
+This project adopts the [Contributor Covenant v2.1](CODE_OF_CONDUCT.md). By participating, you agree to uphold it. Report unacceptable behavior to **hoainho.work@gmail.com**.
+
+## How to set up the project locally
+
+You need **Node 20+** and **Chrome 122+**.
+
+```bash
+git clone https://github.com/hoainho/react-debugger-extension.git
+cd react-debugger-extension
+npm ci
+npm run build
+```
+
+Then load the extension in Chrome:
+
+1. Open `chrome://extensions/`
+2. Enable **Developer mode** (top right)
+3. Click **Load unpacked**
+4. Select the `dist/` folder
+
+The "React Debugger" tab appears in Chrome DevTools (`F12`) on any React 16+ page.
+
+For active development, use the watch script — it rebuilds on every change:
+
+```bash
+npm run dev
+```
+
+After each rebuild you must click the refresh icon on the extension card in `chrome://extensions/` and reload the inspected page.
+
+## How to run tests
+
+```bash
+npm run test:run        # one-shot run (CI-style)
+npm test                # watch mode
+npm run test:coverage   # with coverage report
+```
+
+> ⚠️ **Known test debt:** 29 of 170 tests currently fail because they assert against emoji characters (e.g. `'✅'`) that were removed in v2.0.0 when the UI moved to CSS badges (see [CHANGELOG v2.0.0](../CHANGELOG.md)). This is tracked as a follow-up cleanup task and **does not block your PR** — CI flags these as a separate "test debt" warning rather than gating merge. If you want a great first contribution, fix one of these test files (they're in `src/__tests__/*.test.tsx`).
+
+## How to find a good first issue
+
+We label scoped, well-described issues with [`good first issue`](https://github.com/hoainho/react-debugger-extension/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) and [`help wanted`](https://github.com/hoainho/react-debugger-extension/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
+
+Each issue includes:
+
+- **Context** — what the issue is and why it matters
+- **Where to look** — exact file paths + relevant spec scenarios
+- **Expected outcome** — measurable deliverables
+- **Estimated effort** — `S (1-2h)`, `M (3-6h)`, or `L (6-12h)`
+- **Acceptance criteria** — testable assertions for review
+
+## 🌟 How to claim an issue (required before opening a PR)
+
+Before opening a PR that claims a `good first issue` or `help wanted` issue, please do **both** of the following:
+
+### 1. Star the repository ⭐ (required — hard gate)
+
+Click the **Star** button at the top of the repo. This isn't a vanity gate — it's a low-friction signal that you've actually looked at the project and intend to follow through, not just farm a PR for a profile stat.
+
+**⚠️ This is now enforced by CI.** A workflow ([`.github/workflows/star-check.yml`](../blob/main/.github/workflows/star-check.yml)) runs on every PR. If the author hasn't starred the repo, the **Star Check** status will fail and the PR cannot be merged until you star and re-run the check (or push a new commit, which automatically re-runs).
+
+If you've already starred and the check is failing, click "Re-run failed jobs" in the GitHub Actions tab — the API takes a few seconds to propagate.
+
+### 2. Comment on the issue with **"I'll take this"** (or similar)
+
+A short comment claiming the issue before you start coding. Examples that work:
+
+- `I'll take this`
+- `I'll take this — should be done by Friday`
+- `@hoainho I'm on it`
+- `Claiming this one`
+
+This prevents two contributors from working on the same issue in parallel, and lets the maintainer mentally assign it to you.
+
+This step is honor-system + reviewer-checked, not CI-enforced — but PRs that skip it usually get a request to add the claim comment retroactively before review.
+
+### Why these two conditions
+
+We've been burned by drive-by PRs that didn't read the issue description, didn't read the linked spec, and broke other things in the process. The star + claim combo is a 30-second filter that selects for contributors who'll actually engage with the project.
+
+### Exemptions (auto-detected by the Star Check workflow)
+
+The CI check skips automatically in these cases:
+
+- **Maintainer PRs** (`@hoainho`) — the maintainer doesn't need to star their own repo
+- **Bot PRs** — Dependabot, gemini-code-assist, google-cla, github-actions, renovate
+- **Tracked-plan PRs** — PRs labeled `tracked-plan` (used for maintainer-driven milestone work like M-A / M-B / future Self-Roadmap milestones)
+- **Grandfathered PRs** — PRs labeled `pre-star-rule` (used for PRs that were already open when this policy landed on 2026-06-01)
+
+If your PR fits one of these and is being blocked, ping `@hoainho` and we'll apply the appropriate label.
+
+### What if someone else claimed it but hasn't opened a PR?
+
+If a claim is **older than 7 days with no PR or visible progress comment**, you can claim it yourself with a comment like `Picking this up since the earlier claim has gone quiet`. Be polite. The original claimer can object within 24 hours; otherwise it's yours.
+
+If a `good first issue` has been open for 10 days **with no claim at all**, it's likely the description has friction we missed — please open a Discussion to ask for clarity instead of staying silent.
+
+## PR conventions
+
+### Commit messages
+
+We follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+- `feat(scope): add new feature`
+- `fix(scope): fix a user-visible bug`
+- `perf(scope): performance improvement`
+- `docs: documentation only`
+- `refactor: code change with no behavior change`
+- `test: add or fix tests`
+- `chore: tooling, deps, build config`
+
+The `scope` should match a top-level directory (`panel`, `inject`, `content`, `background`, `services`, `worker`, `cli`).
+
+### Branch naming
+
+- `feat/<short-description>` for features
+- `fix/<short-description>` for bugfixes
+- `docs/<short-description>` for docs
+- `chore/<short-description>` for everything else
+
+### PR description
+
+Use the [PR template](PULL_REQUEST_TEMPLATE.md) — it auto-loads when you open a PR. Required fields:
+
+- Linked issue (`Closes #N`)
+- Type of change (bug / feature / perf / docs / refactor)
+- Testing notes (commands run + results)
+- CHANGELOG entry under `## [Unreleased]` (for user-visible changes)
+
+### What we expect
+
+- **CI passes** — the [PR validation workflow](workflows/ci.yml) runs `npm ci` + `npm run build` + `npm run test:run` on every PR. The build must be green. Test failures are evaluated case-by-case (see "Known test debt" above).
+- **Small, focused changes** — one logical change per PR. Split larger work into stacked PRs.
+- **Update CHANGELOG** — user-visible changes go under `## [Unreleased]` in `CHANGELOG.md`.
+- **No new dependencies without discussion** — open a Discussion first if you want to add a runtime dependency.
+
+## Maintainer SLA
+
+I aim to review PRs **within 7 days** of opening. If I haven't responded in **14 days**, ping me on the PR (`@hoainho friendly bump`). This isn't a CI/CD shop with multiple maintainers — please be patient, but don't suffer in silence.
+
+For security issues, see [SECURITY.md](../SECURITY.md) — don't open public issues for vulnerabilities.
+
+## Architecture quick tour
+
+The extension has **4 runtime contexts** that communicate via Chrome's message-passing layer:
+
+- **`src/inject/index.ts`** (page world) — hooks React's `__react_devtools_global_hook__`, walks the fiber tree, probes Redux. Runs in the page's JS context.
+- **`src/content/index.ts`** (content script) — bridges page world ↔ extension; runs at `document_start`.
+- **`src/background/index.ts`** (service worker) — message router; dies after 30s idle (Manifest v3).
+- **`src/panel/`** (DevTools panel) — React UI with 8 tabs (Timeline, UI&State, Performance, Memory, Side Effects, CLS, Redux, AI Analysis).
+
+Plus two supporting surfaces:
+
+- **`worker/`** — Cloudflare Worker validating AI Analysis subscription keys.
+- **`cli/`** — the `@nhonh/react-debugger` npm package that downloads + installs the extension.
+
+If your contribution touches multiple contexts, mention which ones in the PR description so reviewers know what to verify.
+
+## Questions?
+
+Open a [Discussion](https://github.com/hoainho/react-debugger-extension/discussions). General usage questions go there; bug reports and feature requests go in [Issues](https://github.com/hoainho/react-debugger-extension/issues/new/choose).

@@ -1,0 +1,161 @@
+name: Star Check
+
+# Enforces the "must star the repo to merge" contributor policy.
+# See .github/CONTRIBUTING.md → "How to claim an issue".
+#
+# Failure modes:
+#   - Author hasn't starred the repo                           → ❌ fail
+#   - Author is the maintainer (hoainho)                       → ⏭ skip
+#   - Author is in the bot allowlist (Dependabot etc.)         → ⏭ skip
+#   - PR has 'tracked-plan' label                              → ⏭ skip (maintainer-driven milestones)
+#   - PR has 'pre-star-rule' label                             → ⏭ skip (grandfathered before policy)
+#
+# Privacy note: this check uses a public GitHub API endpoint
+# (GET /users/{login}/starred/{owner}/{repo}) which returns 204 if starred,
+# 404 if not. It does NOT require any auth scope beyond the default
+# GITHUB_TOKEN provided by Actions.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review, labeled, unlabeled]
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  check-star:
+    name: Verify contributor starred the repo
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect PR metadata
+        id: inspect
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const author = context.payload.pull_request.user.login;
+            const labels = context.payload.pull_request.labels.map(l => l.name);
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            core.info(`PR author: @${author}`);
+            core.info(`Labels: ${labels.join(', ') || '(none)'}`);
+
+            // --- Exemption 1: maintainer ---
+            const MAINTAINERS = ['hoainho'];
+            if (MAINTAINERS.includes(author)) {
+              core.notice(`✅ Skipping — @${author} is the maintainer.`);
+              core.setOutput('result', 'exempt-maintainer');
+              return;
+            }
+
+            // --- Exemption 2: known bots ---
+            const BOTS = [
+              'dependabot[bot]',
+              'dependabot',
+              'gemini-code-assist[bot]',
+              'gemini-code-assist',
+              'google-cla[bot]',
+              'github-actions[bot]',
+              'renovate[bot]',
+            ];
+            if (BOTS.includes(author) || author.endsWith('[bot]')) {
+              core.notice(`✅ Skipping — @${author} is a bot.`);
+              core.setOutput('result', 'exempt-bot');
+              return;
+            }
+
+            // --- Exemption 3: tracked-plan label (maintainer-driven milestones) ---
+            if (labels.includes('tracked-plan')) {
+              core.notice(`✅ Skipping — PR carries 'tracked-plan' label.`);
+              core.setOutput('result', 'exempt-tracked-plan');
+              return;
+            }
+
+            // --- Exemption 4: pre-star-rule label (grandfathered) ---
+            if (labels.includes('pre-star-rule')) {
+              core.notice(`✅ Skipping — PR is grandfathered ('pre-star-rule' label).`);
+              core.setOutput('result', 'exempt-grandfathered');
+              return;
+            }
+
+            // --- Star check ---
+            try {
+              await github.rest.activity.checkRepoIsStarredByAuthenticatedUserAtUsername({
+                username: author,
+                owner,
+                repo,
+              });
+              // No throw → starred.
+              core.notice(`⭐ @${author} has starred ${owner}/${repo}.`);
+              core.setOutput('result', 'starred');
+            } catch (err) {
+              // Fallback: octokit doesn't expose the cross-user endpoint by name, so use raw request.
+              core.info(`Falling back to raw API request.`);
+              try {
+                const resp = await github.request('GET /users/{username}/starred/{owner}/{repo}', {
+                  username: author,
+                  owner,
+                  repo,
+                });
+                if (resp.status === 204) {
+                  core.notice(`⭐ @${author} has starred ${owner}/${repo}.`);
+                  core.setOutput('result', 'starred');
+                  return;
+                }
+                core.setOutput('result', 'unexpected-status');
+                core.setFailed(`Unexpected response status ${resp.status}`);
+              } catch (innerErr) {
+                if (innerErr.status === 404) {
+                  core.setOutput('result', 'not-starred');
+                  const msg = [
+                    '',
+                    '❌ This PR cannot be merged until the author stars the repository.',
+                    '',
+                    `@${author}, please:`,
+                    '',
+                    `1. ⭐ Star this repository (https://github.com/${owner}/${repo}) — single click at top of repo`,
+                    `2. Re-run this workflow (no need to re-push) — GitHub will detect the star and pass this check`,
+                    '',
+                    'Full policy: .github/CONTRIBUTING.md → "How to claim an issue"',
+                    '',
+                    'If you believe this is an exemption case (maintainer / bot / tracked-plan / grandfathered),',
+                    'ping @hoainho and we will apply the appropriate label.',
+                    '',
+                  ].join('\n');
+                  core.error(msg);
+                  core.setFailed(`@${author} has not starred ${owner}/${repo}.`);
+                } else {
+                  core.setOutput('result', 'api-error');
+                  core.setFailed(`Star-check API error: ${innerErr.message}`);
+                }
+              }
+            }
+
+      - name: Write check summary
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const result = '${{ steps.inspect.outputs.result }}' || 'unknown';
+            const author = context.payload.pull_request.user.login;
+
+            const friendly = {
+              'starred':                '⭐ Author has starred the repo. Check passes.',
+              'exempt-maintainer':      '⏭ Maintainer PR — check skipped.',
+              'exempt-bot':             '⏭ Bot PR — check skipped.',
+              'exempt-tracked-plan':    '⏭ Tracked-plan PR — check skipped.',
+              'exempt-grandfathered':   '⏭ Grandfathered PR (pre-policy) — check skipped.',
+              'not-starred':            '❌ Author has NOT starred. PR cannot merge until they do.',
+              'api-error':              '⚠️ API error — see logs.',
+              'unexpected-status':      '⚠️ Unexpected API response — see logs.',
+              'unknown':                '⚠️ Step did not produce a result — see logs.',
+            };
+
+            await core.summary
+              .addHeading('Star Check Result')
+              .addRaw(`**Author:** @${author}\n\n`)
+              .addRaw(`**Result:** ${friendly[result] || result}\n\n`)
+              .addRaw('Policy: [.github/CONTRIBUTING.md → How to claim](../blob/main/.github/CONTRIBUTING.md#-how-to-claim-an-issue-required-before-opening-a-pr)\n')
+              .write();

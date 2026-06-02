@@ -1,0 +1,96 @@
+name: Bug report
+description: Report a bug in react-debugger-extension
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill out the form below — the more accurate the information, the faster we can help.
+
+        For security vulnerabilities, do NOT open a public issue. See [SECURITY.md](https://github.com/hoainho/react-debugger-extension/blob/main/SECURITY.md).
+  - type: input
+    id: chrome-version
+    attributes:
+      label: Chrome version
+      description: Find this at `chrome://version`
+      placeholder: "e.g., 138.0.7204.169"
+    validations:
+      required: true
+  - type: input
+    id: extension-version
+    attributes:
+      label: Extension version
+      description: Find this on the extension card at `chrome://extensions/`
+      placeholder: "e.g., 2.0.3"
+    validations:
+      required: true
+  - type: input
+    id: react-version
+    attributes:
+      label: React version
+      description: The version of React the inspected page uses (must be 16+)
+      placeholder: "e.g., 18.3.1 or 19.0.0"
+    validations:
+      required: true
+  - type: input
+    id: page-url
+    attributes:
+      label: Page URL
+      description: The URL where the bug reproduces. If the app is private, describe the app type instead (e.g., "internal Next.js dashboard with Redux Toolkit").
+      placeholder: "https://example.com OR a description"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Numbered list of exact steps to trigger the bug.
+      placeholder: |
+        1. Open https://example.com
+        2. Open DevTools, click "React Debugger" tab
+        3. Click "Performance" tab inside the panel
+        4. Click button X on the page
+        5. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should happen?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happens? Include exact error messages, copied verbatim.
+    validations:
+      required: true
+  - type: textarea
+    id: console
+    attributes:
+      label: Console errors
+      description: Paste any errors from the Chrome DevTools Console (both the inspected page console and the extension's own DevTools).
+      render: text
+    validations:
+      required: false
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot of the extension panel
+      description: Drag and drop a screenshot here. Optional but very helpful.
+    validations:
+      required: false
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Pre-submission checklist
+      options:
+        - label: I searched [existing issues](https://github.com/hoainho/react-debugger-extension/issues?q=is%3Aissue) and did not find a duplicate
+          required: true
+        - label: I am running the latest version of the extension
+          required: true
+        - label: I read [SUPPORT.md](https://github.com/hoainho/react-debugger-extension/blob/main/.github/SUPPORT.md) and this is a bug, not a usage question
+          required: true

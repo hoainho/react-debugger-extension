@@ -1,0 +1,53 @@
+title: "[Announcement] "
+labels: ["announcement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        🛑 **Maintainer-only template.** Community members: please use Ideas, Q&A, or Show & Tell instead.
+
+        Use this for: release announcements, roadmap updates, breaking-change warnings, community calls.
+  - type: dropdown
+    id: type
+    attributes:
+      label: Announcement type
+      options:
+        - Release (new version shipped)
+        - Roadmap update
+        - Breaking change
+        - Community call (meetup, AMA, office hours)
+        - Security advisory
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: tldr
+    attributes:
+      label: TL;DR (2-3 sentences)
+      description: This is what gets indexed by GitHub search and email digests. Make it concrete.
+      placeholder: |
+        React Debugger v2.1.0 ships next week with the Component Tree tab, INP/FID Core Web Vitals, and React Compiler badges. No breaking changes. Upgrade path: `npx @nhonh/react-debugger@latest`.
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Full details
+      description: Markdown, headings welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: action
+    attributes:
+      label: What users should do
+      description: Concrete steps. Even "nothing required" is fine.
+    validations:
+      required: true
+  - type: input
+    id: links
+    attributes:
+      label: Related links
+      description: PR numbers, CHANGELOG section, blog post, etc.
+      placeholder: "PR #42, CHANGELOG.md v2.1.0 section, https://hoainho.github.io/..."
+    validations:
+      required: false

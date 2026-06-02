@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build + Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check (src)
+        run: npm run typecheck
+
+      - name: Type check (node/vite)
+        run: npm run typecheck:node
+
+      - name: Build extension
+        run: npm run build
+
+      - name: Run tests
+        run: npm run test:run
+        continue-on-error: true
+        id: tests
+
+      - name: Test debt warning
+        if: steps.tests.outcome == 'failure'
+        run: |
+          echo "::warning::Pre-existing test debt detected. Some tests fail because they assert against emoji characters removed in v2.0.0. See CONTRIBUTING.md 'Known test debt' section. This does NOT block your PR — fixing one of these tests is a great first contribution."

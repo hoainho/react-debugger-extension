@@ -1,0 +1,56 @@
+name: Feature request
+description: Suggest a new feature or improvement
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement. Please describe the problem first, then the solution. Feature requests grounded in a real workflow are much more likely to be accepted.
+
+        Before submitting, search [existing issues](https://github.com/hoainho/react-debugger-extension/issues?q=is%3Aissue+label%3Aenhancement) and [Discussions](https://github.com/hoainho/react-debugger-extension/discussions) for prior conversation on this idea.
+
+        > 💡 **Want to implement this yourself?** Great! Read [CONTRIBUTING.md → How to claim](https://github.com/hoainho/react-debugger-extension/blob/main/.github/CONTRIBUTING.md#-how-to-claim-an-issue-required-before-opening-a-pr) for the 2-step claim process (star the repo ⭐ + comment "I'll take this") before opening a PR.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What problem are you trying to solve? What does your debugging workflow look like today, and where does it break down?
+      placeholder: |
+        Example: "When I'm debugging Redux state changes on a large app, I need to compare the state before and after an action. Currently I have to take two screenshots and diff them manually."
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: What would you like the extension to do? Be specific about which tab/panel it affects.
+      placeholder: |
+        Example: "Add a 'Diff' button on the Redux tab that shows what changed between consecutive states, highlighting added/removed/changed keys."
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What workarounds have you tried? What other tools handle this well?
+      placeholder: |
+        Example: "Redux DevTools has a Diff tab. I've also tried writing custom middleware to log diffs, but that's per-app and not portable."
+    validations:
+      required: false
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Screenshots, mockups, links to similar features in other tools, etc.
+    validations:
+      required: false
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Pre-submission checklist
+      options:
+        - label: I searched [existing issues and discussions](https://github.com/hoainho/react-debugger-extension/issues?q=is%3Aissue+label%3Aenhancement) and did not find this request
+          required: true
+        - label: This is a feature request, not a bug report
+          required: true

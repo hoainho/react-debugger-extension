@@ -8,8 +8,9 @@ import { ReduxTab } from './tabs/ReduxTab';
 import { MemoryTab } from './tabs/MemoryTab';
 import { TimelineTab } from './tabs/TimelineTab';
 import { AIAnalysisTab } from './tabs/AIAnalysisTab';
+import { SettingsTab } from './tabs/SettingsTab';
 
-type TabId = 'timeline' | 'ui-state' | 'performance' | 'side-effects' | 'cls' | 'redux' | 'memory' | 'ai-analysis';
+type TabId = 'timeline' | 'ui-state' | 'performance' | 'side-effects' | 'cls' | 'redux' | 'memory' | 'ai-analysis' | 'settings';
 
 function isExtensionContextValid(): boolean {
   try {
@@ -47,6 +48,7 @@ const TABS: TabConfig[] = [
   { id: 'cls', label: 'CLS' },
   { id: 'redux', label: 'Redux' },
   { id: 'ai-analysis', label: 'AI Analysis' },
+  { id: 'settings', label: 'Settings' },
 ];
 
 const createInitialState = (): TabState => ({
@@ -331,9 +333,9 @@ export function Panel() {
   const getBadge = (tabId: TabId): number | undefined => {
     switch (tabId) {
       case 'ui-state':
-        return getIssueCount(['DIRECT_STATE_MUTATION', 'MISSING_KEY', 'INDEX_AS_KEY', 'DUPLICATE_KEY']) || undefined;
+        return getIssueCount(['MISSING_KEY', 'INDEX_AS_KEY']) || undefined;
       case 'performance':
-        return getIssueCount(['EXCESSIVE_RERENDERS', 'UNNECESSARY_RERENDER']) || undefined;
+        return getIssueCount(['EXCESSIVE_RERENDERS']) || undefined;
       case 'side-effects':
         return getIssueCount(['MISSING_CLEANUP', 'MISSING_DEP', 'INFINITE_LOOP_RISK']) || undefined;
       case 'cls':
@@ -400,6 +402,8 @@ export function Panel() {
         );
       case 'ai-analysis':
         return <AIAnalysisTab state={state} />;
+      case 'settings':
+        return <SettingsTab />;
       default:
         return null;
     }
