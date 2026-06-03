@@ -3911,6 +3911,23 @@ button:focus:not(:focus-visible) {
   animation: pulse-opacity 1s ease-in-out infinite;
 }
 
+/* MCP Pairing Panel */
+.pairing-panel-container {
+  padding: 16px;
+}
+
+.pairing-panel-error {
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid #f00;
+  border-radius: 6px;
+  background: #fff0f0;
+}
+
+.pairing-panel-error-fix {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #555;
 /* ─── Settings Tab ─────────────────────────────────────────────────────────── */
 
 .settings-tab {
