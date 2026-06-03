@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import type { Issue } from '@/types';
 
 interface IssueCardProps {
@@ -12,6 +12,7 @@ const SEVERITY_CONFIG = {
 };
 
 const ISSUE_INFO: Record<string, { title: string; why: string; learnUrl?: string }> = {
+
   MISSING_KEY: {
     title: 'Missing Key in List',
     why: 'Keys help React identify which items have changed, are added, or removed.',
@@ -54,13 +55,13 @@ const ISSUE_INFO: Record<string, { title: string; why: string; learnUrl?: string
   },
 };
 
-export function IssueCard({ issue }: IssueCardProps) {
-  const [expanded, setExpanded] = useState(false);
+export const IssueCard = React.memo(function IssueCard({ issue }: IssueCardProps) {
 
+  const [expanded, setExpanded] = useState(false);
   const severity = SEVERITY_CONFIG[issue.severity];
   const info = ISSUE_INFO[issue.type] || { title: issue.type, why: '' };
   const location = issue.location;
-  
+
   const renderCountMatch = issue.message.match(/Rendered (\d+) times/);
   const renderCount = renderCountMatch ? parseInt(renderCountMatch[1], 10) : null;
 
@@ -74,12 +75,12 @@ export function IssueCard({ issue }: IssueCardProps) {
         <div className="issue-info">
           <div className="issue-title-row">
             <h4 className="issue-title">{info.title}</h4>
-            <span 
-              className="severity-badge" 
-              style={{ 
-                backgroundColor: severity.bgColor, 
+            <span
+              className="severity-badge"
+              style={{
+                backgroundColor: severity.bgColor,
                 color: severity.color,
-                border: `1px solid ${severity.color}`
+                border: `1px solid ${severity.color}`,
               }}
             >
               {severity.label}
@@ -151,7 +152,7 @@ export function IssueCard({ issue }: IssueCardProps) {
                   </span>
                 </div>
               </div>
-              
+
               <div className="closure-details">
                 <div className="closure-row">
                   <span className="closure-label">Function:</span>
@@ -207,7 +208,7 @@ export function IssueCard({ issue }: IssueCardProps) {
             </div>
           )}
 
-          <div className="issue-actions">
+         <div className="issue-actions">
             {info.learnUrl && (
               <a
                 href={info.learnUrl}
@@ -223,4 +224,4 @@ export function IssueCard({ issue }: IssueCardProps) {
       )}
     </div>
   );
-}
+});
