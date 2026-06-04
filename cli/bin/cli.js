@@ -1,55 +1,60 @@
 #!/usr/bin/env node
 
-import pc from 'picocolors';
-import { downloadAndExtract } from '../src/install.js';
-import path from 'node:path';
-import fs from 'node:fs';
+import pc from "picocolors";
+import { downloadAndExtract } from "../src/install.js";
+import path from "node:path";
+import fs from "node:fs";
 
-const VERSION = '2.1.1';
-const EXTENSION_NAME = 'React Debugger';
-const DEFAULT_DEST = './react-debugger';
+const VERSION = "2.1.1";
+const EXTENSION_NAME = "React Debugger";
+const DEFAULT_DEST = "./react-debugger";
 
 const isInteractive = process.stdin.isTTY && process.stdout.isTTY;
 
 // Lazy-load @clack/prompts only when interactive mode is needed.
 // This avoids ERR_TTY_INIT_FAILED in non-TTY environments (CI, pipes, subprocesses).
 async function loadClack() {
-  return import('@clack/prompts');
+  return import("@clack/prompts");
 }
 
 function printHelp() {
   console.log(`
 ${pc.cyan(EXTENSION_NAME)} - Chrome Extension Installer
 
-${pc.yellow('Usage:')}
+${pc.yellow("Usage:")}
   npx @nhonh/react-debugger [destination]
 
-${pc.yellow('Options:')}
+${pc.yellow("Options:")}
   -v, --version    Show version number
   -h, --help       Show help
   -y, --yes        Skip prompts and use defaults (non-interactive)
 
-${pc.yellow('Examples:')}
+${pc.yellow("Examples:")}
   npx @nhonh/react-debugger                    # Interactive mode
   npx @nhonh/react-debugger ./my-extension     # Direct install to folder
   npx @nhonh/react-debugger -y                  # Non-interactive with defaults
 `);
 }
 
-function printSuccess(fullPath) {
-  console.log();
-  console.log(pc.dim('─'.repeat(50)));
-  console.log();
-  console.log(pc.bold('Next steps to load the extension in Chrome:'));
-  console.log();
-  console.log(`  ${pc.cyan('1.')} Open ${pc.yellow('chrome://extensions/')} in Chrome`);
-  console.log(`  ${pc.cyan('2.')} Enable ${pc.yellow('Developer mode')} (toggle in top right)`);
-  console.log(`  ${pc.cyan('3.')} Click ${pc.yellow('Load unpacked')}`);
-  console.log(`  ${pc.cyan('4.')} Select the folder:`);
-  console.log(`     ${pc.green(fullPath)}`);
-  console.log();
-  console.log(pc.dim('─'.repeat(50)));
-  console.log();
+function printSuccess(fullPath, useStderr = false) {
+  const logger = useStderr ? console.error : console.log;
+  logger();
+  logger(pc.dim("─".repeat(50)));
+  logger();
+  logger(pc.bold("Next steps to load the extension in Chrome:"));
+  logger();
+  logger(
+    `  ${pc.cyan("1.")} Open ${pc.yellow("chrome://extensions/")} in Chrome`,
+  );
+  logger(
+    `  ${pc.cyan("2.")} Enable ${pc.yellow("Developer mode")} (toggle in top right)`,
+  );
+  logger(`  ${pc.cyan("3.")} Click ${pc.yellow("Load unpacked")}`);
+  logger(`  ${pc.cyan("4.")} Select the folder:`);
+  logger(`     ${pc.green(fullPath)}`);
+  logger();
+  logger(pc.dim("─".repeat(50)));
+  logger();
 }
 
 async function runInteractive(args) {
@@ -62,18 +67,18 @@ async function runInteractive(args) {
 
   if (!destination) {
     const destInput = await text({
-      message: 'Where should we install the extension?',
+      message: "Where should we install the extension?",
       placeholder: DEFAULT_DEST,
       initialValue: DEFAULT_DEST,
       validate: (value) => {
-        if (!value || value.trim() === '') {
-          return 'Please enter a destination path';
+        if (!value || value.trim() === "") {
+          return "Please enter a destination path";
         }
       },
     });
 
     if (isCancel(destInput)) {
-      outro(pc.yellow('Installation cancelled.'));
+      outro(pc.yellow("Installation cancelled."));
       process.exit(0);
     }
 
@@ -91,27 +96,29 @@ async function runInteractive(args) {
       });
 
       if (isCancel(shouldOverwrite) || !shouldOverwrite) {
-        outro(pc.yellow('Installation cancelled.'));
+        outro(pc.yellow("Installation cancelled."));
         process.exit(0);
       }
     }
   }
 
   const s = spinner();
-  s.start('Downloading React Debugger extension...');
+  s.start("Downloading React Debugger extension...");
 
   try {
     await downloadAndExtract(fullPath);
-    s.stop(pc.green('Download complete!'));
-    printSuccess(fullPath);
-    outro(pc.green('✓ Installation successful!'));
+    s.stop(pc.green("Download complete!"));
+    printSuccess(fullPath, false);
+    outro(pc.green("✓ Installation successful!"));
   } catch (err) {
-    s.stop(pc.red('Download failed!'));
+    s.stop(pc.red("Download failed!"));
     console.error();
-    console.error(pc.red('Error:'), err.message);
+    console.error(pc.red("Error:"), err.message);
     console.error();
-    console.error(pc.dim('If this persists, please report at:'));
-    console.error(pc.dim('https://github.com/hoainho/react-debugger-extension/issues'));
+    console.error(pc.dim("If this persists, please report at:"));
+    console.error(
+      pc.dim("https://github.com/hoainho/react-debugger-extension/issues"),
+    );
     process.exit(1);
   }
 }
@@ -120,53 +127,57 @@ async function runNonInteractive(args) {
   const destination = args[0] || DEFAULT_DEST;
   const fullPath = path.resolve(destination);
 
-  console.log();
-  console.log(pc.bgCyan(pc.black(` ${EXTENSION_NAME} Extension Installer `)));
-  console.log();
-  console.log(pc.dim('Running in non-interactive mode'));
-  console.log(`Installing to: ${pc.cyan(fullPath)}`);
-  console.log();
+  console.error();
+  console.error(pc.bgCyan(pc.black(` ${EXTENSION_NAME} Extension Installer `)));
+  console.error();
+  console.error(pc.dim("Running in non-interactive mode"));
+  console.error(`Installing to: ${pc.cyan(fullPath)}`);
+  console.error();
 
   if (fs.existsSync(fullPath)) {
     const files = fs.readdirSync(fullPath);
     if (files.length > 0) {
-      console.log(pc.yellow(`Directory ${fullPath} is not empty. Overwriting...`));
+      console.error(
+        pc.yellow(`Directory ${fullPath} is not empty. Overwriting...`),
+      );
     }
   }
 
-  console.log('Downloading React Debugger extension...');
+  console.error("Downloading React Debugger extension...");
 
   try {
     await downloadAndExtract(fullPath);
-    console.log(pc.green('Download complete!'));
-    printSuccess(fullPath);
-    console.log(pc.green('✓ Installation successful!'));
+    console.error(pc.green("Download complete!"));
+    printSuccess(fullPath,true);
+    console.error(pc.green("✓ Installation successful!"));
   } catch (err) {
     console.error();
-    console.error(pc.red('Error:'), err.message);
+    console.error(pc.red("Error:"), err.message);
     console.error();
-    console.error(pc.dim('If this persists, please report at:'));
-    console.error(pc.dim('https://github.com/hoainho/react-debugger-extension/issues'));
+    console.error(pc.dim("If this persists, please report at:"));
+    console.error(
+      pc.dim("https://github.com/hoainho/react-debugger-extension/issues"),
+    );
     process.exit(1);
   }
 }
 
 async function main() {
   const args = process.argv.slice(2);
-  const flags = args.filter(a => a.startsWith('-'));
-  const positional = args.filter(a => !a.startsWith('-'));
+  const flags = args.filter((a) => a.startsWith("-"));
+  const positional = args.filter((a) => !a.startsWith("-"));
 
-  if (flags.includes('--version') || flags.includes('-v')) {
+  if (flags.includes("--version") || flags.includes("-v")) {
     console.log(`${EXTENSION_NAME} v${VERSION}`);
     process.exit(0);
   }
 
-  if (flags.includes('--help') || flags.includes('-h')) {
+  if (flags.includes("--help") || flags.includes("-h")) {
     printHelp();
     process.exit(0);
   }
 
-  const forceNonInteractive = flags.includes('--yes') || flags.includes('-y');
+  const forceNonInteractive = flags.includes("--yes") || flags.includes("-y");
 
   if (forceNonInteractive || !isInteractive) {
     await runNonInteractive(positional);
@@ -176,6 +187,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error(pc.red('Unexpected error:'), err.message || err);
+  console.error(pc.red("Unexpected error:"), err.message || err);
   process.exit(1);
 });
