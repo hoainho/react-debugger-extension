@@ -148,7 +148,7 @@ async function runNonInteractive(args) {
   try {
     await downloadAndExtract(fullPath);
     console.error(pc.green("Download complete!"));
-    printSuccess(fullPath,true);
+    printSuccess(fullPath, true);
     console.error(pc.green("✓ Installation successful!"));
   } catch (err) {
     console.error();
