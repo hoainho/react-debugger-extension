@@ -1,9 +1,0 @@
-# Exclude workspace-only symlinks. They resolve on local dev (point to
-# /Users/nhonh/Documents/personal/docs/) but break the Pages build on
-# the CI runner. See PR #59 for the diagnosis and full context.
-exclude:
-  - HARNESS.md
-  - HARNESS_BACKLOG.md
-  - FEATURE_INTAKE.md
-  - evidence
-  - templates
