@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
 import type { ReduxAction } from '@/types';
+import { useCallback, useState } from 'react';
 
 interface ReduxTabProps {
   detected: boolean;
@@ -28,6 +28,8 @@ export function ReduxTab({ detected, state, actions, tabId, isSearching }: Redux
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDispatching, setIsDispatching] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [dispatchError, setDispatchError] = useState<string | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const refreshState = useCallback(() => {
     setIsRefreshing(true);
@@ -75,7 +77,7 @@ export function ReduxTab({ detected, state, actions, tabId, isSearching }: Redux
               <p className="setup-intro">
                 To enable Redux debugging, expose your store using one of these methods:
               </p>
-              
+
               <div className="setup-method">
                 <h4>Option 1: window.store (Recommended)</h4>
                 <pre className="code-snippet">{`// In your store configuration file
@@ -88,7 +90,7 @@ if (process.env.NODE_ENV === 'development') {
 
 export default store;`}</pre>
               </div>
-              
+
               <div className="setup-method">
                 <h4>Option 2: window.__REDUX_STORE__</h4>
                 <pre className="code-snippet">{`// Alternative naming convention
@@ -96,14 +98,14 @@ if (process.env.NODE_ENV === 'development') {
   window.__REDUX_STORE__ = store;
 }`}</pre>
               </div>
-              
+
               <div className="setup-method">
                 <h4>Option 3: Redux DevTools Extension</h4>
                 <p className="method-desc">
                   If you have the Redux DevTools browser extension installed, this debugger will automatically detect it.
                 </p>
               </div>
-              
+
               <div className="detection-status">
                 <h4>Detection Methods Checked:</h4>
                 <ul className="detection-checklist">
@@ -122,7 +124,7 @@ if (process.env.NODE_ENV === 'development') {
 
   const dispatchAction = () => {
     if (!actionType.trim()) return;
-    
+
     setIsDispatching(true);
     try {
       const payload = JSON.parse(actionPayload);
@@ -133,8 +135,9 @@ if (process.env.NODE_ENV === 'development') {
       });
       setActionType('');
       setActionPayload('{}');
+      setDispatchError(null);
     } catch {
-      alert('Invalid JSON payload');
+      setDispatchError('Invalid JSON payload');
     }
     setTimeout(() => setIsDispatching(false), 800);
   };
@@ -176,7 +179,7 @@ if (process.env.NODE_ENV === 'development') {
   const startEditing = (path: string[], value: unknown) => {
     let type: EditingStateData['type'] = 'json';
     let strValue = '';
-    
+
     if (value === null) {
       type = 'null';
       strValue = 'null';
@@ -193,15 +196,16 @@ if (process.env.NODE_ENV === 'development') {
       type = 'json';
       strValue = JSON.stringify(value, null, 2);
     }
-    
+
     setEditingState({ path, value: strValue, type });
+    setEditError(null);
   };
 
   const saveEdit = () => {
     if (!editingState || isSaving) return;
-    
+
     let parsedValue: unknown;
-    
+
     switch (editingState.type) {
       case 'null':
         parsedValue = null;
@@ -210,12 +214,14 @@ if (process.env.NODE_ENV === 'development') {
         parsedValue = editingState.value;
         break;
       case 'number': {
-        const num = Number(editingState.value);
-        if (isNaN(num)) {
-          alert('Invalid number: ' + editingState.value);
+        const trimmed = editingState.value.trim();
+        if (trimmed === '' || isNaN(Number(trimmed))) {
+          setEditError(
+            trimmed === '' ? 'Number cannot be empty' : 'Invalid number: ' + editingState.value
+          );
           return;
         }
-        parsedValue = num;
+        parsedValue = Number(trimmed);
         break;
       }
       case 'boolean':
@@ -225,26 +231,27 @@ if (process.env.NODE_ENV === 'development') {
         try {
           parsedValue = JSON.parse(editingState.value);
         } catch (e) {
-          alert('Invalid JSON: ' + (e as Error).message);
+          setEditError('Invalid JSON: ' + (e as Error).message);
           return;
         }
         break;
       default:
         parsedValue = editingState.value;
     }
-    
+
     setIsSaving(true);
-    
+
     chrome.runtime.sendMessage({
       type: 'SET_REDUX_STATE',
       tabId,
-      payload: { 
-        path: editingState.path, 
-        value: parsedValue 
+      payload: {
+        path: editingState.path,
+        value: parsedValue
       },
     });
-    
+
     setEditingState(null);
+    setEditError(null);
     setTimeout(() => {
       refreshState();
       setIsSaving(false);
@@ -294,7 +301,7 @@ if (process.env.NODE_ENV === 'development') {
 
   const renderValue = (value: unknown, path: string, depth: number = 0): React.ReactNode => {
     const pathArray = pathToArray(path);
-    const isEditing = editingState && 
+    const isEditing = editingState &&
       JSON.stringify(editingState.path) === JSON.stringify(pathArray);
 
     if (isEditing) {
@@ -304,7 +311,10 @@ if (process.env.NODE_ENV === 'development') {
             <textarea
               className="edit-input json-edit"
               value={editingState!.value}
-              onChange={e => setEditingState({ ...editingState!, value: e.target.value })}
+              onChange={e => {
+                setEditingState({ ...editingState!, value: e.target.value });
+                setEditError(null);
+              }}
               rows={5}
               autoFocus
             />
@@ -312,7 +322,10 @@ if (process.env.NODE_ENV === 'development') {
             <select
               className="edit-input"
               value={editingState!.value}
-              onChange={e => setEditingState({ ...editingState!, value: e.target.value })}
+              onChange={e => {
+                setEditingState({ ...editingState!, value: e.target.value });
+                setEditError(null);
+              }}
               autoFocus
             >
               <option value="true">true</option>
@@ -323,7 +336,10 @@ if (process.env.NODE_ENV === 'development') {
               className="edit-input"
               type={editingState!.type === 'number' ? 'number' : 'text'}
               value={editingState!.value}
-              onChange={e => setEditingState({ ...editingState!, value: e.target.value })}
+              onChange={e => {
+                setEditingState({ ...editingState!, value: e.target.value });
+                setEditError(null);
+              }}
               autoFocus
               onKeyDown={e => {
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -339,6 +355,11 @@ if (process.env.NODE_ENV === 'development') {
             <button className="edit-btn save" onClick={saveEdit} title="Save (Enter)">✓</button>
             <button className="edit-btn cancel" onClick={cancelEdit} title="Cancel (Esc)">✗</button>
           </div>
+          {editError && (
+            <div className="form-error" role="alert">
+              {editError}
+            </div>
+          )}
         </span>
       );
     }
@@ -351,9 +372,9 @@ if (process.env.NODE_ENV === 'development') {
       );
     }
     if (value === undefined) return <span className="json-undefined">undefined</span>;
-    
+
     const type = typeof value;
-    
+
     if (type === 'string') {
       const strValue = String(value);
       const displayValue = strValue.length > 100 ? strValue.slice(0, 100) + '...' : strValue;
@@ -377,7 +398,7 @@ if (process.env.NODE_ENV === 'development') {
         </span>
       );
     }
-    
+
     if (Array.isArray(value)) {
       const isExpanded = expandedPaths.has(path);
       const arrayPathArr = pathToArray(path);
@@ -395,20 +416,20 @@ if (process.env.NODE_ENV === 'development') {
                   <span className="json-index">{i}: </span>
                   {renderValue(item, `${path}[${i}]`, depth + 1)}
                   <span className="array-item-actions">
-                    <button 
-                      className="array-action-btn" 
+                    <button
+                      className="array-action-btn"
                       onClick={() => moveArrayItem(arrayPathArr, i, i - 1)}
                       disabled={i === 0}
                       title="Move up"
                     >↑</button>
-                    <button 
-                      className="array-action-btn" 
+                    <button
+                      className="array-action-btn"
                       onClick={() => moveArrayItem(arrayPathArr, i, i + 1)}
                       disabled={i === value.length - 1}
                       title="Move down"
                     >↓</button>
-                    <button 
-                      className="array-action-btn delete" 
+                    <button
+                      className="array-action-btn delete"
                       onClick={() => deleteArrayItem(arrayPathArr, i)}
                       title="Delete item"
                     >×</button>
@@ -421,10 +442,10 @@ if (process.env.NODE_ENV === 'development') {
         </span>
       );
     }
-    
+
     if (type === 'object') {
       const obj = value as Record<string, unknown>;
-      
+
       if (obj.__type === 'Date') {
         return <span className="json-date">{String(obj.value)}</span>;
       }
@@ -434,17 +455,17 @@ if (process.env.NODE_ENV === 'development') {
       if (obj.__type === 'Set') {
         return <span className="json-special">[Set({String(obj.size)})]</span>;
       }
-      
+
       const keys = Object.keys(obj);
       const isExpanded = expandedPaths.has(path);
-      
+
       const filteredKeys = searchQuery && depth === 0
-        ? keys.filter(key => 
+        ? keys.filter(key =>
             key.toLowerCase().includes(searchQuery.toLowerCase()) ||
             JSON.stringify(obj[key]).toLowerCase().includes(searchQuery.toLowerCase())
           )
         : keys;
-      
+
       return (
         <span className="json-object">
           <button className="expand-btn" onClick={() => togglePath(path)}>
@@ -466,11 +487,11 @@ if (process.env.NODE_ENV === 'development') {
         </span>
       );
     }
-    
+
     return <span className="json-unknown">{String(value)}</span>;
   };
 
-  const selectedActionData = selectedAction 
+  const selectedActionData = selectedAction
     ? actions.find(a => a.id === selectedAction)
     : null;
 
@@ -508,7 +529,7 @@ if (process.env.NODE_ENV === 'development') {
               ))
             )}
           </div>
-          
+
           {selectedActionData && (
             <div className="action-detail">
               <h4>Action: {selectedActionData.type}</h4>
@@ -560,7 +581,10 @@ if (process.env.NODE_ENV === 'development') {
             <input
               type="text"
               value={actionType}
-              onChange={e => setActionType(e.target.value)}
+              onChange={e => {
+                setActionType(e.target.value);
+                setDispatchError(null);
+              }}
               placeholder="e.g., INCREMENT"
             />
           </div>
@@ -568,7 +592,10 @@ if (process.env.NODE_ENV === 'development') {
             <label>Payload (JSON):</label>
             <textarea
               value={actionPayload}
-              onChange={e => setActionPayload(e.target.value)}
+              onChange={e => {
+                setActionPayload(e.target.value);
+                setDispatchError(null);
+              }}
               placeholder='{ "key": "value" }'
               rows={3}
             />
@@ -576,6 +603,11 @@ if (process.env.NODE_ENV === 'development') {
           <button className={`dispatch-btn ${isDispatching ? 'btn-loading' : ''}`} onClick={dispatchAction} disabled={isDispatching}>
             {isDispatching ? <><span className="btn-spinner"></span> Dispatching...</> : 'Dispatch Action'}
           </button>
+          {dispatchError && (
+            <div className="form-error" role="alert">
+              {dispatchError}
+            </div>
+          )}
         </div>
       </section>
 
