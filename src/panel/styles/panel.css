@@ -1059,25 +1059,25 @@ button:focus:not(:focus-visible) {
 }
 
 .render-table.slow-table th:nth-child(1),
-.render-table.slow-table td:nth-child(1) { 
-  width: 40%; 
+.render-table.slow-table td:nth-child(1) {
+  width: 40%;
   min-width: 150px;
 }
 .render-table.slow-table th:nth-child(2),
-.render-table.slow-table td:nth-child(2) { 
-  width: 20%; 
+.render-table.slow-table td:nth-child(2) {
+  width: 20%;
   min-width: 90px;
   text-align: right;
 }
 .render-table.slow-table th:nth-child(3),
-.render-table.slow-table td:nth-child(3) { 
-  width: 20%; 
+.render-table.slow-table td:nth-child(3) {
+  width: 20%;
   min-width: 90px;
   text-align: right;
 }
 .render-table.slow-table th:nth-child(4),
-.render-table.slow-table td:nth-child(4) { 
-  width: 20%; 
+.render-table.slow-table td:nth-child(4) {
+  width: 20%;
   min-width: 80px;
   text-align: right;
 }
@@ -1089,32 +1089,32 @@ button:focus:not(:focus-visible) {
 }
 
 .render-table.rerender-table th:nth-child(1),
-.render-table.rerender-table td:nth-child(1) { 
-  width: 25%; 
+.render-table.rerender-table td:nth-child(1) {
+  width: 25%;
   min-width: 150px;
   max-width: 200px;
 }
 .render-table.rerender-table th:nth-child(2),
-.render-table.rerender-table td:nth-child(2) { 
-  width: 10%; 
+.render-table.rerender-table td:nth-child(2) {
+  width: 10%;
   min-width: 70px;
   text-align: right;
 }
 .render-table.rerender-table th:nth-child(3),
-.render-table.rerender-table td:nth-child(3) { 
-  width: 12%; 
+.render-table.rerender-table td:nth-child(3) {
+  width: 12%;
   min-width: 85px;
   text-align: right;
 }
 .render-table.rerender-table th:nth-child(4),
-.render-table.rerender-table td:nth-child(4) { 
-  width: 12%; 
+.render-table.rerender-table td:nth-child(4) {
+  width: 12%;
   min-width: 85px;
   text-align: right;
 }
 .render-table.rerender-table th:nth-child(5),
-.render-table.rerender-table td:nth-child(5) { 
-  width: 41%; 
+.render-table.rerender-table td:nth-child(5) {
+  width: 41%;
   min-width: 160px;
 }
 
@@ -4223,4 +4223,10 @@ button:focus:not(:focus-visible) {
 
 .site-override-remove-btn:hover {
   background: rgba(248, 81, 73, 0.1);
+}
+
+.form-error {
+  color: var(--accent-red);
+  font-size: 12px;
+  margin-top: 4px;
 }
