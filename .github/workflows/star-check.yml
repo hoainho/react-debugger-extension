@@ -4,11 +4,11 @@ name: Star Check
 # See .github/CONTRIBUTING.md → "How to claim an issue".
 #
 # Failure modes:
-#   - Author hasn't starred the repo                           → ❌ fail
-#   - Author is the maintainer (hoainho)                       → ⏭ skip
-#   - Author is in the bot allowlist (Dependabot etc.)         → ⏭ skip
-#   - PR has 'tracked-plan' label                              → ⏭ skip (maintainer-driven milestones)
-#   - PR has 'pre-star-rule' label                             → ⏭ skip (grandfathered before policy)
+#   - Author hasn't starred the repo (verified after 3 retries)    → ❌ fail
+#   - Author is the maintainer (hoainho)                            → ⏭ skip
+#   - Author is in the bot allowlist (Dependabot etc.)              → ⏭ skip
+#   - PR has 'tracked-plan' label                                   → ⏭ skip (maintainer-driven milestones)
+#   - PR has 'pre-star-rule' label                                  → ⏭ skip (grandfathered before policy)
 #
 # Privacy note: this check uses a public GitHub API endpoint
 # (GET /users/{login}/starred/{owner}/{repo}) which returns 204 if starred,
@@ -80,58 +80,80 @@ jobs:
               return;
             }
 
-            // --- Star check ---
-            try {
-              await github.rest.activity.checkRepoIsStarredByAuthenticatedUserAtUsername({
-                username: author,
-                owner,
-                repo,
-              });
-              // No throw → starred.
-              core.notice(`⭐ @${author} has starred ${owner}/${repo}.`);
-              core.setOutput('result', 'starred');
-            } catch (err) {
-              // Fallback: octokit doesn't expose the cross-user endpoint by name, so use raw request.
-              core.info(`Falling back to raw API request.`);
+            // --- Star check (with retry for read-replica lag) ---
+            const MAX_ATTEMPTS = 3;
+            const BACKOFF_BASE_MS = 3000;
+
+            let starred = false;
+            let lastStatus = null;
+            let lastErrMsg = null;
+
+            for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
               try {
-                const resp = await github.request('GET /users/{username}/starred/{owner}/{repo}', {
-                  username: author,
-                  owner,
-                  repo,
-                });
+                const resp = await github.request(
+                  'GET /users/{username}/starred/{owner}/{repo}',
+                  { username: author, owner, repo },
+                );
+                lastStatus = resp.status;
                 if (resp.status === 204) {
-                  core.notice(`⭐ @${author} has starred ${owner}/${repo}.`);
-                  core.setOutput('result', 'starred');
-                  return;
+                  core.notice(`⭐ @${author} has starred ${owner}/${repo} (attempt ${attempt}/${MAX_ATTEMPTS}).`);
+                  starred = true;
+                  break;
                 }
-                core.setOutput('result', 'unexpected-status');
-                core.setFailed(`Unexpected response status ${resp.status}`);
-              } catch (innerErr) {
-                if (innerErr.status === 404) {
-                  core.setOutput('result', 'not-starred');
-                  const msg = [
-                    '',
-                    '❌ This PR cannot be merged until the author stars the repository.',
-                    '',
-                    `@${author}, please:`,
-                    '',
-                    `1. ⭐ Star this repository (https://github.com/${owner}/${repo}) — single click at top of repo`,
-                    `2. Re-run this workflow (no need to re-push) — GitHub will detect the star and pass this check`,
-                    '',
-                    'Full policy: .github/CONTRIBUTING.md → "How to claim an issue"',
-                    '',
-                    'If you believe this is an exemption case (maintainer / bot / tracked-plan / grandfathered),',
-                    'ping @hoainho and we will apply the appropriate label.',
-                    '',
-                  ].join('\n');
-                  core.error(msg);
-                  core.setFailed(`@${author} has not starred ${owner}/${repo}.`);
-                } else {
+                core.warning(`Attempt ${attempt}: unexpected status ${resp.status}.`);
+              } catch (err) {
+                lastStatus = err.status;
+                lastErrMsg = err.message;
+                if (err.status === 404) {
+                  core.info(
+                    `Attempt ${attempt}/${MAX_ATTEMPTS}: 404. ` +
+                    (attempt < MAX_ATTEMPTS
+                      ? `Retrying in ${(BACKOFF_BASE_MS * attempt) / 1000}s (read-replica lag)...`
+                      : 'Giving up.'),
+                  );
+                } else if (err.status === 401 || err.status === 403) {
                   core.setOutput('result', 'api-error');
-                  core.setFailed(`Star-check API error: ${innerErr.message}`);
+                  core.setFailed(`Star-check API auth/permission error (${err.status}): ${err.message}`);
+                  return;
+                } else {
+                  core.info(`Attempt ${attempt}: API error (${err.status || 'unknown'}): ${err.message}.`);
                 }
               }
+
+              if (attempt < MAX_ATTEMPTS) {
+                await new Promise((r) => setTimeout(r, BACKOFF_BASE_MS * attempt));
+              }
             }
+
+            if (starred) {
+              core.setOutput('result', 'starred');
+              return;
+            }
+
+            core.setOutput('result', 'not-starred');
+            const msg = [
+              '',
+              '❌ This PR cannot be merged until the author stars the repository.',
+              '',
+              `@${author}, please:`,
+              '',
+              `1. ⭐ Star this repository (https://github.com/${owner}/${repo}) — single click at top of repo`,
+              `2. Re-run this workflow (no need to re-push) — GitHub will detect the star and pass this check`,
+              '',
+              'Full policy: .github/CONTRIBUTING.md → "How to claim an issue"',
+              '',
+              'If you already starred and the check still fails after 30 seconds,',
+              'this may be a GitHub read-replica lag edge case — ping @hoainho and',
+              "we'll either re-run the check or apply a one-time 'pre-star-rule' label.",
+              '',
+              'If your case is an exemption (maintainer / bot / tracked-plan / grandfathered),',
+              'ping @hoainho and we will apply the appropriate label.',
+              '',
+              `Diagnostic: lastStatus=${lastStatus}, lastErr=${lastErrMsg || '(none)'}, attempts=${MAX_ATTEMPTS}.`,
+              '',
+            ].join('\n');
+            core.error(msg);
+            core.setFailed(`@${author} has not starred ${owner}/${repo} (verified after ${MAX_ATTEMPTS} retries).`);
 
       - name: Write check summary
         if: always()
@@ -147,7 +169,7 @@ jobs:
               'exempt-bot':             '⏭ Bot PR — check skipped.',
               'exempt-tracked-plan':    '⏭ Tracked-plan PR — check skipped.',
               'exempt-grandfathered':   '⏭ Grandfathered PR (pre-policy) — check skipped.',
-              'not-starred':            '❌ Author has NOT starred. PR cannot merge until they do.',
+              'not-starred':            '❌ Author has NOT starred (verified after 3 retries). PR cannot merge until they do.',
               'api-error':              '⚠️ API error — see logs.',
               'unexpected-status':      '⚠️ Unexpected API response — see logs.',
               'unknown':                '⚠️ Step did not produce a result — see logs.',
