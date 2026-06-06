@@ -198,6 +198,7 @@ if (process.env.NODE_ENV === 'development') {
     }
 
     setEditingState({ path, value: strValue, type });
+    setEditError(null);
   };
 
   const saveEdit = () => {
@@ -213,12 +214,14 @@ if (process.env.NODE_ENV === 'development') {
         parsedValue = editingState.value;
         break;
       case 'number': {
-        const num = Number(editingState.value);
-        if (isNaN(num)) {
-          setEditError('Invalid number: ' + editingState.value);
+        const trimmed = editingState.value.trim();
+        if (trimmed === '' || isNaN(Number(trimmed))) {
+          setEditError(
+            trimmed === '' ? 'Number cannot be empty' : 'Invalid number: ' + editingState.value
+          );
           return;
         }
-        parsedValue = num;
+        parsedValue = Number(trimmed);
         break;
       }
       case 'boolean':
