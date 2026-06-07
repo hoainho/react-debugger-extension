@@ -1,5 +1,6 @@
 import type { ReduxAction } from '@/types';
 import { useCallback, useState } from 'react';
+import { UI_FEEDBACK_SHORT_MS, UI_FEEDBACK_MEDIUM_MS } from '../constants';
 
 interface ReduxTabProps {
   detected: boolean;
@@ -37,7 +38,7 @@ export function ReduxTab({ detected, state, actions, tabId, isSearching }: Redux
       type: 'REFRESH_REDUX_STATE',
       tabId,
     });
-    setTimeout(() => setIsRefreshing(false), 1000);
+    setTimeout(() => setIsRefreshing(false), UI_FEEDBACK_MEDIUM_MS);
   }, [tabId]);
 
   const clearOverrides = useCallback(() => {
@@ -139,7 +140,7 @@ if (process.env.NODE_ENV === 'development') {
     } catch {
       setDispatchError('Invalid JSON payload');
     }
-    setTimeout(() => setIsDispatching(false), 800);
+    setTimeout(() => setIsDispatching(false), UI_FEEDBACK_SHORT_MS);
   };
 
   const togglePath = (path: string) => {

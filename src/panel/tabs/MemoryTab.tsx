@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { MemoryReport, CrashEntry } from '@/types';
+import { UI_FEEDBACK_MEDIUM_MS } from '../constants';
 
 interface MemoryTabProps {
   report: MemoryReport | null;
@@ -38,7 +39,7 @@ export function MemoryTab({ report, tabId }: MemoryTabProps) {
       type: newState ? 'START_MEMORY_MONITORING' : 'STOP_MEMORY_MONITORING',
       tabId,
     });
-    setTimeout(() => setIsTogglingMonitor(false), 1000);
+    setTimeout(() => setIsTogglingMonitor(false), UI_FEEDBACK_MEDIUM_MS);
   };
 
   useEffect(() => {

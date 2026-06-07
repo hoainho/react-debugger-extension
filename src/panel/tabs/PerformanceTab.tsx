@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { Issue, ComponentInfo, RenderInfo, PageLoadMetrics } from '@/types';
 import { IssueCard } from '../components/IssueCard';
+import { UI_FEEDBACK_SHORT_MS } from '../constants';
 
 interface PerformanceTabProps {
   issues: Issue[];
@@ -50,7 +51,7 @@ export function PerformanceTab({ issues, components, renders, tabId, pageLoadMet
       type: 'TOGGLE_SCAN',
       payload: { enabled: newState },
     });
-    setTimeout(() => setIsTogglingScan(false), 800);
+    setTimeout(() => setIsTogglingScan(false), UI_FEEDBACK_SHORT_MS);
   };
 
   const renderStats = useMemo(() => {
