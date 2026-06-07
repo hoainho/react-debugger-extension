@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-type ErrorCode = "token-malformed" | "port-out-of-range" | "missing-params";
+type ErrorCode = "token-malformed" | "port-out-of-range" | "missing-params" | "storage-failed";
 
 interface PairingError {
   code: ErrorCode;
@@ -57,21 +57,52 @@ export function validatePairingParams(hash: string): PairingError[] {
   return errors;
 }
 
+const TOKEN_KEY = "mcp_pairing_token_v1";
+const PORT_KEY = "mcp_pairing_port_v1";
+
+export async function migrateLegacyStorage() {
+  if (typeof chrome === "undefined" || !chrome.storage) return;
+  const local = await chrome.storage.local.get([TOKEN_KEY, PORT_KEY]);
+  if (local[TOKEN_KEY] || local[PORT_KEY]) {
+    await chrome.storage.session.set({
+      [TOKEN_KEY]: local[TOKEN_KEY],
+      [PORT_KEY]: local[PORT_KEY],
+    });
+    await chrome.storage.local.remove([TOKEN_KEY, PORT_KEY]);
+  }
+}
+
+async function savePairing(token: string, port: string) {
+  await chrome.storage.session.set({
+    [TOKEN_KEY]: token,
+    [PORT_KEY]: port,
+  });
+}
+
 export function MCPPairingPanel() {
   const [errors, setErrors] = useState<PairingError[]>([]);
   const [paired, setPaired] = useState(false);
 
-  const performPairing = () => {
+  const performPairing = async () => {
     const hash = window.location.hash;
     const found = validatePairingParams(hash);
 
     if (found.length === 0) {
       const { token, port } = parseHash(hash);
-      if (typeof chrome !== "undefined" && chrome.storage?.local) {
-        chrome.storage.local.set({ mcpToken: token, mcpPort: port });
+      try {
+        if (typeof chrome !== "undefined" && chrome.storage?.session) {
+          await savePairing(token!, port!);
+        }
+        window.history.replaceState(null, "", window.location.pathname);
+        setPaired(true);
+        setErrors([]);
+      } catch (err) {
+        setErrors([{
+          code: "storage-failed",
+          message: "Could not save pairing.",
+          fix: (err as Error).message,
+        }]);
       }
-      setPaired(true);
-      setErrors([]);
     } else {
       setErrors(found);
       setPaired(false);
@@ -79,7 +110,11 @@ export function MCPPairingPanel() {
   };
 
   useEffect(() => {
-    performPairing();
+    if (typeof chrome !== "undefined" && chrome.storage) {
+      migrateLegacyStorage().then(() => performPairing());
+    } else {
+      performPairing();
+    }
   }, []);
 
   const handleRetry = () => {
