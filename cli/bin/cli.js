@@ -37,7 +37,9 @@ ${pc.yellow("Examples:")}
 }
 
 function printSuccess(fullPath, useStderr = false) {
-  const logger = useStderr ? console.error : console.log;
+  const logger = useStderr
+    ? console.error.bind(console)
+    : console.log.bind(console);
   logger();
   logger(pc.dim("─".repeat(50)));
   logger();
