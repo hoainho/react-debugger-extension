@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import type { TimelineEvent, TimelineEventType, RenderEventPayload, StateChangeEventPayload, EffectEventPayload, ErrorEventPayload, MemoryEventPayload, CorrelationResult, ContextChangeEventPayload } from '@/types';
+import { CORRELATION_FEEDBACK_MS, SNAPSHOT_CREATE_FEEDBACK_MS } from '../constants';
 
 interface TimelineTabProps {
   events: TimelineEvent[];
@@ -89,7 +90,7 @@ export function TimelineTab({ events, tabId, onClear }: TimelineTabProps) {
         setIsCorrelating(false);
       }
     );
-    setTimeout(() => setIsCorrelating(false), 3000);
+    setTimeout(() => setIsCorrelating(false), CORRELATION_FEEDBACK_MS);
   }, [tabId]);
 
   const clearCorrelation = useCallback(() => {
@@ -139,7 +140,7 @@ export function TimelineTab({ events, tabId, onClear }: TimelineTabProps) {
     };
 
     setSnapshots(prev => [...prev, newSnapshot]);
-    setTimeout(() => setIsCreatingSnapshot(false), 500);
+    setTimeout(() => setIsCreatingSnapshot(false), SNAPSHOT_CREATE_FEEDBACK_MS);
   }, [events]);
 
   const exportSnapshot = useCallback((snapshot: TimelineSnapshot) => {

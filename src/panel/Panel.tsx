@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { TabState, TimelineEvent } from '@/types';
+import { DEBUGGER_TOGGLE_FEEDBACK_MS, REDUX_SEARCH_TIMEOUT_MS } from './constants';
 import { UIStateTab } from './tabs/UIStateTab';
 import { PerformanceTab } from './tabs/PerformanceTab';
 import { SideEffectsTab } from './tabs/SideEffectsTab';
@@ -136,7 +137,7 @@ export function Panel() {
       type: newEnabled ? 'ENABLE_DEBUGGER' : 'DISABLE_DEBUGGER',
       tabId,
     });
-    setTimeout(() => setIsTogglingDebugger(false), 3000);
+    setTimeout(() => setIsTogglingDebugger(false), DEBUGGER_TOGGLE_FEEDBACK_MS);
   }, [tabId, isDebuggerEnabled]);
 
   const handleTabChange = useCallback((newTab: TabId) => {
@@ -145,7 +146,7 @@ export function Panel() {
     if (newTab === 'redux' && !state.reduxDetected) {
       setIsSearchingRedux(true);
       safeSendMessage({ type: 'SEARCH_REDUX', tabId });
-      setTimeout(() => setIsSearchingRedux(false), 5000);
+      setTimeout(() => setIsSearchingRedux(false), REDUX_SEARCH_TIMEOUT_MS);
     }
   }, [tabId, state.reduxDetected]);
 
