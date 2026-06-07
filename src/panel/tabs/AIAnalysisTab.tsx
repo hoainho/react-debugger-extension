@@ -32,7 +32,16 @@ function AnalysisItemCard({ item }: { item: AIAnalysisItem }) {
     <div
       className="ai-item-card"
       style={{ borderLeftColor: style.color, backgroundColor: style.bg }}
+      role="button"
+      tabIndex={0}
+      aria-expanded={expanded}
       onClick={() => setExpanded(!expanded)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          setExpanded(!expanded);
+        }
+      }}
     >
       <div className="ai-item-header">
         <span className={`ai-item-icon ${style.iconClass}`} />

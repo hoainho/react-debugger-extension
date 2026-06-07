@@ -70,7 +70,19 @@ export const IssueCard = React.memo(function IssueCard({ issue }: IssueCardProps
       className={`issue-card severity-${issue.severity}`}
       style={{ borderLeftColor: severity.color }}
     >
-      <div className="issue-header" onClick={() => setExpanded(!expanded)}>
+      <div
+        className="issue-header"
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        onClick={() => setExpanded(!expanded)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setExpanded(!expanded);
+          }
+        }}
+      >
         <span className={`issue-icon ${severity.iconClass}`} />
         <div className="issue-info">
           <div className="issue-title-row">
@@ -105,7 +117,7 @@ export const IssueCard = React.memo(function IssueCard({ issue }: IssueCardProps
             )}
           </div>
         </div>
-        <button className="expand-button">{expanded ? '▼' : '▶'}</button>
+        <span className="expand-button">{expanded ? '▼' : '▶'}</span>
       </div>
 
       {expanded && (

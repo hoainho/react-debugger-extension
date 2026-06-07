@@ -60,12 +60,14 @@ body {
 }
 
 /* Global focus ring (WCAG 2.4.7) */
-button:focus-visible {
+button:focus-visible,
+[role="button"]:focus-visible {
   outline: 2px solid var(--accent-blue);
   outline-offset: 2px;
 }
 
-button:focus:not(:focus-visible) {
+button:focus:not(:focus-visible),
+[role="button"]:focus:not(:focus-visible) {
   outline: none;
 }
 
