@@ -554,7 +554,20 @@ export function TimelineTab({ events, tabId, onClear }: TimelineTabProps) {
       </div>
 
       <div className="snapshot-panel">
-        <div className="snapshot-header" onClick={() => setSnapshotPanelOpen(!snapshotPanelOpen)}>
+        <div
+          className="snapshot-header"
+          role="button"
+          tabIndex={0}
+          aria-expanded={snapshotPanelOpen}
+          onClick={() => setSnapshotPanelOpen(!snapshotPanelOpen)}
+          onKeyDown={(e) => {
+            if (e.target !== e.currentTarget) return;
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setSnapshotPanelOpen(!snapshotPanelOpen);
+            }
+          }}
+        >
           <span className="snapshot-toggle">{snapshotPanelOpen ? '▼' : '▶'}</span>
           <span className="snapshot-title">Snapshots ({snapshots.length})</span>
           <button 
@@ -579,7 +592,17 @@ export function TimelineTab({ events, tabId, onClear }: TimelineTabProps) {
                   <div key={snapshot.id} className={`snapshot-item ${expandedSnapshotId === snapshot.id ? 'expanded' : ''}`}>
                     <div 
                       className="snapshot-item-header"
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={expandedSnapshotId === snapshot.id}
                       onClick={() => setExpandedSnapshotId(expandedSnapshotId === snapshot.id ? null : snapshot.id)}
+                      onKeyDown={(e) => {
+                        if (e.target !== e.currentTarget) return;
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setExpandedSnapshotId(expandedSnapshotId === snapshot.id ? null : snapshot.id);
+                        }
+                      }}
                     >
                       <span className="snapshot-time">
                         {new Date(snapshot.createdAt).toLocaleTimeString()}

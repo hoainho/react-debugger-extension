@@ -111,13 +111,13 @@ describe('IssueCard', () => {
   describe('Expansion', () => {
     it('shows expand button', () => {
       render(<IssueCard issue={mockErrorIssue} />);
-      expect(screen.getByRole('button', { name: '▶' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /▶/ })).toBeInTheDocument();
     });
 
     it('expands when header is clicked', () => {
       render(<IssueCard issue={mockErrorIssue} />);
       
-      const expandButton = screen.getByRole('button', { name: '▶' });
+      const expandButton = screen.getByRole('button', { name: /▶/ });
       fireEvent.click(expandButton);
       
       expect(screen.getByText('▼')).toBeInTheDocument();

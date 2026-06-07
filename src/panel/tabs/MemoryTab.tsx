@@ -294,7 +294,16 @@ function CrashLogSection({ crashes }: { crashes: CrashEntry[] }) {
           <div key={crash.id} className="crash-entry">
             <div 
               className="crash-header"
+              role="button"
+              tabIndex={0}
+              aria-expanded={expandedId === crash.id}
               onClick={() => setExpandedId(expandedId === crash.id ? null : crash.id)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setExpandedId(expandedId === crash.id ? null : crash.id);
+                }
+              }}
             >
               <span className={`crash-icon ${getCrashIconClass(crash.type)}`} />
               <span className="crash-time">
