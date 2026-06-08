@@ -150,6 +150,28 @@ export function Panel() {
     }
   }, [tabId, state.reduxDetected]);
 
+  // WAI-ARIA Tabs — arrow-key roving focus between tabs
+  const handleTabKeyDown = useCallback((e: React.KeyboardEvent, currentIndex: number) => {
+    const tabCount = TABS.length;
+    let nextIndex: number | null = null;
+    if (e.key === 'ArrowRight') {
+      nextIndex = (currentIndex + 1) % tabCount;
+    } else if (e.key === 'ArrowLeft') {
+      nextIndex = (currentIndex - 1 + tabCount) % tabCount;
+    } else if (e.key === 'Home') {
+      nextIndex = 0;
+    } else if (e.key === 'End') {
+      nextIndex = tabCount - 1;
+    }
+    if (nextIndex !== null) {
+      e.preventDefault();
+      const nextTab = TABS[nextIndex];
+      handleTabChange(nextTab.id);
+      const nextBtn = document.getElementById(`tab-${nextTab.id}`);
+      nextBtn?.focus();
+    }
+  }, [handleTabChange]);
+
   useEffect(() => {
     fetchState();
 
@@ -427,25 +449,38 @@ export function Panel() {
         </div>
       </header>
 
-      <nav className="tab-nav">
-        {TABS.map(tab => {
+      <nav className="tab-nav" role="tablist" aria-label="React Debugger sections">
+        {TABS.map((tab, index) => {
           const badge = getBadge(tab.id);
           return (
             <button
               key={tab.id}
+              id={`tab-${tab.id}`}
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              aria-controls={`panel-${tab.id}`}
+              tabIndex={activeTab === tab.id ? 0 : -1}
               className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
               onClick={() => handleTabChange(tab.id)}
+              onKeyDown={(e) => handleTabKeyDown(e, index)}
             >
               <span className="tab-label">{tab.label}</span>
               {badge !== undefined && badge > 0 && (
-                <span className="tab-badge">{badge}</span>
+                <span className="tab-badge" aria-label={`${badge} items`}>{badge}</span>
               )}
             </button>
           );
         })}
       </nav>
 
-      <main className="tab-content">
+      <main
+        className="tab-content"
+        role="tabpanel"
+        id={`panel-${activeTab}`}
+        aria-labelledby={`tab-${activeTab}`}
+        aria-live="polite"
+        tabIndex={0}
+      >
         {!isDebuggerEnabled && state.timelineEvents.length === 0 ? (
           <div className="debugger-disabled-placeholder">
             <div className="placeholder-icon">
