@@ -34,6 +34,28 @@ Add the following snippet to your Opencode configuration:
 }
 ```
 
+## Cursor
+
+To use this AI integrated MCP client, add the configuration snippet below to you system's `mcp.json` file.
+
+### Configuration File Paths
+
+- **Windows:** `%USERPROFILE%\.CURSOR\mcp.json`
+- **macOS/Linux** `~/.cursor.json`
+
+### Configuration Snippet
+
+```json
+{
+  "mcpServers": {
+    "react-debugger": {
+      "command": "npx",
+      "args": ["-y", "@nhonh/react-debugger@latest", "mcp"]
+    }
+  }
+}
+```
+
 ## Cline
 
 To use this React Debugger MCP server with Cline (VS Code extension), add the configuration snippet below to your system's `cline_mcp_settings.json` file.
