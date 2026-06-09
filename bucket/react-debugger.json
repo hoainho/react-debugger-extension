@@ -1,0 +1,34 @@
+{
+  "version": "2.1.2",
+  "description": "Advanced debugging & performance optimization tool for ReactJS applications - Chrome Extension",
+  "homepage": "https://github.com/hoainho/react-debugger-extension",
+  "license": "MIT",
+  "suggest": {
+    "Node.js": [
+      "main/nodejs",
+      "main/nodejs-lts"
+    ]
+  },
+  "installer": {
+    "script": [
+      "npm install --global @nhonh/react-debugger@2.1.2 --prefix \"$dir\" --ignore-scripts 2>&1 | Out-Null",
+      "if (!(Test-Path \"$dir\\bin\")) { New-Item -ItemType Directory -Path \"$dir\\bin\" | Out-Null }",
+      "@'",
+      "@echo off",
+      "node \"%~dp0..\\node_modules\\.bin\\react-debugger\" %*",
+      "'@ | Set-Content \"$dir\\bin\\react-debugger.cmd\""
+    ]
+  },
+  "bin": "bin\\react-debugger.cmd",
+  "checkver": {
+    "url": "https://registry.npmjs.org/@nhonh/react-debugger/latest",
+    "jsonpath": "$.version"
+  },
+  "autoupdate": {
+    "note": "Update version field and re-run checkver to pick up new npm releases."
+  },
+  "notes": [
+    "react-debugger requires Node.js >= 18.",
+    "Install Node.js first: scoop install nodejs-lts"
+  ]
+}
