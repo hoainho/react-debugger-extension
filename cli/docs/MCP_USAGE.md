@@ -40,7 +40,7 @@ To use this AI integrated MCP client, add the configuration snippet below to you
 
 ### Configuration File Paths
 
-- **Windows:** `%USERPROFILE%\.CURSOR\mcp.json`
+- **Windows:** `%USERPROFILE%\.cursor\mcp.json`
 - **macOS/Linux** `~/.cursor.json`
 
 ### Configuration Snippet
