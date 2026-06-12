@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0d1117"/>
+      <stop offset="100%" style="stop-color:#161b22"/>
+    </linearGradient>
+    <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#61dafb"/>
+      <stop offset="100%" style="stop-color:#58a6ff"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f97316"/>
+      <stop offset="100%" style="stop-color:#ef4444"/>
+    </linearGradient>
+    <linearGradient id="nhoGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#a855f7"/>
+      <stop offset="100%" style="stop-color:#6366f1"/>
+    </linearGradient>
+    <linearGradient id="glowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#61dafb;stop-opacity:0.3"/>
+      <stop offset="100%" style="stop-color:#58a6ff;stop-opacity:0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="64" cy="60" r="56" fill="url(#bgGrad)"/>
+  <circle cx="64" cy="60" r="54" fill="none" stroke="url(#cyanGrad)" stroke-width="1.5" opacity="0.25"/>
+
+  <!-- Subtle glow behind center -->
+  <circle cx="64" cy="55" r="22" fill="url(#glowGrad)"/>
+
+  <!-- Stylized single orbital ring — tilted, with a break/gap for "debug" feel -->
+  <path d="M 22 55 A 42 15 -10 1 1 106 50" fill="none" stroke="url(#cyanGrad)" stroke-width="3" stroke-linecap="round" opacity="0.85"/>
+  <path d="M 108 49 A 42 15 -10 0 1 24 54" fill="none" stroke="url(#cyanGrad)" stroke-width="3" stroke-linecap="round" stroke-dasharray="4 6" opacity="0.4"/>
+
+  <!-- Second orbital — perpendicular, also broken -->
+  <path d="M 40 22 A 15 40 10 1 1 85 88" fill="none" stroke="url(#cyanGrad)" stroke-width="2.5" stroke-linecap="round" opacity="0.7"/>
+  <path d="M 86 90 A 15 40 10 0 1 38 20" fill="none" stroke="url(#cyanGrad)" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="3 5" opacity="0.3"/>
+
+  <!-- Core nucleus — stylized hexagon (React-ish but unique) -->
+  <polygon points="64,42 76,49 76,63 64,70 52,63 52,49" fill="none" stroke="url(#cyanGrad)" stroke-width="2.5" stroke-linejoin="round" opacity="0.9"/>
+  <polygon points="64,46 73,51.5 73,60.5 64,66 55,60.5 55,51.5" fill="url(#cyanGrad)" opacity="0.15"/>
+
+  <!-- Crosshair / diagnostic target over nucleus -->
+  <line x1="64" y1="38" x2="64" y2="46" stroke="url(#accentGrad)" stroke-width="2" stroke-linecap="round" opacity="0.9"/>
+  <line x1="64" y1="66" x2="64" y2="74" stroke="url(#accentGrad)" stroke-width="2" stroke-linecap="round" opacity="0.9"/>
+  <line x1="48" y1="56" x2="54" y2="56" stroke="url(#accentGrad)" stroke-width="2" stroke-linecap="round" opacity="0.9"/>
+  <line x1="74" y1="56" x2="80" y2="56" stroke="url(#accentGrad)" stroke-width="2" stroke-linecap="round" opacity="0.9"/>
+
+  <!-- Small diagnostic dot at center -->
+  <circle cx="64" cy="56" r="3.5" fill="url(#accentGrad)" opacity="0.95"/>
+  <circle cx="64" cy="56" r="6" fill="none" stroke="url(#accentGrad)" stroke-width="1" opacity="0.5"/>
+
+  <!-- Corner bracket marks — "targeting/scanning" feel -->
+  <path d="M 26 32 L 26 26 L 32 26" fill="none" stroke="url(#cyanGrad)" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+  <path d="M 102 32 L 102 26 L 96 26" fill="none" stroke="url(#cyanGrad)" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+  <path d="M 26 82 L 26 88 L 32 88" fill="none" stroke="url(#cyanGrad)" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+  <path d="M 102 82 L 102 88 L 96 88" fill="none" stroke="url(#cyanGrad)" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+
+  <!-- NhoNH brand badge -->
+  <g transform="translate(8, 99)">
+    <rect x="0" y="0" width="45" height="18" rx="4" fill="url(#nhoGrad)" opacity="0.95"/>
+    <text x="22.5" y="13" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="700" fill="#ffffff" letter-spacing="0.5">NhoNH</text>
+  </g>
+</svg>

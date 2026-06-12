@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "generated_at": "2026-06-12T08:52:28.344Z",
+    "node_version": "v24.14.0",
+    "chrome_version": "149.0.7827.103",
+    "os": "win32",
+    "os_release": "10.0.26200",
+    "os_version": "Windows 11 Home Single Language",
+    "runs_attempted": 50,
+    "runs_cold_succeeded": 0,
+    "runs_warm_succeeded": 0,
+    "network_conditions": "loopback/localhost",
+    "binary_used": "C:\\Users\\jaisw\\AppData\\Roaming\\npm\\react-debugger.cmd mcp"
+  },
+  "cold": {
+    "error": "all runs failed",
+    "passed": false
+  },
+  "warm": {
+    "error": "all runs failed",
+    "passed": false
+  },
+  "issues": []
+}
