@@ -1,11 +1,9 @@
 // scripts/bench-mcp-latency.mjs
 // Cross-platform MCP tool latency benchmark
 // Usage: node scripts/bench-mcp-latency.mjs [--runs 50]
-
-import { spawn } from "node:child_process";
+import { spawn, execSync } from "node:child_process";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { platform, release, version } from "node:os";
-import { execSync } from "node:child_process";
 
 const RUNS = parseInt(process.argv[process.argv.indexOf("--runs") + 1] || "50");
 
@@ -42,7 +40,8 @@ function percentile(sorted, p) {
 // Resolve the CLI binary path once — avoids repeated npx resolution overhead
 function resolveBin() {
   try {
-    const lines = execSync("where react-debugger", { encoding: "utf8" })
+    const cmd = platform() === "win32" ? "where" : "which";
+    const lines = execSync(`${cmd} react-debugger`, { encoding: "utf8" })
       .trim()
       .split("\n")
       .map(l => l.trim());
@@ -72,11 +71,23 @@ async function measureRound() {
     let stdout = "";
     let responded = false;
 
+    // 15s timeout — generous for cold npx starts
+    const timer = setTimeout(() => {
+      if (!responded) {
+        responded = true;
+        child.kill("SIGTERM");
+        reject(new Error("Timeout after 15000ms"));
+      }
+    }, 15000);
+
+    const cleanup = () => clearTimeout(timer);
+
     // Collect stdout — resolve as soon as ANY data comes back
     child.stdout.on("data", (chunk) => {
       stdout += chunk.toString();
       if (!responded) {
         responded = true;
+        cleanup();
         const elapsed = performance.now() - start;
         child.kill("SIGTERM");
         resolve(elapsed);
@@ -100,22 +111,20 @@ async function measureRound() {
     child.stdin.write(initMsg);
 
     child.on("error", (err) => {
-      if (!responded) reject(err);
+      if (!responded) {
+        responded = true;
+        cleanup();
+        reject(err);
+      }
     });
 
     child.on("close", (code) => {
       if (!responded) {
+        responded = true;
+        cleanup();
         reject(new Error(`Process exited with code ${code} without responding`));
       }
     });
-
-    // 15s timeout — generous for cold npx starts
-    setTimeout(() => {
-      if (!responded) {
-        child.kill("SIGTERM");
-        reject(new Error("Timeout after 15000ms"));
-      }
-    }, 15000);
   });
 }
 
