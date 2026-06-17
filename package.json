@@ -52,6 +52,7 @@
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.2.1",
+    "@vitest/coverage-v8": "^4.0.18",
     "jsdom": "^28.0.0",
     "sharp": "^0.34.5",
     "typescript": "^5.3.3",
