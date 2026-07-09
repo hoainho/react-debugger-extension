@@ -324,3 +324,21 @@ US-S5-3  M-E.2 Perf-Tracks version gate  → DONE + VERIFIED
   - src/inject/profiling-strategy.ts (parseReactVersion + selectProfilingStrategy: >=19.2→tracks else legacy).
     profiling-strategy.test.ts (version boundaries). Live Performance Tracks API = humanGate.
 ===== S5 (M-E) COMPLETE (3/3) — 46 files / 438 tests green, build 0, tsc 0 =====
+
+===== S6 (M-F) — branch feat/s6-mf (base feat/s5-me) =====
+US-S6-1  M-F.1 quick-wins (2, slip invoked)  → DONE + VERIFIED
+  - inline-handler-cost (fiber: memo child + function-prop identity change → INLINE_HANDLER_COST) +
+    ref-mutation-during-render (source: render-body ref.current= after stripping effect bodies → REF_MUTATION_DURING_RENDER).
+    enums + registered + ALL_DETECTORS(now 9) + KNOWN_DETECTORS_DEFAULTS + fixtures + quick-wins.test.ts 8/8 +
+    capability-matrix updated (9). full test:run 444 green, build 0, tsc 0.
+  - SLIP: useFormStatus-outside-form deferred (needs fiber form-ancestry; FP-prone from source) — M-F.1 allows drop-to-2.
+S6 status: 1✓ | remaining 2 (opt-in telemetry + payload audit; deploy=humanGate), 3 (retrospective doc).
+
+US-S6-2  M-F.2 opt-in telemetry  → DONE + VERIFIED
+  - src/services/telemetry.ts: TelemetryRecorder (default OFF; per-detector counter aggregation; flush + hourly
+    maybeFlush; whitelist buildTelemetryPayload). telemetry.test.ts 5/5 incl PAYLOAD AUDIT (contaminated counter
+    with url/component/email → payload has ONLY the 6 whitelisted fields; serialized has no http/name/email/token).
+    Endpoint deploy = humanGate.
+US-S6-3  M-F.3 retrospective doc  → DONE + VERIFIED
+  - docs/RETROSPECTIVE-2026.md (S0-S6 summary + human-gate inventory + 2027 topics); retrospective-doc.test.ts.
+===== S6 (M-F) COMPLETE (3/3) — 49 files / 450 tests green, tsc 0 =====

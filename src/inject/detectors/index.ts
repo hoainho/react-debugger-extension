@@ -13,6 +13,8 @@ import { hydrationMismatchDetector } from './hydration-mismatch';
 import { contextCascadeDetector } from './context-cascade';
 import { staleClosureAsyncDetector } from './stale-closure-async';
 import { suspenseWaterfallDetector } from './suspense-waterfall';
+import { inlineHandlerCostDetector } from './inline-handler-cost';
+import { refMutationDuringRenderDetector } from './ref-mutation-during-render';
 
 export { reconcilerKeysDetector, createReconcilerKeysDetector } from './reconciler-keys';
 export { closureLeakDetector, createClosureLeakDetector } from './closure-leak';
@@ -21,6 +23,8 @@ export { hydrationMismatchDetector, createHydrationMismatchDetector } from './hy
 export { contextCascadeDetector, createContextCascadeDetector } from './context-cascade';
 export { staleClosureAsyncDetector, createStaleClosureAsyncDetector } from './stale-closure-async';
 export { suspenseWaterfallDetector, createSuspenseWaterfallDetector } from './suspense-waterfall';
+export { inlineHandlerCostDetector, createInlineHandlerCostDetector } from './inline-handler-cost';
+export { refMutationDuringRenderDetector, createRefMutationDuringRenderDetector } from './ref-mutation-during-render';
 
 /** The registered detector set — single source for registration + the capability matrix. */
 export const ALL_DETECTORS = [
@@ -31,6 +35,8 @@ export const ALL_DETECTORS = [
   contextCascadeDetector,
   staleClosureAsyncDetector,
   suspenseWaterfallDetector,
+  inlineHandlerCostDetector,
+  refMutationDuringRenderDetector,
 ];
 
 export function registerAllDetectors(registry: Registry): void {

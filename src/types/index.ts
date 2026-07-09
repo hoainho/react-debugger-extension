@@ -16,7 +16,9 @@ export type IssueType =
   | 'HYDRATION_MISMATCH'
   | 'CONTEXT_CASCADE'
   | 'STALE_CLOSURE_ASYNC'
-  | 'SUSPENSE_WATERFALL';
+  | 'SUSPENSE_WATERFALL'
+  | 'INLINE_HANDLER_COST'
+  | 'REF_MUTATION_DURING_RENDER';
 
 export interface IssueLocation {
   componentName: string;

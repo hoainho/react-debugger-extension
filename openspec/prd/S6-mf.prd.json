@@ -1,0 +1,56 @@
+{
+  "meta": {
+    "stage": "S6",
+    "title": "M-F — quick-win detectors + opt-in telemetry + retrospective",
+    "roadmap": "openspec/ROADMAP.md",
+    "spec": "openspec/changes/self-roadmap-h2-2026/tasks.md §M-F",
+    "branch": "feat/s6-mf (base: feat/s5-me)",
+    "mode": "ralph",
+    "notes": [
+      "Quick-win detectors are source/prop analysis, unit-testable via the registry harness (like prior detectors).",
+      "Telemetry: the record()/batch/payload-audit logic is verifiable here; the Worker endpoint DEPLOY is a humanGate. Payload MUST contain no URLs / component names / user data (audited by test).",
+      "Retrospective doc is writable; opening the 2027 GitHub Discussion is a humanGate.",
+      "New enums: INLINE_HANDLER_COST, REF_MUTATION_DURING_RENDER, USE_FORM_STATUS_OUTSIDE_FORM (additive)."
+    ],
+    "humanGates": [
+      "M-F.2: deploy the telemetry Worker endpoint (Cloudflare, append-only KV) — needs credentials.",
+      "M-F.3: open the 2027 roadmap GitHub Discussion."
+    ]
+  },
+  "stories": [
+    {
+      "id": "US-S6-1",
+      "title": "M-F.1 — quick-win detectors (3)",
+      "priority": 1,
+      "passes": true,
+      "acceptanceCriteria": [
+        "SLIP INVOKED (M-F.1 pre-committed: drop to 2 if earlier stages overran — S2/S3/S4 had blockers): shipped 2 robust quick-wins (inline-handler-cost fiber-based, ref-mutation-during-render conservative source). useFormStatus-outside-form deferred — needs form-ancestry (fiber-level), FP-prone from source.",
+        "Three quick-win detectors under src/inject/detectors/: inline-handler-cost (inline arrow/function prop created every render on a memo'd child), ref-mutation-during-render (ref.current mutated in render body), use-form-status-outside-form (useFormStatus called outside a <form> action context).",
+        "Each emits a new additive IssueType (INLINE_HANDLER_COST / REF_MUTATION_DURING_RENDER / USE_FORM_STATUS_OUTSIDE_FORM), is registered + added to KNOWN_DETECTORS_DEFAULTS with a declared confidence, and has a fixture + emit/zero test.",
+        "npx tsc --noEmit exits 0; full test:run green; CHANGELOG entries."
+      ]
+    },
+    {
+      "id": "US-S6-2",
+      "title": "M-F.2 — opt-in telemetry pipeline (deploy = humanGate)",
+      "priority": 2,
+      "passes": true,
+      "acceptanceCriteria": [
+        "src/services/telemetry.ts: record(event, payload) buffering + hourly batch flush (DI'd clock + sender), gated behind an opt-in flag (default OFF).",
+        "Per-detector counters payload schema {detector, fires, dismisses, fpClicks, ext_version, react_version}.",
+        "PAYLOAD AUDIT test: an assembled telemetry payload contains NO host URLs, NO component names, NO user data (only counters + versions) — asserted against a fixture with such data present.",
+        "Opt-out honored: record() while disabled buffers/sends nothing. npx tsc --noEmit exits 0 and the telemetry suite passes."
+      ]
+    },
+    {
+      "id": "US-S6-3",
+      "title": "M-F.3 — 2026 retrospective doc",
+      "priority": 3,
+      "passes": true,
+      "acceptanceCriteria": [
+        "docs/RETROSPECTIVE-2026.md summarizes what shipped (S0-S6 stages + detectors), what was gated to the maintainer (human gates), and the 2027 kickoff topics.",
+        "A test/lint asserts the doc exists and names all 4 hero detectors + the MCP server + the UI redesign. (Opening the GitHub Discussion = humanGate.)"
+      ]
+    }
+  ]
+}
