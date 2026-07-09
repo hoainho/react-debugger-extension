@@ -308,3 +308,19 @@ US-S4-5  Wire MCP pairing + snapshot-persistence into shell  → DONE + VERIFIED
     via S3 session helper — fulfills the M-D.5 wiring deferred from S3). shell-views.test.tsx 3/3. tsc 0.
 ===== S4 autonomous-complete (5/5) =====
   Visual humanGates: 5-view Panel layout render, animations, WCAG-visual, visual-regression baselines.
+
+===== S5 (M-E) — branch feat/s5-me (base feat/s4-ui) =====
+US-S5-1  M-E.3 hero#4 suspense-waterfall detector  → DONE + VERIFIED
+  - src/inject/detectors/suspense-waterfall.ts (per-boundary consecutive-suspension streak via ctx; flags ≥3;
+    pure isBoundarySuspended/nextStreak/shouldFlagWaterfall). SUSPENSE_WATERFALL enum + registered +
+    KNOWN_DETECTORS_DEFAULTS(medium) + test/fixtures/suspense-waterfall/ + suspense-waterfall.test.ts 6/6 +
+    bench baseline + CHANGELOG. build 0, tsc 0, settings+regression 40 pass.
+S5 status: 1✓ | remaining 2 (prod-capability matrix), 3 (Perf Tracks version-gate; live API humanGate).
+
+US-S5-2  M-E.4 prod-capability matrix  → DONE + VERIFIED
+  - detectors/index exports ALL_DETECTORS (single source: registration + matrix). src/inject/capability-matrix.ts
+    (buildCapabilityMatrix from metadata + renderCapabilityMarkdown). capability-matrix.test.ts 4/4.
+US-S5-3  M-E.2 Perf-Tracks version gate  → DONE + VERIFIED
+  - src/inject/profiling-strategy.ts (parseReactVersion + selectProfilingStrategy: >=19.2→tracks else legacy).
+    profiling-strategy.test.ts (version boundaries). Live Performance Tracks API = humanGate.
+===== S5 (M-E) COMPLETE (3/3) — 46 files / 438 tests green, build 0, tsc 0 =====

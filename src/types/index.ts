@@ -15,7 +15,8 @@ export type IssueType =
   | 'UNSTABLE_LIST_KEY'
   | 'HYDRATION_MISMATCH'
   | 'CONTEXT_CASCADE'
-  | 'STALE_CLOSURE_ASYNC';
+  | 'STALE_CLOSURE_ASYNC'
+  | 'SUSPENSE_WATERFALL';
 
 export interface IssueLocation {
   componentName: string;

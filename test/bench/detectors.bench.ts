@@ -136,3 +136,19 @@ describe('M-D.3 context-cascade commit cost', () => {
     reg.drainAll();
   });
 });
+
+import { createSuspenseWaterfallDetector } from '../../src/inject/detectors/suspense-waterfall';
+describe('M-E.3 suspense-waterfall commit cost', () => {
+  function boundary(suspended: boolean) {
+    const b: any = { tag: 13, memoizedState: suspended ? {} : null, child: null, sibling: null, return: null, key: null, type: null };
+    const root: any = { tag: 3, type: 'root', child: b, sibling: null, return: null, key: null };
+    b.return = root; return { current: root };
+  }
+  const d = createSuspenseWaterfallDetector();
+  const reg = createRegistry({ emit: () => {}, log: () => {}, sanitize: (x) => x, performance: { now: () => 0 } });
+  reg.register(d);
+  bench('onCommit over a suspended boundary', () => {
+    reg.dispatch({ fiberRoot: boundary(true) as any });
+    reg.drainAll();
+  });
+});

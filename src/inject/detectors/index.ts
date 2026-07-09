@@ -12,6 +12,7 @@ import { scanOverlayDetector } from './scan-overlay';
 import { hydrationMismatchDetector } from './hydration-mismatch';
 import { contextCascadeDetector } from './context-cascade';
 import { staleClosureAsyncDetector } from './stale-closure-async';
+import { suspenseWaterfallDetector } from './suspense-waterfall';
 
 export { reconcilerKeysDetector, createReconcilerKeysDetector } from './reconciler-keys';
 export { closureLeakDetector, createClosureLeakDetector } from './closure-leak';
@@ -19,12 +20,19 @@ export { scanOverlayDetector, createScanOverlayDetector } from './scan-overlay';
 export { hydrationMismatchDetector, createHydrationMismatchDetector } from './hydration-mismatch';
 export { contextCascadeDetector, createContextCascadeDetector } from './context-cascade';
 export { staleClosureAsyncDetector, createStaleClosureAsyncDetector } from './stale-closure-async';
+export { suspenseWaterfallDetector, createSuspenseWaterfallDetector } from './suspense-waterfall';
+
+/** The registered detector set — single source for registration + the capability matrix. */
+export const ALL_DETECTORS = [
+  reconcilerKeysDetector,
+  closureLeakDetector,
+  scanOverlayDetector,
+  hydrationMismatchDetector,
+  contextCascadeDetector,
+  staleClosureAsyncDetector,
+  suspenseWaterfallDetector,
+];
 
 export function registerAllDetectors(registry: Registry): void {
-  registry.register(reconcilerKeysDetector);
-  registry.register(closureLeakDetector);
-  registry.register(scanOverlayDetector);
-  registry.register(hydrationMismatchDetector);
-  registry.register(contextCascadeDetector);
-  registry.register(staleClosureAsyncDetector);
+  for (const detector of ALL_DETECTORS) registry.register(detector);
 }
