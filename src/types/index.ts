@@ -13,7 +13,9 @@ export type IssueType =
   | 'MEMORY_GROWTH'
   | 'POTENTIAL_MEMORY_LEAK'
   | 'UNSTABLE_LIST_KEY'
-  | 'HYDRATION_MISMATCH';
+  | 'HYDRATION_MISMATCH'
+  | 'CONTEXT_CASCADE'
+  | 'STALE_CLOSURE_ASYNC';
 
 export interface IssueLocation {
   componentName: string;

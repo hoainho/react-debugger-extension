@@ -212,3 +212,48 @@ US-S2-4  M-C.4 hydration detector  → DONE + VERIFIED (after fix)
 S2 HUMAN GATE (prepped, not executed): M-C.3 real chrome.debugger getScriptSource resolution (needs debugger perm + page).
 STATUS: S0✓(committed) S1✓(committed 377f252) S2✓(branch feat/s2-mc-hydration, UNCOMMITTED) | S3–S6 pending.
 NEXT: S3 (M-D — hero#3 context-cascade + R2 unified traversal + R4 AI provider + stale-closure v2 + snapshot persist).
+
+===== S3 (M-D) — branch feat/s3-md (base feat/s2-mc-hydration) =====
+S2 committed as 6190723 (20 files). Standing directive: commit each finished stage + continue, no asking
+  (boundary: commit to feature branch, NO push; human gates publish/deploy/G1/live-network stay manual).
+PRD openspec/prd/S3-md.prd.json — 5 stories, ordered risk-ascending:
+  US-S3-1 context-cascade detector (hero#3, verifiable, uses existing walkFiberImpl — decoupled from R2)
+  US-S3-2 stale-closure-async v2
+  US-S3-3 R4 AI provider abstraction (BYOK; live call=humanGate)
+  US-S3-4 snapshot persistence (session)
+  US-S3-5 R2 unified fiber traversal — HIGH RISK monolith rewrite, LAST, full regression each step
+NEXT: implement US-S3-1 (context-cascade) — mirror reconciler-keys detector+fixture+test pattern.
+
+US-S3-1  M-D.3 context-cascade hero#3 detector  → DONE + VERIFIED
+  - src/inject/detectors/context-cascade.ts (tracks Provider value-ref identity across commits via ctx store,
+    counts consumers via ContextConsumer tag + dependencies.firstContext chain; pure shouldFlagCascade +
+    countContextConsumers + providerContext exported). Uses existing walkFiberImpl (decoupled from R2).
+  - CONTEXT_CASCADE enum + registered + KNOWN_DETECTORS_DEFAULTS (confidence high) + test/fixtures/context-cascade/
+    + context-cascade.test.ts 5/5 (pure helpers + emit on ref-change+≥2 consumers, zero on memoized/1-consumer)
+    + bench baseline (bench/baselines/context-cascade.json) + CHANGELOG. build 0, tsc 0, settings+regression 56 pass.
+S3 status: 1✓ | remaining 2 (stale-closure v2), 3 (AI provider), 4 (snapshot persist), 5 (R2 traversal - HIGH RISK).
+
+US-S3-2  M-D.4 stale-closure-async v2  → DONE + VERIFIED
+  - src/inject/detectors/stale-closure-async.ts: conservative analyzeStaleAsyncClosures(source,stateNames)
+    (async marker + state var referenced but absent from deps array) + Detector reading fn.toString()+inferStateNames.
+  - STALE_CLOSURE_ASYNC enum + registered + KNOWN_DETECTORS_DEFAULTS(medium→OFF) + test/fixtures/stale-closure-async/
+    + stale-closure-async.test.ts 6/6 (analyzer patterns + detector emit/zero) + CHANGELOG. tsc 0, build 0, 45 pass.
+  - Deliberately narrow (not full exhaustive-deps) to keep FP low — architect-anticipation after hydration scrutiny.
+S3 status: 1✓ 2✓ | remaining 3 (AI provider R4), 4 (snapshot persist), 5 (R2 traversal - HIGH RISK).
+
+US-S3-3  M-D R4 AI provider abstraction (BYOK)  → DONE + VERIFIED
+  - src/services/ai-provider.ts: AIProvider {buildRequest,parseResponse}; HostedProxy (reproduces current
+    analyzeSnapshot request), OpenAIDirect, AnthropicDirect; selectProvider (none→null); BYOK storage
+    (react_debugger_byok_v1, DI'd area). ai-provider.test.ts 6/6 (shaping/parse/select/BYOK). tsc 0.
+  - DEVIATION: separate module (not rewriting working analyzeSnapshot); HostedProxy behavior-preserving by
+    construction; wiring analyzeSnapshot→selectProvider is follow-on. humanGate: live OpenAI/Anthropic network call.
+S3 status: 1✓ 2✓ 3✓ | remaining 4 (snapshot persist), 5 (R2 traversal - HIGH RISK).
+
+US-S3-4  M-D.5 snapshot persistence (session)  → DONE + VERIFIED
+  - src/panel/snapshot-persistence.ts: readSnapshots (empty default)/writeSnapshots/clearSnapshots over a
+    DI'd session storage area, key timeline_snapshots_v1. snapshot-persistence.test.ts 4/4 (default, round-trip,
+    clear, corrupt-coerce). tsc 0.
+  - DEVIATION: TimelineTab component wiring deferred to S4 (view rebuilt as Profiler + tests re-authored; the
+    TimelineTab tests are pre-existing failures in the S4-carried-in set — don't touch a soon-rewritten component).
+S3 status: 1✓ 2✓ 3✓ 4✓ | remaining 5 (R2 unified fiber traversal — HIGH RISK monolith rewrite).
+NEXT: US-S3-5 — deserves a careful fresh iteration (full detector-core regression after each walker migration).

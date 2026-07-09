@@ -111,3 +111,28 @@ describe('M-C.4 hydration parse', () => {
     parseHydrationError(msg);
   });
 });
+
+import { createContextCascadeDetector } from '../../src/inject/detectors/context-cascade';
+describe('M-D.3 context-cascade commit cost', () => {
+  const CTX = { displayName: 'Theme' };
+  function tree(v: unknown) {
+    const provider: any = { tag: 10, type: { _context: CTX }, memoizedProps: { value: v }, child: null, sibling: null, return: null, key: null };
+    let prev: any = null;
+    for (let i = 0; i < 20; i++) {
+      const c: any = { tag: 0, dependencies: { firstContext: { context: CTX, next: null } }, return: provider, child: null, sibling: null, key: null };
+      if (!prev) provider.child = c; else prev.sibling = c; prev = c;
+    }
+    const root: any = { tag: 3, type: 'root', child: provider, sibling: null, return: null, key: null };
+    provider.return = root;
+    return { current: root };
+  }
+  const d = createContextCascadeDetector();
+  const reg = createRegistry({ emit: () => {}, log: () => {}, sanitize: (x) => x, performance: { now: () => 0 } });
+  reg.register(d);
+  reg.dispatch({ fiberRoot: tree({ a: 1 }) as any });
+  reg.drainAll();
+  bench('onCommit over provider + 20 consumers (ref changed)', () => {
+    reg.dispatch({ fiberRoot: tree({ a: 2 }) as any });
+    reg.drainAll();
+  });
+});
