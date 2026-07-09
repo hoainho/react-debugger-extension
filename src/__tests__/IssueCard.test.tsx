@@ -138,7 +138,7 @@ describe('IssueCard', () => {
       const header = screen.getByText('Missing Key in List').closest('.issue-header');
       if (header) fireEvent.click(header);
       
-      expect(screen.getByText('💡 Suggestion:')).toBeInTheDocument();
+      expect(screen.getByText('Suggestion:')).toBeInTheDocument();
       expect(screen.getByText(/Add a unique key prop/)).toBeInTheDocument();
     });
   });
@@ -194,7 +194,7 @@ describe('IssueCard', () => {
       const header = screen.getByText('Stale Closure Detected').closest('.issue-header');
       if (header) fireEvent.click(header);
       
-      expect(screen.getByText('🔍 Closure Timeline:')).toBeInTheDocument();
+      expect(screen.getByText('Closure Timeline:')).toBeInTheDocument();
     });
 
     it('shows created and executed render numbers', () => {
@@ -253,7 +253,7 @@ describe('IssueCard', () => {
       const header = screen.getByText('Missing Key in List').closest('.issue-header');
       if (header) fireEvent.click(header);
       
-      expect(screen.getByText('📚 Learn more')).toBeInTheDocument();
+      expect(screen.getByText('Learn more')).toBeInTheDocument();
     });
 
     it('link opens in new tab', () => {
@@ -262,7 +262,7 @@ describe('IssueCard', () => {
       const header = screen.getByText('Missing Key in List').closest('.issue-header');
       if (header) fireEvent.click(header);
       
-      const link = screen.getByText('📚 Learn more');
+      const link = screen.getByText('Learn more');
       expect(link.getAttribute('target')).toBe('_blank');
       expect(link.getAttribute('rel')).toBe('noopener noreferrer');
     });

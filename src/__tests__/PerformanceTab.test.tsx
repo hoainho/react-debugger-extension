@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { PerformanceTab } from '../panel/tabs/PerformanceTab';
 import type { Issue, ComponentInfo, RenderInfo, PageLoadMetrics } from '../types';
 
@@ -87,7 +87,7 @@ describe('PerformanceTab', () => {
         />
       );
       
-      expect(screen.getByText('⚡ Performance Analysis')).toBeInTheDocument();
+      expect(screen.getByText('Performance Analysis')).toBeInTheDocument();
     });
 
     it('renders stats grid with correct values', () => {
@@ -134,7 +134,7 @@ describe('PerformanceTab', () => {
         />
       );
       
-      expect(screen.getByText('🐌 Slowest Components')).toBeInTheDocument();
+      expect(screen.getByText('Slowest Components')).toBeInTheDocument();
       expect(screen.getAllByText(/SlowComponent/).length).toBeGreaterThan(0);
     });
 
@@ -365,10 +365,10 @@ describe('PerformanceTab', () => {
         />
       );
       
-      expect(screen.getByText('🔍 Scan OFF')).toBeInTheDocument();
+      expect(screen.getByText('Scan OFF')).toBeInTheDocument();
     });
 
-    it('toggles scan state when clicked', () => {
+    it('toggles scan state when clicked', async () => {
       render(
         <PerformanceTab
           issues={[]}
@@ -379,10 +379,11 @@ describe('PerformanceTab', () => {
         />
       );
       
-      const button = screen.getByText('🔍 Scan OFF');
+      const button = screen.getByText('Scan OFF');
       fireEvent.click(button);
-      
-      expect(screen.getByText('🔍 Scan ON')).toBeInTheDocument();
+
+      // The button shows a transient "Toggling..." state before settling on "Scan ON".
+      await waitFor(() => expect(screen.getByText('Scan ON')).toBeInTheDocument());
     });
 
     it('shows scan info when enabled', () => {
@@ -396,7 +397,7 @@ describe('PerformanceTab', () => {
         />
       );
       
-      const button = screen.getByText('🔍 Scan OFF');
+      const button = screen.getByText('Scan OFF');
       fireEvent.click(button);
       
       expect(screen.getByText(/React Scan is active/)).toBeInTheDocument();

@@ -68,7 +68,7 @@ describe('CLSTab', () => {
   describe('Rendering', () => {
     it('renders tab header correctly', () => {
       render(<CLSTab report={null} />);
-      expect(screen.getByText('📐 Layout Shift (CLS) Monitor')).toBeInTheDocument();
+      expect(screen.getByText('Layout Shift (CLS) Monitor')).toBeInTheDocument();
     });
 
     it('displays empty state when no entries', () => {
@@ -84,20 +84,20 @@ describe('CLSTab', () => {
     });
 
     it('shows good rating message', () => {
-      render(<CLSTab report={mockGoodCLSReport} />);
-      expect(screen.getByText('🟢')).toBeInTheDocument();
+      const { container } = render(<CLSTab report={mockGoodCLSReport} />);
+      expect(container.querySelector('.rating-emoji.status-badge--good')).toBeTruthy();
       expect(screen.getByText(/Good - Meets Core Web Vitals threshold/)).toBeInTheDocument();
     });
 
     it('shows needs improvement rating message', () => {
-      render(<CLSTab report={mockNeedsImprovementReport} />);
-      expect(screen.getByText('🟡')).toBeInTheDocument();
+      const { container } = render(<CLSTab report={mockNeedsImprovementReport} />);
+      expect(container.querySelector('.rating-emoji.status-badge--warning')).toBeTruthy();
       expect(screen.getByText(/Needs Improvement/)).toBeInTheDocument();
     });
 
     it('shows poor rating message', () => {
-      render(<CLSTab report={mockPoorCLSReport} />);
-      expect(screen.getByText('🔴')).toBeInTheDocument();
+      const { container } = render(<CLSTab report={mockPoorCLSReport} />);
+      expect(container.querySelector('.rating-emoji.status-badge--poor')).toBeTruthy();
       expect(screen.getByText(/Poor - Significantly impacts user experience/)).toBeInTheDocument();
     });
   });
@@ -156,12 +156,12 @@ describe('CLSTab', () => {
   describe('CLS Tips', () => {
     it('displays how to reduce CLS section', () => {
       render(<CLSTab report={mockGoodCLSReport} />);
-      expect(screen.getByText('💡 How to Reduce CLS')).toBeInTheDocument();
+      expect(screen.getByText('How to Reduce CLS')).toBeInTheDocument();
     });
 
     it('shows specific tips', () => {
       render(<CLSTab report={mockGoodCLSReport} />);
-      const tipsSection = screen.getByText('💡 How to Reduce CLS');
+      const tipsSection = screen.getByText('How to Reduce CLS');
       expect(tipsSection).toBeInTheDocument();
     });
   });

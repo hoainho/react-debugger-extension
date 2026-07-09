@@ -78,7 +78,7 @@ describe('TimelineTab', () => {
   describe('Rendering', () => {
     it('renders tab header correctly', () => {
       render(<TimelineTab events={[]} tabId={mockTabId} onClear={mockOnClear} />);
-      expect(screen.getByText('⏱️ Debug Timeline')).toBeInTheDocument();
+      expect(screen.getByText('Debug Timeline')).toBeInTheDocument();
     });
 
     it('displays event count', () => {

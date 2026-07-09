@@ -63,13 +63,13 @@ describe('UIStateTab', () => {
   describe('Rendering', () => {
     it('renders tab header correctly', () => {
       render(<UIStateTab issues={[]} onClear={mockOnClear} />);
-      expect(screen.getByText('🎯 UI & State Issues')).toBeInTheDocument();
+      expect(screen.getByText('UI & State Issues')).toBeInTheDocument();
     });
 
     it('displays empty state when no issues', () => {
-      render(<UIStateTab issues={[]} onClear={mockOnClear} />);
+      const { container } = render(<UIStateTab issues={[]} onClear={mockOnClear} />);
       expect(screen.getByText('No UI or state issues detected')).toBeInTheDocument();
-      expect(screen.getByText('✅')).toBeInTheDocument();
+      expect(container.querySelector('.empty-state-icon--check')).toBeTruthy();
     });
 
     it('displays issue count correctly', () => {

@@ -257,3 +257,54 @@ US-S3-4  M-D.5 snapshot persistence (session)  → DONE + VERIFIED
     TimelineTab tests are pre-existing failures in the S4-carried-in set — don't touch a soon-rewritten component).
 S3 status: 1✓ 2✓ 3✓ 4✓ | remaining 5 (R2 unified fiber traversal — HIGH RISK monolith rewrite).
 NEXT: US-S3-5 — deserves a careful fresh iteration (full detector-core regression after each walker migration).
+
+===== S3 (M-D) COMPLETE (autonomous 5/5) — committed ce236fb (19 files) =====
+  Architect APPROVE (adversarial FP-analysis of stale-closure regex + traversal correctness + accepted
+  US-S3-5 core-done/migration-humanGate scoping). Deslop 0 edits. 88 tests green, tsc 0, build 0.
+  S3 HUMAN GATES: R2 legacy-walker migration/deletion (live-React regression); live OpenAI/Anthropic BYOK call.
+STATUS: S0✓ S1✓ S2✓ S3✓ committed (feat/s3-md) | S4-S6 pending.
+
+===== S4 (UI Redesign v2, absorbs M-E.1) — branch feat/s4-ui (base feat/s3-md) =====
+NOTE: S4 is design/visual-heavy → LOW sandbox-verifiability. Autonomous-verifiable: tokens file, CSS Modules
+  setup, component RTL tests, FIXING the 29 carried-in UI-panel test failures, Issue.tab enum unchanged, build.
+  Visual look / animations / WCAG-visual / visual-regression baselines = humanGate (need a rendering browser + human eye).
+
+US-S4-1  Fix the 29 carried-in UI-panel test failures  → DONE + VERIFIED (major)
+  - Root cause (uniform): components were refactored emoji→decorative CSS badge spans (a11y), tests still
+    asserted emoji-prefixed text. NOT component bugs — stale tests.
+  - Fix (kept assertion intent): 22 label matchers stripped emoji prefix (IssueCard/CLS/Memory/Perf/SideEffects/
+    UIState/Timeline); 5 bare status-emojis (🟢🟡🔴✅⚠️) → assert the CSS indicator by class; 2 toggle tests
+    (Memory Start→Stop, Perf Scan OFF→ON) → async waitFor past the transient "Starting…/Toggling…" spinner state.
+  - RESULT: FULL npm test:run GREEN — 38 files / 408 tests, 0 failures (first fully-green suite this session). tsc 0.
+S4 status: 1✓ | remaining 2 (tokens+CSS modules), 3 (common components), 4 (9→5 consolidation), 5 (wire MCP/snapshot).
+  NOTE remaining S4 = design/visual (low sandbox-verifiability); visual look/animations/WCAG-visual = humanGate.
+
+US-S4-2  Design tokens + CSS Modules  → DONE + VERIFIED
+  - Extracted panel.css inline :root → src/panel/styles/tokens.css (verbatim + added --space-1..6 scale +
+    semantic --severity-* tokens); panel.css now `@import './tokens.css'`. Single source of truth.
+  - CSS Modules proven: Badge.module.css + Badge.tsx (severity chip) + Badge.test.tsx 3/3; added
+    src/css-modules.d.ts (*.module.css ambient decl for tsc). (Badge = first S4-3 common component too.)
+  - FIXED a pre-existing CSS bug: .pairing-panel-error-fix was missing its closing } (unclosed block —
+    surfaced when @import made PostCSS strict). brace-balanced now.
+  - build 0 (tokens inlined into dist/styles/panel.css), tsc 0, full test:run green.
+S4 status: 1✓ 2✓ | remaining 3 (common components Button/Card/Tooltip), 4 (9→5 consolidation), 5 (wire MCP/snapshot).
+
+US-S4-3  Common components (Button/Card/Tooltip + Badge)  → DONE + VERIFIED
+  - src/panel/components/common/{Button,Card,Tooltip}.{tsx,module.css} + index.ts; token-based, CSS Modules.
+    Button=real <button> variants+disabled; Card=severity left-stripe; Tooltip=role=tooltip + aria-describedby.
+  - common-components.test.tsx 5/5 (roles/onClick/disabled/variant/severity-stripe/tooltip hover). tsc 0, build 0.
+  - Visual polish = humanGate.
+S4 status: 1✓ 2✓ 3✓ | remaining 4 (9→5 consolidation + classic-mode flag), 5 (wire MCP/snapshot into shell).
+
+US-S4-4  9→5 consolidation (verifiable core)  → DONE + VERIFIED
+  - src/panel/ui-mode.ts: UiMode flag (default 'classic', safe for existing installs) + VIEW_MAP (5 views →
+    9 legacy tabs) + legacyTabsForView. ui-mode.test.ts 4/4 (flag round-trip, 5 views, all-9-covered-once, MCP
+    tab-category coverage guard = M-E.1 contract). generic IssueCard renders all 15 IssueTypes (issue-card-all-types 2/2).
+  - DEVIATION: Panel.tsx shell rendering of the 5 views (visual layout) = humanGate (needs browser + design eye).
+S4 status: 1✓2✓3✓4✓ | remaining 5 (wire MCP pairing + snapshot-persistence into new shell).
+
+US-S4-5  Wire MCP pairing + snapshot-persistence into shell  → DONE + VERIFIED
+  - src/panel/views/SettingsView.tsx (mounts MCPPairingPanel) + ProfilerView.tsx (hydrates+persists snapshots
+    via S3 session helper — fulfills the M-D.5 wiring deferred from S3). shell-views.test.tsx 3/3. tsc 0.
+===== S4 autonomous-complete (5/5) =====
+  Visual humanGates: 5-view Panel layout render, animations, WCAG-visual, visual-regression baselines.

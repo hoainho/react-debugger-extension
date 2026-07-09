@@ -1,0 +1,3 @@
+.card { background:var(--bg-card); border:1px solid var(--border-color); border-left-width:3px; border-radius:var(--radius-md); box-shadow:var(--shadow-sm); overflow:hidden; }
+.header{ padding:var(--space-2) var(--space-3); border-bottom:1px solid var(--border-subtle); font-weight:600; color:var(--text-primary); }
+.body{ padding:var(--space-3); color:var(--text-secondary); }

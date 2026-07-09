@@ -1,0 +1,67 @@
+/**
+ * Design tokens (S4 UI redesign, M-E.1).
+ *
+ * Extracted verbatim from panel.css's inline :root (behavior-preserving) and
+ * augmented with an explicit spacing scale + semantic severity tokens for the
+ * card-based redesign. panel.css and the new CSS Modules both consume these,
+ * so there is one source of truth for color / spacing / type / elevation.
+ */
+:root {
+  /* Base palette — blue-tinted dark */
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #1c2128;
+  --bg-hover: #2d333b;
+  --bg-card: #161b22;
+  --bg-inset: #0d1117;
+
+  /* Text hierarchy */
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #484f58;
+
+  /* Borders & dividers */
+  --border-color: #30363d;
+  --border-subtle: #21262d;
+
+  /* Accent colors — vibrant */
+  --accent-blue: #58a6ff;
+  --accent-green: #3fb950;
+  --accent-yellow: #d29922;
+  --accent-red: #f85149;
+  --accent-purple: #bc8cff;
+  --accent-cyan: #39d2c0;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 3px 6px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-glow-blue: 0 0 12px rgba(88, 166, 255, 0.15);
+
+  /* Radii */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* Transitions */
+  --transition-fast: 0.12s ease;
+  --transition-normal: 0.2s ease;
+
+  /* Typography */
+  --font-mono: 'SF Mono', 'Cascadia Code', 'Consolas', 'Monaco', monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, 'Helvetica Neue', sans-serif;
+
+  /* Spacing scale (4px base) — new in the redesign */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* Semantic severity — separate from accent hues, used by the card system */
+  --severity-error: var(--accent-red);
+  --severity-warning: var(--accent-yellow);
+  --severity-info: var(--accent-blue);
+  --severity-ok: var(--accent-green);
+}
