@@ -180,3 +180,35 @@ S1 HUMAN GATES (prepped to the button-press, NOT executed — logged for maintai
 
 STATUS: S0 ✓ (committed branch feat/m-b-...) · S1 ✓ (7/7 on branch feat/s1-mcp-v1, UNCOMMITTED) · S2–S6 pending.
 NEXT: S2 (detector M-C hydration) — pure extension logic, fully verifiable here, no new deps. Author openspec/prd/S2-*.prd.json.
+
+===== S2 (M-C hydration) — branch feat/s2-mc-hydration (base feat/s1-mcp-v1) =====
+US-S2-1  M-C.1 cache tryInferStateName  → DONE + VERIFIED
+  - src/inject/react-adapters/state-name.ts: inferStateNames (WeakMap<Function,string[]>, caches empty too) + getStateName.
+  - Monolith src/inject/index.ts: tryInferStateName now delegates to getStateName (1-line; toString+regex runs ≤1×/fn).
+  - state-name.test.ts 5/5 (order, cache toString-once, per-fn independence, empty cached, non-function). tsc exit 0.
+  - S1 committed as 377f252 (29 files) before starting S2, per maintainer.
+S2 status: 1✓ | remaining 2 (budget allocator), 3 (source-map), 4 (hydration detector).
+
+US-S2-2  M-C.2 fair-share budget allocator + yield/resume  → DONE + VERIFIED
+  - src/inject/budget.ts: computeDeadline/isOverBudget, cursor read/write/clear (DI ctx), processWithinBudget
+    (yield with nextCursor when over deadline, always ≥1 item progress, resume from cursor to completion).
+  - budget.test.ts 5/5 (deadline math, cursor round-trip, yield-then-resume covers all items once, always-progress).
+  - Bench "processWithinBudget over 1000 items" → mean 0.0013ms/commit (p99 0.0019ms) ≪ 0.1ms target;
+    baseline at bench/baselines/budget-allocator.json.
+  - Registry already provides per-detector deadline (perf.now()+budgetMs); this adds the cooperative yield/resume.
+S2 status: 1✓ 2✓ | remaining 3 (source-map helper; run=humanGate), 4 (hydration detector — hero).
+
+US-S2-4  M-C.4 hydration detector  → DONE + VERIFIED (after fix)
+  - src/inject/detectors/hydration-mismatch.ts (console.error intercept + parseHydrationError; chain+restore
+    identity; prodCapable:false) + registered + 'HYDRATION_MISMATCH' enum + test/fixtures/hydration-mismatch/
+    + hydration-mismatch.test.ts 6/6 + bench (0.0003ms baseline) + CHANGELOG entry.
+  - ARCHITECT REJECT (1 blocker): hydration-mismatch missing from KNOWN_DETECTORS_DEFAULTS (migrate.ts) →
+    no Settings UI toggle/badge. FIX: added {id:'hydration-mismatch',confidence:'high'} (migrate.ts:44).
+    No test count edits needed (list-driven). settings-migrate + SettingsTab 14/14. Re-verify → APPROVE.
+
+===== S2 (M-C) COMPLETE (4/4) — RALPH CHAIN =====
+  Step 7 architect → REJECT→(fix)→APPROVE.  7.5 deslop → 0 edits (all exports exercised; no dead code).
+  7.6 regression → 79/79 (S2 + detector-core + settings), tsc 0, build 0.
+S2 HUMAN GATE (prepped, not executed): M-C.3 real chrome.debugger getScriptSource resolution (needs debugger perm + page).
+STATUS: S0✓(committed) S1✓(committed 377f252) S2✓(branch feat/s2-mc-hydration, UNCOMMITTED) | S3–S6 pending.
+NEXT: S3 (M-D — hero#3 context-cascade + R2 unified traversal + R4 AI provider + stale-closure v2 + snapshot persist).

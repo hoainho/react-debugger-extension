@@ -2,6 +2,7 @@ import { bench, describe } from 'vitest';
 import { createReconcilerKeysDetector } from '../../src/inject/detectors/reconciler-keys';
 import { createRegistry } from '../../src/inject/registry';
 import type { FiberNode, FiberRoot } from '../../src/inject/react-adapters/types';
+import { processWithinBudget, computeDeadline } from '../../src/inject/budget';
 
 type TreeNode = { id: number; children: TreeNode[] };
 
@@ -86,5 +87,27 @@ describe('reconciler-keys detector — commit cost', () => {
   bench('onCommit over 1000-child keyed list (reorder diff)', () => {
     registry.dispatch({ fiberRoot: rootB });
     registry.drainAll();
+  });
+});
+
+describe('M-C.2 budget allocator overhead', () => {
+  const items = Array.from({ length: 1000 }, (_, i) => i);
+  let now = 0;
+  const clock = () => now++;
+
+  // Full pass over a 1000-item commit with a generous deadline: measures the
+  // allocator's per-commit overhead (target < 0.1ms/commit).
+  bench('processWithinBudget over 1000 items (generous budget)', () => {
+    now = 0;
+    const deadline = computeDeadline(clock(), 1e9);
+    processWithinBudget(items, 0, deadline, clock, () => {});
+  });
+});
+
+import { parseHydrationError } from '../../src/inject/detectors/hydration-mismatch';
+describe('M-C.4 hydration parse', () => {
+  const msg = ['Warning: Text content did not match. Server: "Good morning" Client: "Good evening"', '\n    in Greeting'];
+  bench('parseHydrationError on a hydration error', () => {
+    parseHydrationError(msg);
   });
 });

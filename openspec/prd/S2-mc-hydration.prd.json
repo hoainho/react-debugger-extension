@@ -21,7 +21,7 @@
       "id": "US-S2-1",
       "title": "M-C.1 — cache tryInferStateName (WeakMap)",
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "acceptanceCriteria": [
         "A WeakMap<Function,string[]> cache backs state-name inference so the per-commit toString()+regex runs at most once per component function; a cache-hit path returns the memoized names.",
         "A unit test proves: same function → second lookup is served from cache (toString spy called once) and returns identical names; distinct functions cache independently.",
@@ -32,7 +32,7 @@
       "id": "US-S2-2",
       "title": "M-C.2 — fair-share per-detector deadline allocator + yield/resume",
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "acceptanceCriteria": [
         "A pure allocator computes each detector's onCommit deadline = start + detector.budgetMs and supports yield-and-resume: a detector that returns an incomplete cursor is resumed next commit from that cursor.",
         "Unit tests assert: deadline math; a detector over budget yields a cursor that is persisted via ctx.write and read back next commit; a fresh detector starts from no cursor.",
@@ -44,7 +44,7 @@
       "id": "US-S2-3",
       "title": "M-C.3 — source-map lookup helper (cache + boundary; run is humanGate)",
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "acceptanceCriteria": [
         "src/devtools/source-map-lookup.ts exports lookupSourcePosition({scriptId,line,column}) with an in-session cache keyed by (scriptId,line,column).",
         "A unit test proves the cache: a repeated lookup with the same key does not re-invoke the injected resolver.",
@@ -56,7 +56,7 @@
       "id": "US-S2-4",
       "title": "M-C.4 — Hero hydration-mismatch detector",
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "acceptanceCriteria": [
         "src/inject/detectors/hydration-mismatch.ts conforms to the Detector interface and detects hydration failures (console.error 'Hydration failed'/'did not match' interception + fiber walk to the mismatching component).",
         "Emits Issue{ type:'HYDRATION_MISMATCH', component, prop?, server?, client? } — 'HYDRATION_MISMATCH' added additively to the IssueType enum.",
