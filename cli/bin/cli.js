@@ -169,6 +169,20 @@ async function main() {
   const flags = args.filter((a) => a.startsWith("-"));
   const positional = args.filter((a) => !a.startsWith("-"));
 
+  // `mcp` subcommand — run the MCP bridge for AI agents. Handled before the
+  // generic --help so `mcp --help` shows MCP usage, not the installer help.
+  if (positional[0] === "mcp") {
+    const { runMcp, printMcpHelp } = await import("../src/mcp.js");
+    if (flags.includes("--help") || flags.includes("-h")) {
+      printMcpHelp();
+      process.exit(0);
+    }
+    const idFlagIndex = args.indexOf("--extension-id");
+    const extensionId = idFlagIndex >= 0 ? args[idFlagIndex + 1] : undefined;
+    await runMcp({ extensionId });
+    return;
+  }
+
   if (flags.includes("--version") || flags.includes("-v")) {
     console.log(`${EXTENSION_NAME} v${VERSION}`);
     process.exit(0);

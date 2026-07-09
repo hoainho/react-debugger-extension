@@ -1,0 +1,110 @@
+{
+  "meta": {
+    "stage": "S1",
+    "title": "MCP Server v1 — autonomous build slice",
+    "roadmap": "openspec/ROADMAP.md",
+    "spec": "openspec/changes/mcp-server-v1/tasks.md",
+    "branch": "feat/s1-mcp-v1 (base: feat/m-b-reconciler-keys-fixtures)",
+    "mode": "ralph",
+    "notes": [
+      "Ralph builds ONLY the autonomously-verifiable slice: code that compiles + unit-testable logic + structural facts.",
+      "Integration/measurement/outward steps are NOT machine-verifiable in this sandbox (need Chrome+extension, network, Cloudflare deploy, real MCP clients, real testers). They are PREP-ed to the button-press and logged to humanGates — never executed.",
+      "Per user directive 'don't stop between gates': the loop does NOT halt at a gate; it does the autonomous prep, logs the manual action, and proceeds. Only npm publish / Worker deploy / CWS / Show HN / tester recruitment / G1 decision remain manual.",
+      "Acceptance criteria are written so each is checkable here (a command exits 0, a unit test asserts behavior, a file/export/field exists). e2e spec FILES are authored but their RUN is a humanGate (needs a browser)."
+    ],
+    "humanGates": [
+      "Phase 0 latency/payload measurement on react.dev/nextjs.org/fixture (needs Chrome+extension+network) — tasks 1.4-1.8",
+      "Deploy Worker to staging + production (Cloudflare credentials) — tasks 3.9, 5.4",
+      "Run the Playwright e2e specs against a loaded extension (needs browser) — tasks 3.10, 4.9, 4.11, 4.12 execution",
+      "48h maintainer soak with Claude Desktop; Phase A/B exit gates — tasks 3.13, 4.13",
+      "npm publish @nhonh/react-debugger @alpha; git tag; recruit 10-20 testers; optional Show HN — tasks 5.1(publish),5.5,5.6,5.7,5.8",
+      "G1 kill-gate decision (needs a week of real usage data) — task 5.10; both branches already route to S2 per ROADMAP"
+    ]
+  },
+  "stories": [
+    {
+      "id": "US-S1-1",
+      "title": "Worker per-key daily quota (pure logic, fully unit-tested)",
+      "priority": 1,
+      "passes": true,
+      "acceptanceCriteria": [
+        "worker/src/quota.ts exports an atomic increment/check with TTL = seconds until next UTC midnight and a free/pro tier split driven by a PRO_KEY_HASHES env var.",
+        "worker/wrangler.toml declares a RATE_LIMIT_KV namespace binding.",
+        "A Vitest unit suite for quota.ts covers: increment atomicity (sequential writes accumulate), TTL window (returns seconds-to-UTC-midnight given a fixed injected clock), tier classification (pro hash gets higher cap), and 429-trigger at cap+1 — the suite passes (exit 0).",
+        "npm run typecheck exits 0."
+      ]
+    },
+    {
+      "id": "US-S1-2",
+      "title": "Bridge transport scaffolding + handshake guards",
+      "priority": 2,
+      "passes": true,
+      "acceptanceCriteria": [
+        "DEVIATION (repo reality): cli/ is a plain ESM-JS package with NO TypeScript build, so the bridge ships as .js (not .ts) to run directly via npx. Files: cli/src/mcp.js, cli/src/mcp-bridge-ws.js, cli/src/mcp-handshake.js.",
+        "cli/src/mcp.js creates an @modelcontextprotocol/sdk McpServer over StdioServerTransport and registers a zod-validated get_fiber_node tool (placeholder). createMcpServer() constructs without throwing (unit-verified).",
+        "cli/src/mcp-bridge-ws.js starts a ws server bound to 127.0.0.1 on an ephemeral port, mints a 32-byte token, prints the chrome-extension://<id>/options.html#token=...&port=... deep-link to stdout, and a SIGTERM/SIGINT handler closes the server.",
+        "A REAL ws integration test asserts the handshake guard: missing/wrong token OR foreign Origin closes with code 1008; a correct token+Origin is accepted and replied 'paired' (src/__tests__/mcp-bridge.test.ts, 9 tests).",
+        "The mcp subcommand is wired into cli/bin/cli.js; `node cli/bin/cli.js mcp --help` prints usage to stderr, emits no chrome-extension deep-link to stdout, and exits 0 without starting the bridge (subprocess-verified).",
+        "npm run typecheck exits 0. NOTE: real stdio round-trip with an MCP client (Claude Desktop/opencode) is a humanGate — not run here."
+      ]
+    },
+    {
+      "id": "US-S1-3",
+      "title": "Manifest options_page + pairing hash handler",
+      "priority": 3,
+      "passes": true,
+      "acceptanceCriteria": [
+        "public/manifest.json contains \"options_page\": \"options.html\" and introduces NO new permissions (diff adds exactly the one key).",
+        "public/options.html exists as a Vite entry and npm run build emits dist/options.html.",
+        "A parsePairingHash(hash) helper (unit-tested) extracts {token, port} from '#token=...&port=...', rejects malformed input, and the options bootstrap stores {port,token,pairedAt} under chrome.storage.local key mcp.pairing then clears the hash via history.replaceState.",
+        "npm run typecheck exits 0."
+      ]
+    },
+    {
+      "id": "US-S1-4",
+      "title": "SW MCP client: connect, keepalive, backoff",
+      "priority": 4,
+      "passes": true,
+      "acceptanceCriteria": [
+        "src/background/mcp-client.ts reads paired creds from chrome.storage.local mcp.pairing, opens a WS to 127.0.0.1:<port>, and sends the token in the first frame.",
+        "A unit test asserts the reconnect backoff schedule is exponential from 1s capped at 30s, and that a 20s keepalive ping is scheduled while connected.",
+        "npm run typecheck exits 0."
+      ]
+    },
+    {
+      "id": "US-S1-5",
+      "title": "MCP tool contracts + zod schemas + error codes",
+      "priority": 5,
+      "passes": true,
+      "acceptanceCriteria": [
+        "The 6 tools (get_fiber_node, list_inspected_tabs, get_issues, get_renders_for, analyze_performance, explain_redux_action) and 2 resource templates (react-debugger://fiber/{tabId}/current, react-debugger://issues/{tabId}/{tab}) are registered with zod input schemas.",
+        "get_fiber_node applies maxDepth=3 default + cursor pagination and routes responses through src/utils/sanitize.ts (PII redaction) — unit-tested with a fixture fiber containing a token-shaped value that is redacted in output.",
+        "Unit tests assert error mapping: invalid get_issues tab -> -32602; quota-exhausted analyze_performance/explain_redux_action -> -32001 with retryAfterSeconds; concurrent AI call on a busy tab -> -32002 within the busy-flag path.",
+        "npm run typecheck exits 0 and the tool/schema unit suite passes."
+      ]
+    },
+    {
+      "id": "US-S1-6",
+      "title": "MCPPairingPanel UI (implement the stub)",
+      "priority": 6,
+      "passes": true,
+      "acceptanceCriteria": [
+        "src/panel/components/MCPPairingPanel.tsx renders a pairing UI with a connection-status indicator (Connected/Disconnected) and a Disconnect button that clears mcp.pairing.",
+        "The existing src/__tests__/MCPPairingPanel.test.tsx (and any additions) passes, asserting the status indicator reflects paired state and Disconnect clears creds.",
+        "npm run typecheck exits 0."
+      ]
+    },
+    {
+      "id": "US-S1-7",
+      "title": "Threat model + security tests + e2e spec files (authored, run is a humanGate)",
+      "priority": 7,
+      "passes": true,
+      "acceptanceCriteria": [
+        "docs/MCP_THREAT_MODEL.md names 5 threats (local-process attacker, malicious-page WS, compromised MCP client, runaway agent, PII leakage) each with a mitigation.",
+        "A CSWSH unit/integration test asserts a WS connect attempt with a foreign Origin is closed 1008; a PII-redaction test asserts a token-shaped value never appears in any tool/resource response.",
+        "test/e2e/mcp-get-fiber-node.spec.ts (and the Phase-B tool specs) exist and are syntactically valid (typecheck/lint clean); package.json has a test:e2e script + Playwright devDependency. NOTE: executing these against a loaded extension is a humanGate, not verified here.",
+        "npm run typecheck exits 0."
+      ]
+    }
+  ]
+}

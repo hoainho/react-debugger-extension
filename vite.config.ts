@@ -118,7 +118,8 @@ function copyAssetsAndFixPaths() {
       if (existsSync(srcDir)) {
         const devtoolsHtml = resolve(srcDir, 'devtools/devtools.html');
         const panelHtml = resolve(srcDir, 'panel/panel.html');
-        
+        const optionsHtml = resolve(srcDir, 'options/options.html');
+
         if (existsSync(devtoolsHtml)) {
           let content = readFileSync(devtoolsHtml, 'utf-8');
           content = content.replace(/\.\.\/\.\.\//g, './');
@@ -129,7 +130,12 @@ function copyAssetsAndFixPaths() {
           content = content.replace(/\.\.\/\.\.\//g, './');
           writeFileSync(resolve(distDir, 'panel.html'), content);
         }
-        
+        if (existsSync(optionsHtml)) {
+          let content = readFileSync(optionsHtml, 'utf-8');
+          content = content.replace(/\.\.\/\.\.\//g, './');
+          writeFileSync(resolve(distDir, 'options.html'), content);
+        }
+
         rmSync(srcDir, { recursive: true, force: true });
       }
       
@@ -170,6 +176,7 @@ export default defineConfig({
       input: {
         devtools: resolve(__dirname, 'src/devtools/devtools.html'),
         panel: resolve(__dirname, 'src/panel/panel.html'),
+        options: resolve(__dirname, 'src/options/options.html'),
       },
       output: {
         format: 'es',

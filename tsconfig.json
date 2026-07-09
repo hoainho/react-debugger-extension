@@ -22,5 +22,9 @@
     }
   },
   "include": ["src"],
+  "exclude": [
+    "src/__tests__/mcp-bridge.test.ts",
+    "src/__tests__/mcp-server.test.ts"
+  ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

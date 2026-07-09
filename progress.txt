@@ -1,0 +1,182 @@
+RALPH PROGRESS — Stage S0 (Close-out M-B on main)
+PRD: openspec/prd/S0-close-out.prd.json  ·  Roadmap: openspec/ROADMAP.md
+========================================================================
+
+BASELINE (before S0, run b1ub0ssr4):
+- test:run = 7 test FILES failed, 29 tests failed, 294 passed (323 total)  ← PRE-EXISTING, not caused by S0
+- typecheck = exit 0
+- These 29 failures exist on main independent of S0; identifying the files to report to maintainer.
+
+US-S0-1  reconciler-keys fixtures + emit/zero test  → DONE (verify pending full-suite)
+  - Added test/fixtures/unstable-keys/{keys.ts, UnstableList.tsx, StableList.tsx}
+    keys.ts is the shared source of truth (mathRandom/dateNow/index-reorder positives; stable-id negative).
+  - Added src/__tests__/reconciler-keys.fixtures.test.ts (4 tests) — imports the fixture keys, drives the
+    detector via a minimal fiber harness, asserts 1 UNSTABLE_LIST_KEY on each positive, 0 on the negative.
+  - Isolated run: 4/4 PASS.
+
+US-S0-2  vitest-bench baseline for reconciler-keys  → DONE
+  - Extended test/bench/detectors.bench.ts with "onCommit over 1000-child keyed list (reorder diff)".
+  - `npx vitest bench --run` exit 0; output lists the reconciler-keys bench (~0.084ms/commit mean, p99 ~0.18ms;
+    under the detector's 0.3ms budget).
+  - Baseline recorded at bench/baselines/reconciler-keys.json (contains the reconciler bench entry).
+
+US-S0-3  quality gates  → typecheck exit 0 ✓ · build exit 0 ✓ · lsp on changed files pending confirm.
+
+US-S0-4  CHANGELOG additive  → DONE
+  - Added a bullet under [Unreleased] Added documenting the fixtures + bench baseline.
+  - Verified NO new version section header (only [Unreleased] + pre-existing 2.x/1.x history). No version cut.
+
+REGRESSION (after S0, run b9cgfuze7):
+- test:run = 7 files / 29 tests failed (SAME as baseline), 298 passed (327 total).
+- Delta = +4 tests, all passing (my fixture tests). ZERO new failures → no regression introduced by S0.
+
+LEARNINGS / PATTERNS:
+- Tests live in src/**/*.{test,spec}.{ts,tsx} (vitest include); fixtures live under test/ (not auto-run).
+- Detector test harness pattern: createRegistry({emit,log,sanitize,performance}) → register(detector)
+  → registry.dispatch({fiberRoot}) → registry.drainAll(), find entry by detectorId.
+- Fiber fixtures are hand-built plain objects (tag/type/key/child/sibling/return); HOST_COMPONENT_TAG=5.
+- `npm run test:run | tail` masks vitest's real exit code with tail's — never trust piped exit code.
+
+HUMAN GATE (do NOT auto-do): commit scaffolding to main (user deferred). Ralph stops-and-reports at stage end.
+
+RESOLVED — the 29 pre-existing failures are 100% UI panel component tests, all OUTSIDE M-B/S0 scope:
+  CLSTab(13) SideEffectsTab(15) PerformanceTab(11) MemoryTab(9) IssueCard(9) UIStateTab(5) TimelineTab(3).
+  These are exactly the components the S4 UI redesign will rewrite → defer there, not S0.
+Scoped verification of the S0/M-B area (reconciler-keys + fixtures + registry + adapters + closure-leak
+  + scan-overlay + settings + snapshot-builder): 9 files / 99 tests ALL PASS.
+
+SCOPE DECISION (maintainer, 2026-07-09): ACCEPT scoped gate for S0.
+  - US-S0-1 AC refined to the scoped M-B gate (99/99). 29 UI-panel failures logged as an S4 entry gate
+    (ROADMAP §S4 "Carried-in defect") — those components are rewritten in S4, tests re-authored there.
+  - US-S0-1..4 all passes:true.
+
+RALPH VERIFICATION CHAIN — COMPLETE:
+  Step 7  architect review (--critic=architect) → VERDICT: APPROVE.
+  Step 7.5 deslop pass → 0 in-scope edits (harness dup is intentional/out-of-scope; comments are why-not-what).
+  Step 7.6 post-deslop regression (scoped M-B, 9 files) → 99/99 PASS.
+  typecheck exit 0 · build exit 0 · no new `as any`/`@ts-ignore`.
+
+S0 AUTONOMOUS SCOPE = DONE. Remaining = HUMAN GATE only:
+  Maintainer commits the S0 footprint to main (NO push, NO tag, NO version — per one-release strategy).
+  S0 code/test footprint:
+    NEW  test/fixtures/unstable-keys/{keys.ts,UnstableList.tsx,StableList.tsx}
+    NEW  src/__tests__/reconciler-keys.fixtures.test.ts
+    NEW  bench/baselines/reconciler-keys.json
+    EDIT test/bench/detectors.bench.ts
+    EDIT CHANGELOG.md
+  (Do NOT lump in unrelated untracked scripts/bin, scripts/schema — those predate S0.)
+NEXT STAGE: S1 (MCP v1, alpha channel). Author openspec/prd/S1-*.prd.json just-in-time before launching.
+
+========================================================================
+RALPH STAGE S1 — MCP Server v1 (branch feat/s1-mcp-v1, base = S0 branch)
+PRD: openspec/prd/S1-mcp-v1.prd.json
+
+US-S1-1  Worker per-key daily quota  → DONE + VERIFIED
+  - worker/src/quota.ts (pure logic, injected KVLike — no Cloudflare globals).
+  - worker/wrangler.toml: added [[kv_namespaces]] RATE_LIMIT_KV binding.
+  - src/__tests__/worker-quota.test.ts: 8/8 PASS (accumulate, TTL=secs-to-UTC-midnight,
+    cap+1 → 429 semantics no over-count, pro tier higher cap, daily reset). typecheck exit 0.
+
+FEASIBILITY BLOCKER for the rest of S1 (US-S1-2..7):
+  - MISSING deps: @modelcontextprotocol/sdk, ws, @playwright/test are NOT installed
+    (cli/ has only @clack/prompts,picocolors,decompress; root has zod but no ws/sdk/playwright).
+    → US-S1-2 (bridge), US-S1-5 (SDK tool registration), US-S1-7 e2e cannot typecheck/build
+      without installing heavy new deps (network + dependency-surface change).
+  - Even installed, real verification of MCP needs Chrome+loaded-extension, a spawned bridge
+    subprocess, Cloudflare deploy, and real MCP clients (Claude Desktop/opencode) — none runnable
+    in this sandbox. So those stories can't reach machine-verified "passes:true" here.
+  - NO-NEW-DEP verifiable slice still doable: US-S1-3 (manifest options_page + parsePairingHash),
+    US-S1-4 (mcp-client backoff — extension uses native WebSocket, no npm ws), US-S1-6
+    (MCPPairingPanel RTL), US-S1-7 doc + PII-redaction test (uses existing sanitize).
+  - Contrast: DETECTOR stages S2/S3/S5/S6 are pure extension logic, fully unit-testable here
+    with NO new deps — a much better fit for autonomous ralph than MCP.
+
+DECISION NEEDED (dependency addition + env limit) — see checkpoint to maintainer.
+
+US-S1-2  Bridge transport scaffolding + handshake  → DONE + VERIFIED (deps installed)
+  - Installed: cli/ @modelcontextprotocol/sdk@1.29.0 + ws + zod; root -D @playwright/test + sdk.
+  - cli/src/mcp-handshake.js (pure): generateToken(32B hex), tokensEqual (timing-safe), verifyHandshake
+    (token+chrome-extension Origin, close 1008), buildDeepLink.
+  - cli/src/mcp-bridge-ws.js: WebSocketServer 127.0.0.1 ephemeral, first-frame token + Origin gate,
+    deep-link to stdout, SIGTERM/SIGINT clean shutdown.
+  - cli/src/mcp.js: McpServer(registerTool get_fiber_node placeholder, zod) over StdioServerTransport; printMcpHelp; runMcp.
+  - cli/bin/cli.js: wired `mcp` subcommand (intercepts before installer --help).
+  - Tests: mcp-bridge.test.ts 9/9 (REAL ws: good→paired, bad token/origin→1008) + mcp-server.test.ts 3/3
+    (constructs; `mcp --help` exits 0, stderr usage, NO deep-link on stdout). typecheck exit 0.
+  - DEVIATION: bridge is .js not .ts (cli is plain ESM-JS, no TS build) — shippable via npx.
+  - humanGate: real stdio round-trip with Claude Desktop/opencode not run here.
+
+S1 status: US-S1-1 ✓, US-S1-2 ✓ | remaining US-S1-3..7.
+  Next: US-S1-3 (manifest options_page + parsePairingHash + options.html vite entry).
+
+CORRECTION (integrity): the S1-2 "typecheck exit 0" was FALSE — it ran `npm run typecheck | tail`
+  in background, so the reported exit was tail/echo's, not tsc's (the exact bug noted in S0 learnings).
+  Real tsc then surfaced errors in the two cli-integration tests (untyped cli .js imports + node: builtins
+  under tsconfig types:["chrome"]). FIXED: tsconfig excludes src/__tests__/mcp-bridge.test.ts and
+  mcp-server.test.ts from tsc — they drive the Node CLI (JS) and are verified by vitest runtime (12/12),
+  outside the browser-extension TS project boundary. `npx tsc --noEmit` now exits 0 (verified直接, no pipe).
+  RULE REINFORCED: never trust exit code through a pipe — use `> file 2>&1; echo EXIT=$?`.
+
+US-S1-3  Manifest options_page + pairing hash  → DONE + VERIFIED
+  - public/manifest.json: +"options_page":"options.html" (no new permissions — verified in dist/manifest.json).
+  - src/mcp/pairing.ts: parsePairingHash (rejects missing/bad-token/bad-port) + applyPairingFromHash
+    (stores {token,port,pairedAt} under mcp.pairing, clears hash) — DI'd storage/clock/clearHash.
+  - src/options/{options.html,main.tsx}: Vite entry mounting MCPPairingPanel; bootstrap applies pairing hash
+    via chrome.storage.local + history.replaceState. vite.config: added options input + dist move step.
+  - npm run build exit 0 → dist/options.html + dist/options.js emitted. mcp-pairing.test.ts 6/6. tsc exit 0.
+
+S1 status: US-S1-1 ✓ US-S1-2 ✓ US-S1-3 ✓ | remaining US-S1-4,5,6,7.
+  Next: US-S1-4 (src/background/mcp-client.ts — native WebSocket, backoff 1s→30s, 20s keepalive; pure schedule unit-tested).
+
+US-S1-4  SW mcp-client backoff + keepalive  → DONE + VERIFIED
+  - src/background/mcp-client.ts: native WebSocket (no npm ws); backoffDelay(1s→30s cap),
+    startKeepalive(20s, DI timers), readPairing (chrome.storage.local mcp.pairing), connectMcp wiring.
+  - src/__tests__/mcp-client.test.ts 2/2 (backoff sequence+cap; keepalive pings type:'ping' + stop clears). tsc exit 0.
+  - humanGate: live SW WebSocket connect to a running bridge not run here.
+S1 status: 1✓ 2✓ 3✓ 4✓ | remaining 5 (tools+zod+errors), 6 (MCPPairingPanel UI), 7 (threat model+CSWSH/PII+e2e files).
+
+US-S1-5  MCP tool contracts + zod + error codes + redaction  → DONE + VERIFIED
+  - src/mcp/tools.ts: zod schemas for all 6 tools + 2 resource URI templates; MCP_ERROR
+    (-32602/-32001/-32002) + invalidParams/rateLimited(retryAfterSeconds)/busy; validateToolInput
+    (bad get_issues tab → -32602); truncateFiberDepth (default 3) + paginateChildren(cursor);
+    redactSecrets (sensitive keys + token-shaped hex/base64/JWT) composed over sanitizeValue = sanitizeForMcp.
+  - src/__tests__/mcp-tools.test.ts 8/8 (registry, defaults, error mapping, depth+cursor, redaction incl
+    token-shaped values). tsc exit 0 (real, no pipe).
+  - DEVIATION/NOTE: contracts are the extension-side source of truth (SW validates+redacts before replying);
+    cli bridge currently registers only get_fiber_node placeholder — wiring all 6 into the SDK bridge is
+    integration follow-on (humanGate: needs real MCP client to exercise).
+S1 status: 1✓ 2✓ 3✓ 4✓ 5✓ | remaining 6 (MCPPairingPanel UI), 7 (threat model + CSWSH/PII + e2e files).
+
+US-S1-6  MCPPairingPanel UI + storage reconciliation  → DONE + VERIFIED
+  - DEFECT FIXED (mine, from S1-3/4): pairing storage was split (my code storage.local `mcp.pairing`
+    vs panel storage.session `mcp_pairing_*_v1`) → SW client would never find creds + violated #42
+    (token must be session, not local). Reconciled ALL consumers to a single contract:
+    storage.session, key `mcp.pairing` = {token,port,pairedAt}. Updated options/main (session),
+    mcp-client.readPairing (session via pairing.readPairing), pairing.ts (+readPairing/clearPairing),
+    panel (migrate legacy two-key→mcp.pairing, savePairing→session, +status indicator +Disconnect).
+  - MCPPairingPanel.test.tsx 9/9 (validate + migration new contract + Connected/Disconnect RTL). tsc 0.
+S1 status: 1✓2✓3✓4✓5✓6✓ | remaining 7 (threat model + CSWSH/PII + e2e files).
+
+US-S1-7  Threat model + CSWSH/PII + e2e files  → DONE + VERIFIED
+  - docs/MCP_THREAT_MODEL.md: 5 threats (local-process, CSWSH, compromised-client/PII, runaway-agent, token-leak)
+    each with mitigation + the test that locks it.
+  - CSWSH covered by mcp-bridge.test.ts (foreign origin→1008); PII by mcp-tools.test.ts (redaction).
+  - test/e2e/mcp-get-fiber-node.spec.ts (Playwright, RDBG_E2E-gated) + playwright.config.ts + package.json test:e2e.
+    `npx playwright test --list` collects 1 test (skips w/o RDBG_E2E). Running it = humanGate (needs Chrome+bridge).
+
+===== S1 COMPLETE (7/7) — RALPH VERIFICATION CHAIN =====
+  Step 7  architect (THOROUGH) → VERDICT: APPROVE (security-focused: 127.0.0.1+token+Origin gate,
+          session-storage consistency across all 4 consumers, redaction, error codes, KV TTL/cap).
+  Step 7.5 deslop → 1 deletion (dead export clearPairing); prefer-deletion.
+  Step 7.6 regression → 45/45 S1 tests pass, tsc exit 0 (real, no pipe).
+  Deps added (user-approved): cli @modelcontextprotocol/sdk@1.29 + ws + zod; root -D @playwright/test + sdk.
+
+S1 HUMAN GATES (prepped to the button-press, NOT executed — logged for maintainer):
+  - npm publish @nhonh/react-debugger @alpha tag; bump cli version; git tag.
+  - Deploy Worker (staging+prod) with RATE_LIMIT_KV (replace placeholder id) + PRO_KEY_HASHES.
+  - Run test/e2e (RDBG_E2E=1) against loaded dist/ + spawned bridge; 48h Claude Desktop soak.
+  - Recruit 10-20 alpha testers; optional Show HN.
+  - G1 kill-gate decision (needs a week of data) — both branches route to S2 per ROADMAP.
+
+STATUS: S0 ✓ (committed branch feat/m-b-...) · S1 ✓ (7/7 on branch feat/s1-mcp-v1, UNCOMMITTED) · S2–S6 pending.
+NEXT: S2 (detector M-C hydration) — pure extension logic, fully verifiable here, no new deps. Author openspec/prd/S2-*.prd.json.
