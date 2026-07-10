@@ -2071,27 +2071,36 @@ button:focus:not(:focus-visible),
   flex-wrap: wrap;
 }
 
+/* S4.5 V4: quiet, category-tinted chips (was a loud 2px solid-color box). The
+   per-category hue arrives via the inline --chip-accent custom property. */
 .filter-toggle {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  background: var(--bg-secondary);
-  border: 2px solid transparent;
-  border-radius: 4px;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: 11px;
-  color: var(--text-secondary);
-  transition: all 0.2s;
+  color: var(--text-muted);
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
 }
 
 .filter-toggle:hover {
-  background: var(--bg-hover);
+  color: var(--text-secondary);
+  border-color: var(--border-color);
 }
 
 .filter-toggle.active {
   color: var(--text-primary);
-  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+  background: color-mix(in srgb, var(--chip-accent) 10%, var(--bg-tertiary));
+}
+
+/* Inactive chips desaturate their category dot so the row reads calm. */
+.filter-toggle:not(.active) .filter-icon {
+  opacity: 0.45;
 }
 
 .filter-icon {
@@ -4264,3 +4273,27 @@ button:focus:not(:focus-visible),
 /* Content rhythm + aligned numerics */
 .tab-content { padding: var(--space-4); }
 .tab-content :where(.metric-value, .cls-value, .tab-badge, td) { font-variant-numeric: tabular-nums; }
+
+/* ─── S4.5 V5: motion + a11y + WCAG ─────────────────────────────────────────── */
+/* View/section switch: a subtle rise+fade (main is keyed on activeTab so it replays). */
+@keyframes rdbgViewIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.tab-content { animation: rdbgViewIn var(--transition-normal); }
+/* Issue card body reveals with the same easing on expand. */
+.issue-details { animation: rdbgViewIn var(--transition-fast); }
+
+/* Links get the same visible keyboard-focus treatment as buttons. */
+a:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Global reduced-motion catch-all — honor the OS preference everywhere. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

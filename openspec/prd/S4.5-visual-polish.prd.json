@@ -13,21 +13,25 @@
     ]
   },
   "stories": [
-    { "id": "V1", "title": "Design language + shell polish", "passes": false,
+    { "id": "V1", "title": "Design language + shell polish", "passes": true,
       "acceptanceCriteria": [
         "tokens.css: confirm blue-biased neutral ramp + single accent + severity ramp + 8pt spacing + type scale; add any missing steps.",
         "5-view nav: active-state indicator (underline/bar), per-view count badge (sum of child issue counts), hover; sub-tab strip restyled as a segmented control (not raw tab CSS).",
         "sticky header; content padding rhythm; tabular-nums on metrics.",
         "npm run build exit 0; Panel.test still green; headless screenshot produced for review." ] },
-    { "id": "V2", "title": "Dashboard view (real KPIs)", "passes": false,
+    { "id": "V2", "title": "Dashboard view (real KPIs)", "passes": true,
       "acceptanceCriteria": ["Severity stat-tile row + React version/mode chip + render sparkline + top-offender; card-based; RTL + screenshot."] },
-    { "id": "V3", "title": "Card-based issue system", "passes": false,
+    { "id": "V3", "title": "Card-based issue system", "passes": true,
       "acceptanceCriteria": ["IssueCard on tokens: severity stripe+badge, collapsed/expanded hierarchy, empty states with guidance; RTL + screenshot."] },
     { "id": "V4", "title": "Profiler/State/Effects layouts", "passes": false,
-      "acceptanceCriteria": ["Profiler segmented chart canvas (area+grid+endpoint); State merged inspector split; Effects grouped; RTL + screenshot."] },
-    { "id": "V5", "title": "Motion + a11y + WCAG", "passes": false,
-      "acceptanceCriteria": ["View/card transitions + prefers-reduced-motion; focus-visible; keyboard nav; WCAG 2.1 AA contrast on the new palette."] },
-    { "id": "V6", "title": "Visual regression baselines", "passes": false,
-      "acceptanceCriteria": ["Playwright per-view screenshot baselines (headless); documented run."] }
+      "acceptanceCriteria": ["Profiler segmented chart canvas (area+grid+endpoint); State merged inspector split; Effects grouped; RTL + screenshot."],
+      "shipped": "Effects already grouped by category; Profiler timeline filter chips de-noised (loud 2px per-category solid border → grey 1px + faint category tint + colored dot + inactive-desaturate). Verified via computed-style probe + regenerated baseline.",
+      "deferred": "The Profiler shared chart-canvas (area+grid+endpoint) and the State merged tree/inspector split are feature-level builds (not CSS polish) that need iterative product design + review — deliberately not faked with superficial CSS." },
+    { "id": "V5", "title": "Motion + a11y + WCAG", "passes": true,
+      "acceptanceCriteria": ["View/card transitions + prefers-reduced-motion; focus-visible; keyboard nav; WCAG 2.1 AA contrast on the new palette."],
+      "shipped": "rdbgViewIn rise+fade on section switch (main keyed on activeTab) + issue-card body reveal; global prefers-reduced-motion catch-all; link focus-visible ring (buttons already had one); --text-muted #484f58→#7d8590 to clear WCAG AA 4.5:1 (was 2.28:1) on both grounds, verified by contrast computation." },
+    { "id": "V6", "title": "Visual regression baselines", "passes": true,
+      "acceptanceCriteria": ["Playwright per-view screenshot baselines (headless); documented run."],
+      "shipped": "Dedicated headless lane (playwright-visual.config.ts + test/visual/): 6 baselines (5 views + classic), deterministic dist-served render with stubbed chrome.*, npm run test:visual, documented in test/visual/README.md. Passes 6/6 against baselines." }
   ]
 }

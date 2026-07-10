@@ -589,6 +589,7 @@ export function Panel() {
       )}
 
       <main
+        key={activeTab}
         className="tab-content"
         role="tabpanel"
         id={`panel-${activeTab}`}

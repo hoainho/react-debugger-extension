@@ -18,7 +18,9 @@
   /* Text hierarchy */
   --text-primary: #e6edf3;
   --text-secondary: #8b949e;
-  --text-muted: #484f58;
+  /* WCAG 2.1 AA (S4.5 V5): #7d8590 clears 4.5:1 on both --bg-primary and
+     --bg-card, where the old #484f58 (2.28:1) failed for meaningful text. */
+  --text-muted: #7d8590;
 
   /* Borders & dividers */
   --border-color: #30363d;
