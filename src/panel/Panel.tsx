@@ -10,9 +10,10 @@ import { MemoryTab } from './tabs/MemoryTab';
 import { TimelineTab } from './tabs/TimelineTab';
 import { AIAnalysisTab } from './tabs/AIAnalysisTab';
 import { SettingsTab } from './tabs/SettingsTab';
+import { DashboardView } from './components/views/DashboardView';
 import { writeUiMode, UI_MODE_KEY, type UiMode } from './ui-mode';
 
-type TabId = 'timeline' | 'ui-state' | 'performance' | 'side-effects' | 'cls' | 'redux' | 'memory' | 'ai-analysis' | 'settings';
+type TabId = 'overview' | 'timeline' | 'ui-state' | 'performance' | 'side-effects' | 'cls' | 'redux' | 'memory' | 'ai-analysis' | 'settings';
 
 // S4 redesign: the 9 tabs consolidated into 5 views. Each view renders its
 // grouped tab content (multi-tab views get a secondary sub-tab strip).
@@ -22,7 +23,7 @@ interface V2View {
   tabs: TabId[];
 }
 const V2_VIEWS: V2View[] = [
-  { id: 'dashboard', label: 'Dashboard', tabs: ['ai-analysis'] },
+  { id: 'dashboard', label: 'Dashboard', tabs: ['overview', 'ai-analysis'] },
   { id: 'profiler', label: 'Profiler', tabs: ['timeline', 'performance', 'memory'] },
   { id: 'state', label: 'State', tabs: ['ui-state', 'redux'] },
   { id: 'effects', label: 'Effects', tabs: ['side-effects', 'cls'] },
@@ -85,10 +86,10 @@ const createInitialState = (): TabState => ({
 });
 
 export function Panel() {
-  const [activeTab, setActiveTab] = useState<TabId>('timeline');
+  const [activeTab, setActiveTab] = useState<TabId>('overview');
   // Redesigned 5-view shell defaults ON; classic 9-tab layout via the header toggle.
   const [layoutMode, setLayoutMode] = useState<UiMode>('v2');
-  const [activeView, setActiveView] = useState<string>('profiler');
+  const [activeView, setActiveView] = useState<string>('dashboard');
   const [state, setState] = useState<TabState>(createInitialState);
   const [isLoading, setIsLoading] = useState(true);
   const [extensionVersion] = useState(() => chrome.runtime.getManifest().version);
@@ -190,6 +191,10 @@ export function Panel() {
   const toggleLayout = useCallback(() => {
     setLayoutMode((prev) => {
       const next: UiMode = prev === 'v2' ? 'classic' : 'v2';
+      // 'overview' only exists in the v2 shell; fall back to a real classic tab.
+      if (next === 'classic') {
+        setActiveTab((t) => (t === 'overview' ? 'timeline' : t));
+      }
       if (typeof chrome !== 'undefined' && chrome.storage?.local) {
         const area = chrome.storage.local as unknown as Parameters<typeof writeUiMode>[0];
         void writeUiMode(area, next);
@@ -199,7 +204,9 @@ export function Panel() {
   }, []);
 
   const currentView = V2_VIEWS.find((v) => v.id === activeView) ?? V2_VIEWS[0];
-  const labelFor = (id: TabId): string => TABS.find((t) => t.id === id)?.label ?? id;
+  // 'overview' is a v2-only section (the Dashboard KPI screen), not a classic tab.
+  const EXTRA_LABELS: Partial<Record<TabId, string>> = { overview: 'Overview' };
+  const labelFor = (id: TabId): string => TABS.find((t) => t.id === id)?.label ?? EXTRA_LABELS[id] ?? id;
 
   // WAI-ARIA Tabs — arrow-key roving focus between tabs
   const handleTabKeyDown = useCallback((e: React.KeyboardEvent, currentIndex: number) => {
@@ -444,6 +451,8 @@ export function Panel() {
 
   const renderSection = (sectionId: TabId) => {
     switch (sectionId) {
+      case 'overview':
+        return <DashboardView state={state} />;
       case 'timeline':
         return <TimelineTab events={state.timelineEvents} tabId={tabId} onClear={clearTimeline} />;
       case 'ui-state':

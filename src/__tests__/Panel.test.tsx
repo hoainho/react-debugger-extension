@@ -40,10 +40,21 @@ describe('Panel layout', () => {
         expect(screen.getByRole('tab', { name: view })).toBeInTheDocument();
       }
     });
-    // Profiler is the default view → its sub-tabs show
-    for (const sub of ['Timeline', 'Performance', 'Memory']) {
+    // Dashboard is the default view → its sub-tabs show
+    for (const sub of ['Overview', 'AI Analysis']) {
       expect(screen.getByRole('tab', { name: sub })).toBeInTheDocument();
     }
+  });
+
+  it('shows Profiler sub-tabs (Timeline/Performance/Memory) when Profiler is selected', async () => {
+    render(<Panel />);
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Profiler' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('tab', { name: 'Profiler' }));
+    await waitFor(() => {
+      for (const sub of ['Timeline', 'Performance', 'Memory']) {
+        expect(screen.getByRole('tab', { name: sub })).toBeInTheDocument();
+      }
+    });
   });
 
   it('switches to the classic 9-tab layout via the header toggle', async () => {

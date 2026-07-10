@@ -5,10 +5,12 @@ interface IssueCardProps {
   issue: Issue;
 }
 
+// Severity colors are sourced from the design-token ramp (--severity-*) so the
+// card system stays consistent with the rest of the redesigned panel.
 const SEVERITY_CONFIG = {
-  error: { iconClass: 'indicator-dot indicator-dot--error', color: '#ff4444', label: 'Error', bgColor: 'rgba(255, 68, 68, 0.1)' },
-  warning: { iconClass: 'indicator-dot indicator-dot--warning', color: '#ffaa00', label: 'Warning', bgColor: 'rgba(255, 170, 0, 0.1)' },
-  info: { iconClass: 'indicator-dot indicator-dot--info', color: '#4488ff', label: 'Info', bgColor: 'rgba(68, 136, 255, 0.1)' },
+  error: { iconClass: 'indicator-dot indicator-dot--error', color: 'var(--severity-error)', label: 'Error', bgColor: 'color-mix(in srgb, var(--severity-error) 14%, transparent)' },
+  warning: { iconClass: 'indicator-dot indicator-dot--warning', color: 'var(--severity-warning)', label: 'Warning', bgColor: 'color-mix(in srgb, var(--severity-warning) 14%, transparent)' },
+  info: { iconClass: 'indicator-dot indicator-dot--info', color: 'var(--severity-info)', label: 'Info', bgColor: 'color-mix(in srgb, var(--severity-info) 14%, transparent)' },
 };
 
 const ISSUE_INFO: Record<string, { title: string; why: string; learnUrl?: string }> = {
