@@ -4192,3 +4192,28 @@ button:focus:not(:focus-visible),
   font-size: 12px;
   margin-top: 4px;
 }
+
+/* ─── S4 redesign: 5-view layout toggle + sub-tab strip ─────────────────────── */
+.layout-toggle {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  padding: 3px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.layout-toggle:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.sub-tab-nav {
+  background: var(--bg-inset);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.sub-tab-nav .tab-button {
+  font-size: 11px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}

@@ -10,8 +10,24 @@ import { MemoryTab } from './tabs/MemoryTab';
 import { TimelineTab } from './tabs/TimelineTab';
 import { AIAnalysisTab } from './tabs/AIAnalysisTab';
 import { SettingsTab } from './tabs/SettingsTab';
+import { writeUiMode, UI_MODE_KEY, type UiMode } from './ui-mode';
 
 type TabId = 'timeline' | 'ui-state' | 'performance' | 'side-effects' | 'cls' | 'redux' | 'memory' | 'ai-analysis' | 'settings';
+
+// S4 redesign: the 9 tabs consolidated into 5 views. Each view renders its
+// grouped tab content (multi-tab views get a secondary sub-tab strip).
+interface V2View {
+  id: string;
+  label: string;
+  tabs: TabId[];
+}
+const V2_VIEWS: V2View[] = [
+  { id: 'dashboard', label: 'Dashboard', tabs: ['ai-analysis'] },
+  { id: 'profiler', label: 'Profiler', tabs: ['timeline', 'performance', 'memory'] },
+  { id: 'state', label: 'State', tabs: ['ui-state', 'redux'] },
+  { id: 'effects', label: 'Effects', tabs: ['side-effects', 'cls'] },
+  { id: 'settings', label: 'Settings', tabs: ['settings'] },
+];
 
 function isExtensionContextValid(): boolean {
   try {
@@ -70,6 +86,9 @@ const createInitialState = (): TabState => ({
 
 export function Panel() {
   const [activeTab, setActiveTab] = useState<TabId>('timeline');
+  // Redesigned 5-view shell defaults ON; classic 9-tab layout via the header toggle.
+  const [layoutMode, setLayoutMode] = useState<UiMode>('v2');
+  const [activeView, setActiveView] = useState<string>('profiler');
   const [state, setState] = useState<TabState>(createInitialState);
   const [isLoading, setIsLoading] = useState(true);
   const [extensionVersion] = useState(() => chrome.runtime.getManifest().version);
@@ -149,6 +168,38 @@ export function Panel() {
       setTimeout(() => setIsSearchingRedux(false), REDUX_SEARCH_TIMEOUT_MS);
     }
   }, [tabId, state.reduxDetected]);
+
+  // Apply a persisted UI layout preference ONLY if the user explicitly chose one.
+  // Unset → keep the 'v2' default so the redesigned layout is visible out of the box.
+  useEffect(() => {
+    if (typeof chrome === 'undefined' || !chrome.storage?.local) return;
+    chrome.storage.local
+      .get(UI_MODE_KEY)
+      .then((rec: Record<string, unknown>) => {
+        const stored = rec?.[UI_MODE_KEY];
+        if (stored === 'classic' || stored === 'v2') setLayoutMode(stored);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleViewChange = useCallback((view: V2View) => {
+    setActiveView(view.id);
+    handleTabChange(view.tabs[0]);
+  }, [handleTabChange]);
+
+  const toggleLayout = useCallback(() => {
+    setLayoutMode((prev) => {
+      const next: UiMode = prev === 'v2' ? 'classic' : 'v2';
+      if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+        const area = chrome.storage.local as unknown as Parameters<typeof writeUiMode>[0];
+        void writeUiMode(area, next);
+      }
+      return next;
+    });
+  }, []);
+
+  const currentView = V2_VIEWS.find((v) => v.id === activeView) ?? V2_VIEWS[0];
+  const labelFor = (id: TabId): string => TABS.find((t) => t.id === id)?.label ?? id;
 
   // WAI-ARIA Tabs — arrow-key roving focus between tabs
   const handleTabKeyDown = useCallback((e: React.KeyboardEvent, currentIndex: number) => {
@@ -391,8 +442,8 @@ export function Panel() {
     );
   }
 
-  const renderContent = () => {
-    switch (activeTab) {
+  const renderSection = (sectionId: TabId) => {
+    switch (sectionId) {
       case 'timeline':
         return <TimelineTab events={state.timelineEvents} tabId={tabId} onClear={clearTimeline} />;
       case 'ui-state':
@@ -446,32 +497,81 @@ export function Panel() {
               <span className="mode-badge mode-redux">Redux</span>
             )}
           </div>
+          <button
+            type="button"
+            className="layout-toggle"
+            onClick={toggleLayout}
+            title="Switch between the redesigned 5-view layout and the classic tabs"
+          >
+            {layoutMode === 'v2' ? 'Classic view' : 'New view'}
+          </button>
         </div>
       </header>
 
-      <nav className="tab-nav" role="tablist" aria-label="React Debugger sections">
-        {TABS.map((tab, index) => {
-          const badge = getBadge(tab.id);
-          return (
-            <button
-              key={tab.id}
-              id={`tab-${tab.id}`}
-              role="tab"
-              aria-selected={activeTab === tab.id}
-              aria-controls={`panel-${tab.id}`}
-              tabIndex={activeTab === tab.id ? 0 : -1}
-              className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => handleTabChange(tab.id)}
-              onKeyDown={(e) => handleTabKeyDown(e, index)}
-            >
-              <span className="tab-label">{tab.label}</span>
-              {badge !== undefined && badge > 0 && (
-                <span className="tab-badge" aria-label={`${badge} items`}>{badge}</span>
-              )}
-            </button>
-          );
-        })}
-      </nav>
+      {layoutMode === 'classic' ? (
+        <nav className="tab-nav" role="tablist" aria-label="React Debugger sections">
+          {TABS.map((tab, index) => {
+            const badge = getBadge(tab.id);
+            return (
+              <button
+                key={tab.id}
+                id={`tab-${tab.id}`}
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                aria-controls={`panel-${tab.id}`}
+                tabIndex={activeTab === tab.id ? 0 : -1}
+                className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
+                onClick={() => handleTabChange(tab.id)}
+                onKeyDown={(e) => handleTabKeyDown(e, index)}
+              >
+                <span className="tab-label">{tab.label}</span>
+                {badge !== undefined && badge > 0 && (
+                  <span className="tab-badge" aria-label={`${badge} items`}>{badge}</span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+      ) : (
+        <>
+          <nav className="tab-nav" role="tablist" aria-label="React Debugger views">
+            {V2_VIEWS.map((view) => (
+              <button
+                key={view.id}
+                type="button"
+                role="tab"
+                aria-selected={activeView === view.id}
+                className={`tab-button ${activeView === view.id ? 'active' : ''}`}
+                onClick={() => handleViewChange(view)}
+              >
+                <span className="tab-label">{view.label}</span>
+              </button>
+            ))}
+          </nav>
+          {currentView.tabs.length > 1 && (
+            <nav className="tab-nav sub-tab-nav" role="tablist" aria-label={`${currentView.label} sections`}>
+              {currentView.tabs.map((t) => {
+                const badge = getBadge(t);
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === t}
+                    className={`tab-button ${activeTab === t ? 'active' : ''}`}
+                    onClick={() => handleTabChange(t)}
+                  >
+                    <span className="tab-label">{labelFor(t)}</span>
+                    {badge !== undefined && badge > 0 && (
+                      <span className="tab-badge" aria-label={`${badge} items`}>{badge}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+          )}
+        </>
+      )}
 
       <main
         className="tab-content"
@@ -496,7 +596,7 @@ export function Panel() {
             </button>
           </div>
         ) : (
-          renderContent()
+          renderSection(activeTab)
         )}
       </main>
     </div>
