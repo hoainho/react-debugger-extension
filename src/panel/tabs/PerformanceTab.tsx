@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { Issue, ComponentInfo, RenderInfo, PageLoadMetrics } from '@/types';
 import { IssueCard } from '../components/IssueCard';
+import { ChartCanvas } from '../components/common';
 import { UI_FEEDBACK_SHORT_MS } from '../constants';
 
 interface PerformanceTabProps {
@@ -236,6 +237,22 @@ export function PerformanceTab({ issues, components, renders, tabId, pageLoadMet
               </tbody>
             </table>
           </div>
+        </section>
+      )}
+
+      {renderStats.length > 0 && (
+        <section className="section">
+          <h3>Render Distribution</h3>
+          <p className="section-desc">Render count across the {renderStats.length} busiest components (last bar = busiest)</p>
+          <ChartCanvas
+            variant="bars"
+            data={[...renderStats].reverse().map((s) => s.renderCount)}
+            height={120}
+            accent="var(--accent-purple)"
+            showGrid
+            ariaLabel="Render counts across the busiest tracked components"
+            formatValue={(n) => `${n} renders`}
+          />
         </section>
       )}
 

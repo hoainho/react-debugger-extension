@@ -27,3 +27,25 @@ test('classic layout', async ({ page }) => {
   await page.waitForTimeout(300);
   await expect(page).toHaveScreenshot('layout-classic.png', { fullPage: true });
 });
+
+// S4.5 V4 sub-tab charts/inspector (not the default sub-tab, so captured explicitly).
+test('profiler → memory chart', async ({ page }) => {
+  await page.getByRole('tab', { name: 'Profiler' }).click();
+  await page.getByRole('tab', { name: 'Memory' }).click();
+  await page.waitForTimeout(300);
+  await expect(page).toHaveScreenshot('profiler-memory.png', { fullPage: true });
+});
+
+test('profiler → performance charts', async ({ page }) => {
+  await page.getByRole('tab', { name: 'Profiler' }).click();
+  await page.getByRole('tab', { name: 'Performance' }).click();
+  await page.waitForTimeout(300);
+  await expect(page).toHaveScreenshot('profiler-performance.png', { fullPage: true });
+});
+
+test('state → redux inspector', async ({ page }) => {
+  await page.getByRole('tab', { name: 'State' }).click();
+  await page.getByRole('tab', { name: 'Redux' }).click();
+  await page.waitForTimeout(300);
+  await expect(page).toHaveScreenshot('state-redux.png', { fullPage: true });
+});

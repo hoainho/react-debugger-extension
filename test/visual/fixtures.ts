@@ -33,9 +33,22 @@ const PANEL_STATE = {
     ]),
   ),
   clsReport: null,
-  reduxState: null,
-  reduxActions: [],
-  memoryReport: null,
+  reduxState: { user: { id: 42, name: 'Ada', roles: ['admin', 'editor'] }, cart: { items: 3, total: 59.9 }, ui: { theme: 'dark', sidebarOpen: true } },
+  reduxActions: [
+    { id: 'a1', type: 'cart/addItem', payload: { sku: 'X1' }, timestamp: 0 },
+    { id: 'a2', type: 'user/login', payload: { id: 42 }, timestamp: 0 },
+  ],
+  memoryReport: {
+    current: { timestamp: 0, usedJSHeapSize: 86 * 1024 * 1024, totalJSHeapSize: 104 * 1024 * 1024, jsHeapSizeLimit: 512 * 1024 * 1024 },
+    history: Array.from({ length: 24 }, (_, i) => {
+      const used = 42 + Math.sin(i / 3) * 3 + i * 1.5;
+      return { timestamp: i * 1000, usedJSHeapSize: used * 1024 * 1024, totalJSHeapSize: (used + 18) * 1024 * 1024, jsHeapSizeLimit: 512 * 1024 * 1024 };
+    }),
+    growthRate: 1.5 * 1024 * 1024,
+    peakUsage: 115 * 1024 * 1024,
+    warnings: [],
+    crashes: [],
+  },
   pageLoadMetrics: { fcp: 812, lcp: 1340, ttfb: 96, domContentLoaded: 900, loadComplete: 1500, timestamp: 0 },
   timelineEvents: [],
 };

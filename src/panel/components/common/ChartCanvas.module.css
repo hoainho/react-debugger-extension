@@ -1,0 +1,131 @@
+/* ChartCanvas — token-driven inline-SVG sparkline (area / line / bars). */
+
+.root {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  /* Buffer so the endpoint dot/label never get clipped at the plot edges.
+     NOTE: this padding lives on .root (not .plot) on purpose — percentage
+     offsets on the absolutely-positioned .endpoint resolve against its
+     containing block (.plot)'s own box, which must stay padding-free so it
+     lines up 1:1 with the SVG's 0-100 viewBox coordinate space. */
+  padding: var(--space-2) var(--space-3);
+}
+
+.empty {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 12px;
+}
+
+.plot {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Grid */
+.gridLine {
+  stroke: var(--border-subtle);
+  stroke-width: 1;
+}
+
+.baseline {
+  stroke: var(--border-color);
+  stroke-width: 1;
+}
+
+/* Area gradient stops */
+.gradStart {
+  stop-color: color-mix(in srgb, var(--chart-accent) 14%, transparent);
+}
+
+.gradEnd {
+  stop-color: color-mix(in srgb, var(--chart-accent) 2%, transparent);
+}
+
+/* Line stroke (area + line variants) */
+.line {
+  stroke: var(--chart-accent);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  transition: stroke var(--transition-normal);
+}
+
+/* Bars */
+.bar {
+  fill: color-mix(in srgb, var(--chart-accent) 55%, transparent);
+  transition: fill var(--transition-fast);
+}
+
+.barLast {
+  fill: var(--chart-accent);
+  transition: fill var(--transition-fast);
+}
+
+/* Endpoint marker (zero-size anchor positioned via inline left/top %) */
+.endpoint {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.dot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--chart-accent);
+  box-shadow: 0 0 0 2px var(--bg-inset), var(--shadow-sm);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--bg-inset) 85%, transparent);
+  padding: 1px var(--space-1);
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+}
+
+.label[data-align-x='left'][data-align-y='top'] {
+  transform: translate(var(--space-2), calc(-100% - var(--space-2)));
+}
+
+.label[data-align-x='left'][data-align-y='bottom'] {
+  transform: translate(var(--space-2), var(--space-2));
+}
+
+.label[data-align-x='right'][data-align-y='top'] {
+  transform: translate(calc(-100% - var(--space-2)), calc(-100% - var(--space-2)));
+}
+
+.label[data-align-x='right'][data-align-y='bottom'] {
+  transform: translate(calc(-100% - var(--space-2)), var(--space-2));
+}

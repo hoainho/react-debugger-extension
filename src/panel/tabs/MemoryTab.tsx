@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { MemoryReport, CrashEntry } from '@/types';
+import { ChartCanvas } from '../components/common';
 import { UI_FEEDBACK_MEDIUM_MS } from '../constants';
 
 interface MemoryTabProps {
@@ -205,43 +206,20 @@ export function MemoryTab({ report, tabId }: MemoryTabProps) {
       {chartData.length > 1 && (
         <section className="section">
           <h3>Memory Timeline</h3>
-          <div className="memory-chart">
-            <div className="chart-y-axis">
-              <span>{maxMemory.toFixed(0)} MB</span>
-              <span>{(maxMemory / 2).toFixed(0)} MB</span>
-              <span>0 MB</span>
-            </div>
-            <div className="chart-area">
-              <svg viewBox={`0 0 ${chartData.length * 10} 100`} preserveAspectRatio="none">
-                <polyline
-                  fill="none"
-                  stroke="var(--accent-blue)"
-                  strokeWidth="2"
-                  points={chartData.map((d, i) => 
-                    `${i * 10},${100 - (d.used / maxMemory) * 100}`
-                  ).join(' ')}
-                />
-                <polyline
-                  fill="none"
-                  stroke="var(--text-muted)"
-                  strokeWidth="1"
-                  strokeDasharray="4"
-                  points={chartData.map((d, i) => 
-                    `${i * 10},${100 - (d.total / maxMemory) * 100}`
-                  ).join(' ')}
-                />
-              </svg>
-            </div>
-          </div>
+          <ChartCanvas
+            variant="area"
+            data={chartData.map((d) => d.used)}
+            yMax={maxMemory}
+            height={140}
+            ariaLabel="Used JS heap over time (MB)"
+            formatValue={(n) => `${n.toFixed(1)} MB`}
+          />
           <div className="chart-legend">
             <span className="legend-item">
               <span className="legend-color" style={{ background: 'var(--accent-blue)' }}></span>
               Used Heap
             </span>
-            <span className="legend-item">
-              <span className="legend-color" style={{ background: 'var(--text-muted)' }}></span>
-              Total Heap
-            </span>
+            <span className="legend-caption">Peak {maxMemory.toFixed(0)} MB · {chartData.length} samples</span>
           </div>
         </section>
       )}

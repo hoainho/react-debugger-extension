@@ -20,11 +20,11 @@ Status legend: ✅ done · 🟡 partial · ⬜ open. (PRD: `openspec/prd/S4.5-vi
 | **V1** | Design language + shell polish | ✅ | DevTools-native tokens; 5-view nav active-underline + per-view count badges; sub-tabs as segmented control; sticky header; tabular-nums. `30580e9`. |
 | **V2** | Dashboard view (real) | ✅ | `DashboardView` is now the default landing view — severity stat-tiles, React version/mode + Redux chip, render-pressure sparkline (area+line, emphasized endpoint), top-offenders, page-load vitals. `65cb536`. |
 | **V3** | Card-based issue system | ✅ | Existing rich `IssueCard` moved onto the `--severity-*` token ramp (kept all content: titles, why, closure timeline, learn links); used across State/Effects tabs. `65cb536`. |
-| **V4** | Profiler/State/Effects layout | 🟡 | Effects already grouped; timeline filter chips de-noised (grey 1px + faint tint + dot). **Deferred:** Profiler shared chart-canvas + merged State tree/inspector split — feature builds, not CSS polish; want your review before building. `8d886bd`. |
+| **V4** | Profiler/State/Effects layout | ✅ | New reusable `ChartCanvas` (area/line/bars + grid + endpoint) → Memory used-heap area timeline + Performance render-distribution bars. Timeline chips de-noised. State: Redux sub-tab already a token-consistent tree/inspector split (kept, not rewritten). Effects grouped. +3 visual baselines. `8d886bd`, `<v4>`. |
 | **V5** | Motion + a11y + WCAG | ✅ | Section rise+fade + card reveal; global `prefers-reduced-motion`; link focus-visible; `--text-muted` bumped to pass WCAG AA 4.5:1 (was 2.28:1). `8d886bd`. |
 | **V6** | Visual regression | ✅ | Headless Playwright lane: 6 baselines (5 views + classic), `npm run test:visual`, `test/visual/README.md`. `8d886bd`. |
 
-**Remaining under A:** the two deferred V4 feature builds (Profiler chart-canvas, merged State inspector). These change behavior/structure, not just style, so they're paused for a design review rather than shipped blind.
+**Remaining under A:** none — V1–V6 all complete. (The Profiler chart-canvas shipped as a reusable `ChartCanvas`; the State inspector split was already present in the Redux tab and kept as-is rather than rewritten blind.)
 
 **Process per story:** build → headless screenshot → you review the image → iterate.
 
