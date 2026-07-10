@@ -147,10 +147,20 @@ function copyAssetsAndFixPaths() {
       console.log('[React Debugger] Building standalone background.js...');
       await buildBackgroundScript();
       
-      // Clean up chunks folder if empty or only has unused chunks
+      // Keep code-split chunks that entry files actually import (panel/options
+      // share a React-DOM client chunk); only remove a genuinely-unused dir.
+      // Deleting referenced chunks produces a dangling import that breaks the
+      // panel at load — verified in a real browser.
       const chunksDir = resolve(distDir, 'chunks');
       if (existsSync(chunksDir)) {
-        rmSync(chunksDir, { recursive: true, force: true });
+        const entryJs = ['panel.js', 'devtools.js', 'options.js']
+          .map((f) => resolve(distDir, f))
+          .filter((p) => existsSync(p))
+          .map((p) => readFileSync(p, 'utf-8'));
+        const chunksReferenced = entryJs.some((src) => src.includes('./chunks/'));
+        if (!chunksReferenced) {
+          rmSync(chunksDir, { recursive: true, force: true });
+        }
       }
       
       console.log('[React Debugger] Build complete!');
