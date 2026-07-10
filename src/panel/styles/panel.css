@@ -4217,3 +4217,50 @@ button:focus:not(:focus-visible),
   padding-top: 6px;
   padding-bottom: 6px;
 }
+
+/* ─── S4.5 V1: DevTools-native shell polish ─────────────────────────────────── */
+.panel-header { position: sticky; top: 0; z-index: 20; }
+
+/* 5-view top nav: clear active bar + hover, dense/flat */
+.view-nav { gap: 2px; }
+.view-nav .tab-button {
+  position: relative;
+  padding: 8px 14px;
+  color: var(--text-secondary);
+  border-bottom: 2px solid transparent;
+}
+.view-nav .tab-button:hover { color: var(--text-primary); background: var(--bg-hover); }
+.view-nav .tab-button.active {
+  color: var(--accent-blue);
+  border-bottom-color: var(--accent-blue);
+  background: transparent;
+}
+
+/* Sub-tab strip as a segmented control */
+.sub-tab-nav {
+  display: inline-flex;
+  gap: 2px;
+  margin: var(--space-2) var(--space-3) 0;
+  padding: 2px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  width: fit-content;
+}
+.sub-tab-nav .tab-button {
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.sub-tab-nav .tab-button:hover { color: var(--text-primary); }
+.sub-tab-nav .tab-button.active {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Content rhythm + aligned numerics */
+.tab-content { padding: var(--space-4); }
+.tab-content :where(.metric-value, .cls-value, .tab-badge, td) { font-variant-numeric: tabular-nums; }

@@ -534,19 +534,25 @@ export function Panel() {
         </nav>
       ) : (
         <>
-          <nav className="tab-nav" role="tablist" aria-label="React Debugger views">
-            {V2_VIEWS.map((view) => (
-              <button
-                key={view.id}
-                type="button"
-                role="tab"
-                aria-selected={activeView === view.id}
-                className={`tab-button ${activeView === view.id ? 'active' : ''}`}
-                onClick={() => handleViewChange(view)}
-              >
-                <span className="tab-label">{view.label}</span>
-              </button>
-            ))}
+          <nav className="tab-nav view-nav" role="tablist" aria-label="React Debugger views">
+            {V2_VIEWS.map((view) => {
+              const viewBadge = view.tabs.reduce((sum, t) => sum + (getBadge(t) ?? 0), 0);
+              return (
+                <button
+                  key={view.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeView === view.id}
+                  className={`tab-button ${activeView === view.id ? 'active' : ''}`}
+                  onClick={() => handleViewChange(view)}
+                >
+                  <span className="tab-label">{view.label}</span>
+                  {viewBadge > 0 && (
+                    <span className="tab-badge" aria-label={`${viewBadge} items`}>{viewBadge}</span>
+                  )}
+                </button>
+              );
+            })}
           </nav>
           {currentView.tabs.length > 1 && (
             <nav className="tab-nav sub-tab-nav" role="tablist" aria-label={`${currentView.label} sections`}>

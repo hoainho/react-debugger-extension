@@ -1,0 +1,33 @@
+{
+  "meta": {
+    "stage": "S4.5",
+    "title": "Visual Design Pass — DevTools-native",
+    "roadmap": "openspec/REMAINING-PLAN.md",
+    "branch": "feat/s6-mf (continuing) → consider feat/s4.5-visual",
+    "direction": "DevTools-native: #0d1117 ground, blue-biased neutrals, single blue accent (#58a6ff), semantic severity ramp, mono for metrics, dense/functional, flat compact nav — feels like part of Chrome/React DevTools.",
+    "mode": "ralph",
+    "process": "Per story: build → headless screenshot → maintainer reviews the image → iterate. Visual quality is the maintainer's verdict; structure/render/build are machine-verified.",
+    "notes": [
+      "Reuse the existing token file; refine, don't reinvent. No new palette invented — stay in the chosen direction.",
+      "Autonomously buildable (CSS/components + RTL + build); the LOOK is human-reviewed via screenshots."
+    ]
+  },
+  "stories": [
+    { "id": "V1", "title": "Design language + shell polish", "passes": false,
+      "acceptanceCriteria": [
+        "tokens.css: confirm blue-biased neutral ramp + single accent + severity ramp + 8pt spacing + type scale; add any missing steps.",
+        "5-view nav: active-state indicator (underline/bar), per-view count badge (sum of child issue counts), hover; sub-tab strip restyled as a segmented control (not raw tab CSS).",
+        "sticky header; content padding rhythm; tabular-nums on metrics.",
+        "npm run build exit 0; Panel.test still green; headless screenshot produced for review." ] },
+    { "id": "V2", "title": "Dashboard view (real KPIs)", "passes": false,
+      "acceptanceCriteria": ["Severity stat-tile row + React version/mode chip + render sparkline + top-offender; card-based; RTL + screenshot."] },
+    { "id": "V3", "title": "Card-based issue system", "passes": false,
+      "acceptanceCriteria": ["IssueCard on tokens: severity stripe+badge, collapsed/expanded hierarchy, empty states with guidance; RTL + screenshot."] },
+    { "id": "V4", "title": "Profiler/State/Effects layouts", "passes": false,
+      "acceptanceCriteria": ["Profiler segmented chart canvas (area+grid+endpoint); State merged inspector split; Effects grouped; RTL + screenshot."] },
+    { "id": "V5", "title": "Motion + a11y + WCAG", "passes": false,
+      "acceptanceCriteria": ["View/card transitions + prefers-reduced-motion; focus-visible; keyboard nav; WCAG 2.1 AA contrast on the new palette."] },
+    { "id": "V6", "title": "Visual regression baselines", "passes": false,
+      "acceptanceCriteria": ["Playwright per-view screenshot baselines (headless); documented run."] }
+  ]
+}
