@@ -35,8 +35,9 @@ test.describe('MCP get_fiber_node (loaded extension + bridge)', () => {
 
     // 2. spawn the bridge; capture the deep-link it prints on stdout
     bridge = spawn('node', [CLI, 'mcp'], { stdio: ['pipe', 'pipe', 'pipe'] });
+    // The deep-link is printed to STDERR (stdout is the MCP JSON-RPC channel).
     const deepLink: string = await new Promise((resolveLink) => {
-      bridge!.stdout.on('data', (d: Buffer) => {
+      bridge!.stderr.on('data', (d: Buffer) => {
         const line = d.toString();
         if (line.includes('chrome-extension://')) resolveLink(line.trim());
       });

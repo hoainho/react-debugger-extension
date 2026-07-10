@@ -76,8 +76,10 @@ export async function startBridge({ extensionId, host, onClientMessage } = {}) {
   const server = createBridgeServer({ token, extensionId, host, port: 0, onClientMessage });
   await new Promise((resolve) => server.wss.once('listening', resolve));
   const port = server.port();
-  // stdout: human pairing affordance (kept OFF the JSON-RPC stdio stream in mcp.js).
-  process.stdout.write(
+  // STDERR (not stdout): the human pairing affordance must not share the stdout
+  // JSON-RPC stream the MCP StdioServerTransport uses — a strict client would
+  // choke on a non-JSON line. The user still sees stderr in their terminal.
+  process.stderr.write(
     `${buildDeepLink({ extensionId: extensionId ?? '<extension-id>', port, token })}\n`,
   );
   const shutdown = () => {
