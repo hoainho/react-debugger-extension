@@ -13,17 +13,20 @@ a designed interface. This workstream makes it genuinely good. Each story is
 autonomously buildable (CSS/components + RTL), but **you own the final visual
 verdict** (I'll ship screenshots via the headless renderer for each).
 
-| # | Story | Concrete upgrade |
-|---|---|---|
-| **V1** | **Design language** | Commit to a direction (DevTools-native dark, dense, information-first). Refine tokens: a *chosen* blue-biased neutral ramp (not flat grey), one accent, semantic severity ramp (error/warn/info/ok) separate from accent, an 8pt spacing rhythm, a 1.2 type scale (12/13/15/18/22), tabular-nums for all metrics. |
-| **V2** | **Dashboard view (real)** | Replace the empty AI-only Dashboard with a KPI row: issue counts by severity (colored stat tiles), React version + mode chip, render-pressure sparkline, "top offender" component. Cards, not tables. |
-| **V3** | **Card-based issue system** | Redesign `IssueCard` on the token system: severity left-stripe + badge, collapsed = title + component + count, expanded = suggestion/code/location. Consistent across all views. Empty states with guidance, not blank. |
-| **V4** | **5-view shell polish** | Real nav (icon + label + count badge), active-state treatment, the sub-tab strip as a segmented control (not reused tab CSS), sticky header, content max-width + breathing room, loading skeletons. |
-| **V5** | **Profiler / State / Effects layout** | Profiler: timeline/renders/memory as a segmented control over a shared chart canvas (area fill, faint grid, emphasized endpoint — per dataviz). State-viewer: merged UI+State+Redux with a tree/inspector split. |
-| **V6** | **Motion + a11y + polish** | Tasteful transitions (view switch, card expand), `prefers-reduced-motion`, WCAG 2.1 AA contrast audit on the new palette, focus-visible rings, keyboard nav on the 5-view + sub-tabs. |
-| **V7** | **Visual regression** | Playwright screenshot baselines per view (headless) so future changes are caught. Verified in a real browser. |
+Status legend: ✅ done · 🟡 partial · ⬜ open. (PRD: `openspec/prd/S4.5-visual-polish.prd.json`.)
 
-**Process per story:** build → headless screenshot → you review the image → iterate. This closes the "I can't verify visual quality" gap by putting a real rendered image in front of you each step.
+| # | Story | Status | Notes |
+|---|---|---|---|
+| **V1** | Design language + shell polish | ✅ | DevTools-native tokens; 5-view nav active-underline + per-view count badges; sub-tabs as segmented control; sticky header; tabular-nums. `30580e9`. |
+| **V2** | Dashboard view (real) | ✅ | `DashboardView` is now the default landing view — severity stat-tiles, React version/mode + Redux chip, render-pressure sparkline (area+line, emphasized endpoint), top-offenders, page-load vitals. `65cb536`. |
+| **V3** | Card-based issue system | ✅ | Existing rich `IssueCard` moved onto the `--severity-*` token ramp (kept all content: titles, why, closure timeline, learn links); used across State/Effects tabs. `65cb536`. |
+| **V4** | Profiler/State/Effects layout | 🟡 | Effects already grouped; timeline filter chips de-noised (grey 1px + faint tint + dot). **Deferred:** Profiler shared chart-canvas + merged State tree/inspector split — feature builds, not CSS polish; want your review before building. `8d886bd`. |
+| **V5** | Motion + a11y + WCAG | ✅ | Section rise+fade + card reveal; global `prefers-reduced-motion`; link focus-visible; `--text-muted` bumped to pass WCAG AA 4.5:1 (was 2.28:1). `8d886bd`. |
+| **V6** | Visual regression | ✅ | Headless Playwright lane: 6 baselines (5 views + classic), `npm run test:visual`, `test/visual/README.md`. `8d886bd`. |
+
+**Remaining under A:** the two deferred V4 feature builds (Profiler chart-canvas, merged State inspector). These change behavior/structure, not just style, so they're paused for a design review rather than shipped blind.
+
+**Process per story:** build → headless screenshot → you review the image → iterate.
 
 ---
 
