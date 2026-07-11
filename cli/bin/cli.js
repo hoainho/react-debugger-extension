@@ -172,11 +172,15 @@ async function main() {
   // `mcp` subcommand — run the MCP bridge for AI agents. Handled before the
   // generic --help so `mcp --help` shows MCP usage, not the installer help.
   if (positional[0] === "mcp") {
-    const { runMcp, printMcpHelp } = await import("../src/mcp.js");
+    // Print help WITHOUT importing mcp.js — that module pulls in the MCP SDK,
+    // whose import crashed on some Node runtimes (Node 20 CI), making even
+    // `mcp --help` exit non-zero. The help module is dependency-free.
     if (flags.includes("--help") || flags.includes("-h")) {
+      const { printMcpHelp } = await import("../src/mcp-help.js");
       printMcpHelp();
       process.exit(0);
     }
+    const { runMcp } = await import("../src/mcp.js");
     const idFlagIndex = args.indexOf("--extension-id");
     const extensionId = idFlagIndex >= 0 ? args[idFlagIndex + 1] : undefined;
     await runMcp({ extensionId });

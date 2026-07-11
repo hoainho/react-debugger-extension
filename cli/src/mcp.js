@@ -13,6 +13,9 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 import { startBridge } from './mcp-bridge-ws.js';
 
+// Help lives in a dependency-free module so `mcp --help` never loads the SDK.
+export { printMcpHelp } from './mcp-help.js';
+
 const SERVER_INFO = { name: 'react-debugger', version: '2.2.0' };
 
 /**
@@ -40,23 +43,6 @@ export function createMcpServer({ onGetFiberNode } = {}) {
   );
 
   return server;
-}
-
-/** Print the `mcp` subcommand usage to stderr (keeps stdout/JSON-RPC clean). */
-export function printMcpHelp() {
-  process.stderr.write(
-    [
-      'react-debugger mcp — run the MCP bridge for AI agents',
-      '',
-      'Usage:',
-      '  npx @nhonh/react-debugger mcp [--extension-id <id>]',
-      '',
-      'The bridge binds 127.0.0.1 on an ephemeral port, prints a one-click',
-      'chrome-extension://<id>/options.html#token=...&port=... pairing link to',
-      'stdout, and speaks MCP over stdio. Add it to your client mcp.json.',
-      '',
-    ].join('\n'),
-  );
 }
 
 /**
