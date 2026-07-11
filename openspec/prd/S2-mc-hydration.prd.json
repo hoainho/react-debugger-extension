@@ -1,0 +1,68 @@
+{
+  "meta": {
+    "stage": "S2",
+    "title": "Detector M-C — Hero #2 Hydration + perf infra",
+    "roadmap": "openspec/ROADMAP.md",
+    "spec": "openspec/changes/self-roadmap-h2-2026/tasks.md §M-C",
+    "branch": "feat/s2-mc-hydration (base: feat/s1-mcp-v1)",
+    "mode": "ralph",
+    "notes": [
+      "Pure extension logic — fully unit-testable here, no new deps (unlike S1). Best autonomous-ralph fit.",
+      "Detector DoD applies: positive+negative fixtures under test/fixtures/, emit-on-positive + zero-on-negative test, vitest-bench baseline, CHANGELOG entry, IssueType enum addition (additive), Settings entry.",
+      "M-C.3 source-map uses chrome.debugger / DevTools — the lookup RUN is a humanGate (needs the debugger permission + a real page); the cache + module structure + the static 'no detector imports' rule are verifiable here.",
+      "Enum: IssueType currently has no HYDRATION_MISMATCH — added additively (contract-safe)."
+    ],
+    "humanGates": [
+      "M-C.3: exercising chrome.debugger Debugger.getScriptSource against a real page (needs the 'debugger' permission prompt + DevTools) — task 3.3.3 execution."
+    ]
+  },
+  "stories": [
+    {
+      "id": "US-S2-1",
+      "title": "M-C.1 — cache tryInferStateName (WeakMap)",
+      "priority": 1,
+      "passes": true,
+      "acceptanceCriteria": [
+        "A WeakMap<Function,string[]> cache backs state-name inference so the per-commit toString()+regex runs at most once per component function; a cache-hit path returns the memoized names.",
+        "A unit test proves: same function → second lookup is served from cache (toString spy called once) and returns identical names; distinct functions cache independently.",
+        "npm run typecheck exits 0 (verified with `npx tsc --noEmit`, not through a pipe)."
+      ]
+    },
+    {
+      "id": "US-S2-2",
+      "title": "M-C.2 — fair-share per-detector deadline allocator + yield/resume",
+      "priority": 2,
+      "passes": true,
+      "acceptanceCriteria": [
+        "A pure allocator computes each detector's onCommit deadline = start + detector.budgetMs and supports yield-and-resume: a detector that returns an incomplete cursor is resumed next commit from that cursor.",
+        "Unit tests assert: deadline math; a detector over budget yields a cursor that is persisted via ctx.write and read back next commit; a fresh detector starts from no cursor.",
+        "A vitest-bench case shows allocator overhead < 0.1ms/commit (recorded to bench/baselines).",
+        "npm run typecheck exits 0."
+      ]
+    },
+    {
+      "id": "US-S2-3",
+      "title": "M-C.3 — source-map lookup helper (cache + boundary; run is humanGate)",
+      "priority": 3,
+      "passes": true,
+      "acceptanceCriteria": [
+        "src/devtools/source-map-lookup.ts exports lookupSourcePosition({scriptId,line,column}) with an in-session cache keyed by (scriptId,line,column).",
+        "A unit test proves the cache: a repeated lookup with the same key does not re-invoke the injected resolver.",
+        "Static-analysis test: zero imports of source-map-lookup from src/inject/detectors/ (grep/AST assertion).",
+        "npm run typecheck exits 0. NOTE: the real chrome.debugger getScriptSource RESOLUTION is a humanGate."
+      ]
+    },
+    {
+      "id": "US-S2-4",
+      "title": "M-C.4 — Hero hydration-mismatch detector",
+      "priority": 4,
+      "passes": true,
+      "acceptanceCriteria": [
+        "src/inject/detectors/hydration-mismatch.ts conforms to the Detector interface and detects hydration failures (console.error 'Hydration failed'/'did not match' interception + fiber walk to the mismatching component).",
+        "Emits Issue{ type:'HYDRATION_MISMATCH', component, prop?, server?, client? } — 'HYDRATION_MISMATCH' added additively to the IssueType enum.",
+        "test/fixtures/hydration-mismatch/ has a positive fixture (intentional mismatch) + negative; a registry-harness test asserts one HYDRATION_MISMATCH on positive and zero on negative.",
+        "vitest-bench baseline recorded; CHANGELOG [Unreleased] additive entry; Settings UI entry (confidence declared). npm run typecheck exits 0 and the detector suite passes."
+      ]
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryTab } from '../panel/tabs/MemoryTab';
 import type { MemoryReport } from '../types';
 
@@ -65,7 +65,7 @@ describe('MemoryTab', () => {
   describe('Initial State', () => {
     it('renders tab header correctly', () => {
       render(<MemoryTab report={null} tabId={1} />);
-      expect(screen.getByText('🧠 Memory Monitor')).toBeInTheDocument();
+      expect(screen.getByText('Memory Monitor')).toBeInTheDocument();
     });
 
     it('shows empty state when no report', () => {
@@ -76,7 +76,7 @@ describe('MemoryTab', () => {
 
     it('renders start monitoring button', () => {
       render(<MemoryTab report={null} tabId={1} />);
-      expect(screen.getByText('▶️ Start Monitoring')).toBeInTheDocument();
+      expect(screen.getByText('Start Monitoring')).toBeInTheDocument();
     });
   });
 
@@ -125,8 +125,8 @@ describe('MemoryTab', () => {
     });
 
     it('shows warning icons', () => {
-      render(<MemoryTab report={mockHighMemoryReport} tabId={1} />);
-      const warningIcons = screen.getAllByText('⚠️');
+      const { container } = render(<MemoryTab report={mockHighMemoryReport} tabId={1} />);
+      const warningIcons = container.querySelectorAll('.warning-icon');
       expect(warningIcons.length).toBeGreaterThan(0);
     });
   });
@@ -166,13 +166,13 @@ describe('MemoryTab', () => {
   });
 
   describe('Monitoring Toggle', () => {
-    it('toggles monitoring state when clicked', () => {
+    it('toggles monitoring state when clicked', async () => {
       render(<MemoryTab report={null} tabId={1} />);
-      
-      const startButton = screen.getByText('▶️ Start Monitoring');
-      fireEvent.click(startButton);
-      
-      expect(screen.getByText('⏹️ Stop Monitoring')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('Start Monitoring'));
+
+      // The button shows a transient "Starting..." spinner state before settling.
+      await waitFor(() => expect(screen.getByText('Stop Monitoring')).toBeInTheDocument());
     });
   });
 

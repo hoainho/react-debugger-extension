@@ -1,0 +1,346 @@
+/* DashboardView — first screen users see. Card-based, information-first,
+   dense but breathing. Every color/space/radius/font resolves to a design
+   token from tokens.css. */
+
+@keyframes dashboardRise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-4);
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+}
+
+.dashboard > * {
+  animation: dashboardRise var(--transition-normal) ease both;
+}
+.dashboard > *:nth-child(2) { animation-delay: 0.03s; }
+.dashboard > *:nth-child(3) { animation-delay: 0.06s; }
+.dashboard > *:nth-child(4) { animation-delay: 0.09s; }
+.dashboard > *:nth-child(5) { animation-delay: 0.12s; }
+
+/* ---------- KPI stat tiles ---------- */
+
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--space-3);
+}
+
+.statTile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-left-width: 3px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.statTile:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.statTile-error { border-left-color: var(--severity-error); }
+.statTile-warning { border-left-color: var(--severity-warning); }
+.statTile-info { border-left-color: var(--severity-info); }
+.statTile-total { border-left-color: var(--accent-purple); }
+
+.statValue {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--text-primary);
+}
+
+.statLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.statTileMuted .statValue,
+.statTileMuted .statLabel {
+  color: var(--text-muted);
+}
+
+/* ---------- React / Redux status row ---------- */
+
+.statusRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.reactChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+}
+
+.reactLabel {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+
+.pillDev {
+  color: var(--accent-yellow);
+  background: color-mix(in srgb, var(--accent-yellow) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent-yellow) 40%, transparent);
+}
+
+.pillProd {
+  color: var(--accent-green);
+  background: color-mix(in srgb, var(--accent-green) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent-green) 40%, transparent);
+}
+
+.pillRedux {
+  color: var(--accent-purple);
+  background: color-mix(in srgb, var(--accent-purple) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent-purple) 40%, transparent);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-lg);
+}
+
+/* ---------- Shared section shell ---------- */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.sectionHeading {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+/* ---------- Render-pressure sparkline ---------- */
+
+.sparklineWrap {
+  width: 100%;
+  height: 56px;
+}
+
+.sparklineSvg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.sparklineArea {
+  fill: var(--accent-blue);
+  opacity: 0.16;
+  stroke: none;
+}
+
+.sparklineLine {
+  fill: none;
+  stroke: var(--accent-blue);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+}
+
+.sparklineDot {
+  fill: var(--accent-blue);
+  filter: drop-shadow(0 0 3px var(--accent-blue));
+}
+
+.sparklineCaption,
+.sparklineEmpty {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.sparklineCaptionValue {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* ---------- Top offenders ---------- */
+
+.offendersList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.offenderRow {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-subtle);
+}
+
+.offenderRowTop {
+  background: color-mix(in srgb, var(--accent-blue) 10%, var(--bg-tertiary));
+  border-color: color-mix(in srgb, var(--accent-blue) 35%, var(--border-subtle));
+  box-shadow: var(--shadow-glow-blue);
+}
+
+.offenderRank {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.offenderRowTop .offenderRank {
+  color: var(--accent-blue);
+  font-weight: 700;
+}
+
+.offenderName {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.offenderCount {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.offenderUnit {
+  color: var(--text-muted);
+  font-weight: 400;
+  margin-left: 1px;
+}
+
+.offenderAvg {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  min-width: 48px;
+  text-align: right;
+}
+
+/* ---------- Vitals strip ---------- */
+
+.vitalsRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: var(--space-3);
+}
+
+.vitalCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.vitalValue {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.vitalLabel {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+/* ---------- Empty state ---------- */
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.emptyGlyph {
+  font-size: 28px;
+  color: var(--text-muted);
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.emptyHint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}

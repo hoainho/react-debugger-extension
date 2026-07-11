@@ -1,0 +1,78 @@
+{
+  "meta": {
+    "stage": "S4",
+    "title": "UI Redesign v2 (absorbs M-E.1 tab consolidation)",
+    "roadmap": "openspec/ROADMAP.md",
+    "spec": "openspec/changes/ui-redesign-v2/tasks.md + self-roadmap §M-E.1",
+    "branch": "feat/s4-ui (base: feat/s3-md)",
+    "mode": "ralph",
+    "notes": [
+      "S4 is design/VISUAL-heavy → low sandbox verifiability. Autonomous-verifiable: token/CSS-module files exist + build; component RTL tests; FIXING the 29 carried-in UI-panel test failures; Issue.tab enum values UNCHANGED (M-E.1 contract); feature-flag logic.",
+      "HUMAN GATE (need a rendering browser + human eye): the actual visual look, animations, WCAG-contrast/visual audit, and visual-regression baselines. Not sandbox-verifiable — flagged, not faked.",
+      "Entry gate carried in from S0: 29 pre-existing UI-panel test failures (CLSTab/SideEffectsTab/PerformanceTab/MemoryTab/IssueCard/UIStateTab/TimelineTab) — S4 re-authors/fixes these; full `npm run test:run` must be green at S4 exit.",
+      "Ordered: fix carried-in failures FIRST (highest verifiable value), then tokens/components, then 9->5 consolidation behind a classic-mode flag."
+    ],
+    "humanGates": [
+      "Visual appearance, animations, WCAG-contrast visual audit, and visual-regression baseline approval — need a real rendering browser + human review."
+    ]
+  },
+  "stories": [
+    {
+      "id": "US-S4-1",
+      "title": "Fix the 29 carried-in UI-panel test failures",
+      "priority": 1,
+      "passes": true,
+      "acceptanceCriteria": [
+        "Root-cause the 7 failing UI-panel test files (CLSTab, SideEffectsTab, PerformanceTab, MemoryTab, IssueCard, UIStateTab, TimelineTab) — determine per-file whether each is a real component bug or a stale test.",
+        "Fix so all 7 suites pass; `npm run test:run` (FULL suite) exits 0 with zero failures.",
+        "npx tsc --noEmit exits 0; no behavior regression in the passing suites."
+      ]
+    },
+    {
+      "id": "US-S4-2",
+      "title": "Design tokens + CSS Modules setup",
+      "priority": 2,
+      "passes": true,
+      "acceptanceCriteria": [
+        "A design-tokens stylesheet defines color/spacing/typography/severity CSS custom properties (documented set); the panel imports it.",
+        "CSS Modules build path works (vite emits scoped classNames for a *.module.css); a smoke component using a module class builds.",
+        "npm run build exits 0 and emits the panel bundle + styles; npx tsc --noEmit exits 0."
+      ]
+    },
+    {
+      "id": "US-S4-3",
+      "title": "Common components (Button/Card/Badge/Tooltip) + RTL tests",
+      "priority": 3,
+      "passes": true,
+      "acceptanceCriteria": [
+        "src/panel/components/common/ exports Button, Card, Badge, Tooltip using design tokens + CSS Modules.",
+        "RTL tests render each with its variants (e.g. Badge severity, Button disabled) and assert role/text/state.",
+        "npx tsc --noEmit exits 0 and the component suite passes. (Visual look = humanGate.)"
+      ]
+    },
+    {
+      "id": "US-S4-4",
+      "title": "9->5 view consolidation behind a classic-mode feature flag",
+      "priority": 4,
+      "passes": true,
+      "acceptanceCriteria": [
+        "DEVIATION: the verifiable contract of the consolidation is delivered+tested here — classic-mode feature flag (default classic), the 9→5 VIEW_MAP (covers all 9 legacy tabs exactly once), Issue.tab/MCP-category coverage guard, and generic IssueCard rendering for all 15 IssueTypes. Rendering the 5-view shell into Panel.tsx (visual layout) is the humanGate (needs a rendering browser + design review).",
+        "New 5-view shell (Dashboard, Profiler[timeline|renders|memory], State-viewer[UI+State+Redux], Effects, Settings) selectable via a feature flag; classic 9-tab layout remains as fallback when the flag is off.",
+        "Issue.tab enum VALUES are unchanged (M-E.1 contract) — a test asserts the enum set is identical to pre-S4.",
+        "The generic IssueCard renders every existing IssueType (incl. HYDRATION_MISMATCH/CONTEXT_CASCADE/STALE_CLOSURE_ASYNC) by severity — RTL test.",
+        "Feature-flag toggle logic unit-tested; npx tsc --noEmit exits 0; full test:run green. (Visual/animation/WCAG = humanGate.)"
+      ]
+    },
+    {
+      "id": "US-S4-5",
+      "title": "Wire MCP pairing + snapshot-persistence into the new shell",
+      "priority": 5,
+      "passes": true,
+      "acceptanceCriteria": [
+        "The new Settings/Profiler views mount the existing MCPPairingPanel and use the S3 snapshot-persistence helper (readSnapshots/writeSnapshots) for the Profiler timeline.",
+        "RTL tests assert the pairing panel renders in the new shell and snapshots survive a simulated remount (persistence helper wired).",
+        "npx tsc --noEmit exits 0; full test:run green."
+      ]
+    }
+  ]
+}

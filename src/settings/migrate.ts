@@ -41,6 +41,12 @@ export const KNOWN_DETECTORS_DEFAULTS: Array<{
   { id: 'reconciler-keys', confidence: 'high' },   // T7 hero
   { id: 'closure-leak', confidence: 'medium' },     // T8 extraction (known FP modes)
   { id: 'scan-overlay', confidence: 'high' },       // T9 extraction (visual only, no FP)
+  { id: 'hydration-mismatch', confidence: 'high' }, // M-C hero #2 (dev-only)
+  { id: 'context-cascade', confidence: 'high' },    // M-D hero #3
+  { id: 'stale-closure-async', confidence: 'medium' }, // M-D.4 (heuristic; opt-in)
+  { id: 'suspense-waterfall', confidence: 'medium' },  // M-E.3 hero #4 (may be intentional; opt-in)
+  { id: 'inline-handler-cost', confidence: 'medium' }, // M-F.1 quick-win (memo bypass)
+  { id: 'ref-mutation-during-render', confidence: 'low' }, // M-F.1 quick-win (heuristic; opt-in)
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

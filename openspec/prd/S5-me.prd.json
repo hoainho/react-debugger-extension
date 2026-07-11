@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "stage": "S5",
+    "title": "Detector M-E — Hero #4 Suspense-waterfall + Perf Tracks + prod-capability matrix",
+    "roadmap": "openspec/ROADMAP.md",
+    "spec": "openspec/changes/self-roadmap-h2-2026/tasks.md §M-E (minus M-E.1, done in S4)",
+    "branch": "feat/s5-me (base: feat/s4-ui)",
+    "mode": "ralph",
+    "notes": [
+      "Order: hero#4 suspense-waterfall detector FIRST (fully verifiable, mirrors prior detectors), then prod-capability matrix (pure, from detector prodCapable flags), then Perf-Tracks integration (adapter-gated; the real React 19.2 Performance Tracks API is a browser humanGate — the version-gate + swap decision is verifiable here).",
+      "New enum: SUSPENSE_WATERFALL (additive)."
+    ],
+    "humanGates": [
+      "M-E.2: exercising the real React 19.2+ Performance Tracks API (PROFILING_FLAG_PERFORMANCE_TRACKS_SUPPORT) against a live 19.2 app — the adapter version-gate + swap logic is verified here, the live API is not."
+    ]
+  },
+  "stories": [
+    {
+      "id": "US-S5-1",
+      "title": "M-E.3 — Hero #4 suspense-waterfall detector",
+      "priority": 1,
+      "passes": true,
+      "acceptanceCriteria": [
+        "src/inject/detectors/suspense-waterfall.ts conforms to the Detector interface; tracks each Suspense boundary's suspension over a ring buffer of the last 5 commits; flags a boundary that re-suspends >=3 times consecutively.",
+        "Emits Issue{ type:'SUSPENSE_WATERFALL', component, suspensionCount, ... } with a 'may be intentional' caveat — 'SUSPENSE_WATERFALL' added additively to IssueType.",
+        "test/fixtures/suspense-waterfall/ + a registry-harness test asserting emit after >=3 consecutive suspensions and zero for a single/double suspension.",
+        "Registered in detectors/index.ts; confidence declared + added to KNOWN_DETECTORS_DEFAULTS; bench baseline; CHANGELOG. npx tsc --noEmit exits 0 and the detector suite passes."
+      ]
+    },
+    {
+      "id": "US-S5-2",
+      "title": "M-E.4 — production-mode capability matrix",
+      "priority": 2,
+      "passes": true,
+      "acceptanceCriteria": [
+        "A pure buildCapabilityMatrix() derives, per registered detector, its {id, confidence, prodCapable} from the detector metadata — one row per detector.",
+        "A unit test asserts the matrix includes every registered detector and that prod-only/dev-only classification matches each detector's prodCapable flag (e.g. hydration-mismatch + stale-closure-async are dev-only).",
+        "A generated markdown table is written to a docs artifact (or asserted as a string) for the README capability section.",
+        "npx tsc --noEmit exits 0 and the suite passes. (Panel Settings '(dev only)' badge render = humanGate.)"
+      ]
+    },
+    {
+      "id": "US-S5-3",
+      "title": "M-E.2 — React 19.2+ Performance Tracks gate (live API = humanGate)",
+      "priority": 3,
+      "passes": true,
+      "acceptanceCriteria": [
+        "A pure decision fn selectProfilingStrategy(reactVersion) returns 'performance-tracks' for >=19.2 else 'legacy-hook', so the swap is gated behind adapter version detection.",
+        "Unit tests cover the version boundary (19.1 -> legacy, 19.2 -> tracks, 18 -> legacy, unknown -> legacy).",
+        "npx tsc --noEmit exits 0 and the suite passes. NOTE: invoking the real Performance Tracks API on a live 19.2 app is a humanGate."
+      ]
+    }
+  ]
+}

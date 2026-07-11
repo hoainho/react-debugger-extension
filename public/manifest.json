@@ -1,12 +1,14 @@
 {
   "manifest_version": 3,
   "name": "React Debugger",
-  "version": "2.0.3",
+  "version": "3.0.0",
   "description": "Advanced debugging & performance optimization tool for ReactJS applications",
   "author": "NhoNH",
   
   "devtools_page": "devtools.html",
-  
+
+  "options_page": "options.html",
+
   "action": {
     "default_popup": "popup.html",
     "default_icon": {

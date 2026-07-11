@@ -1,0 +1,69 @@
+{
+  "files": [
+    {
+      "filepath": "/Users/nhonh/Documents/personal/react-debugger-extension/test/bench/detectors.bench.ts",
+      "groups": [
+        {
+          "fullName": "test/bench/detectors.bench.ts > detector harness — synthetic baseline",
+          "benchmarks": [
+            {
+              "id": "-141348998_0_0",
+              "name": "walk 1365-node tree",
+              "rank": 1,
+              "rme": 1.0050313746182877,
+              "samples": [],
+              "totalTime": 500.0014529999851,
+              "min": 0.0014579999999568827,
+              "max": 2.3049579999999423,
+              "hz": 551318.3978687522,
+              "period": 0.0018138339004570307,
+              "mean": 0.0018138339004570307,
+              "variance": 0.000023846018547558822,
+              "sd": 0.004883238530684204,
+              "sem": 0.000009300816215844796,
+              "df": 275659,
+              "critical": 1.96,
+              "moe": 0.0000182295997830558,
+              "p75": 0.0017499999999017746,
+              "p99": 0.0029580000000350992,
+              "p995": 0.003916000000003805,
+              "p999": 0.01745800000003328,
+              "sampleCount": 275660,
+              "median": 0.0016669999999976426
+            }
+          ]
+        },
+        {
+          "fullName": "test/bench/detectors.bench.ts > reconciler-keys detector — commit cost",
+          "benchmarks": [
+            {
+              "id": "-141348998_1_0",
+              "name": "onCommit over 1000-child keyed list (reorder diff)",
+              "rank": 1,
+              "rme": 1.5438169689530972,
+              "samples": [],
+              "totalTime": 500.02334600000063,
+              "min": 0.07558300000005147,
+              "max": 1.0777080000000296,
+              "hz": 11843.44700577239,
+              "period": 0.08443487774400552,
+              "mean": 0.08443487774400552,
+              "variance": 0.0026193385729453554,
+              "sd": 0.05117947413705377,
+              "sem": 0.0006650612093503874,
+              "df": 5921,
+              "critical": 1.96,
+              "moe": 0.0013035199703267592,
+              "p75": 0.08179199999995035,
+              "p99": 0.12237499999991996,
+              "p995": 0.18116699999995944,
+              "p999": 0.9568329999999605,
+              "sampleCount": 5922,
+              "median": 0.07979099999988648
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

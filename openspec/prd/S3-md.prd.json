@@ -1,0 +1,81 @@
+{
+  "meta": {
+    "stage": "S3",
+    "title": "Detector M-D — Hero #3 Context-cascade + R2/R4 + stale-closure v2 + snapshot persist",
+    "roadmap": "openspec/ROADMAP.md",
+    "spec": "openspec/changes/self-roadmap-h2-2026/tasks.md §M-D",
+    "branch": "feat/s3-md (base: feat/s2-mc-hydration)",
+    "mode": "ralph",
+    "notes": [
+      "Order: verifiable/low-risk stories FIRST (context-cascade detector, AI provider, snapshot persist, stale-closure v2), then the HIGH-RISK R2 monolith traversal rewrite LAST with full detector-core regression each step.",
+      "Context-cascade uses the EXISTING walkFiberImpl (like reconciler-keys) to stay decoupled from the R2 rewrite.",
+      "S3 exit = ❄ data/issue surface FROZEN (heroes 1-3 + stale-closure done, traversal unified, AI provider pluggable).",
+      "Enum: add CONTEXT_CASCADE + STALE_CLOSURE_ASYNC additively.",
+      "AI provider BYOK: OpenAI/Anthropic direct calls are NETWORK — the live call is a humanGate; the provider selection + request-shaping + key storage are verifiable here."
+    ],
+    "humanGates": [
+      "M-D.2: real network calls to OpenAI/Anthropic with a BYOK key (live AI response) — verified only the request construction + provider routing + key storage here.",
+      "M-D.1: migrate+delete the 3 legacy walkers onto walkFiber — needs live-React regression on a real app (not sandbox-verifiable)."
+    ]
+  },
+  "stories": [
+    {
+      "id": "US-S3-1",
+      "title": "M-D.3 — Hero #3 context-cascade detector",
+      "priority": 1,
+      "passes": true,
+      "acceptanceCriteria": [
+        "src/inject/detectors/context-cascade.ts conforms to the Detector interface; tracks Context.Provider value reference identity across commits and counts consumers; flags when the value reference changes every commit AND >=2 consumers re-render.",
+        "Emits Issue{ type:'CONTEXT_CASCADE', component, suggestion } — 'CONTEXT_CASCADE' added additively to IssueType.",
+        "test/fixtures/context-cascade/ positive (new value object every render, >=2 consumers) + negative (useMemo'd value); registry-harness test asserts one CONTEXT_CASCADE on positive, zero on negative (memoized).",
+        "Registered in detectors/index.ts; confidence declared + added to KNOWN_DETECTORS_DEFAULTS; bench baseline recorded; CHANGELOG entry. npx tsc --noEmit exits 0 and the detector suite passes."
+      ]
+    },
+    {
+      "id": "US-S3-2",
+      "title": "M-D.4 — stale-closure-async detector v2",
+      "priority": 2,
+      "passes": true,
+      "acceptanceCriteria": [
+        "Extends closure detection to Promises + useCallback deps; emits Issue{ type:'STALE_CLOSURE_ASYNC', component, source } ('STALE_CLOSURE_ASYNC' added additively to IssueType).",
+        "test/fixtures/stale-closure-async/ positive + negative; a test asserts emit-on-positive and zero-on-negative.",
+        "CHANGELOG entry; npx tsc --noEmit exits 0 and the suite passes."
+      ]
+    },
+    {
+      "id": "US-S3-3",
+      "title": "M-D.2 — R4 AI provider abstraction (BYOK; live call = humanGate)",
+      "priority": 3,
+      "passes": true,
+      "acceptanceCriteria": [
+        "DEVIATION: the abstraction lives in a NEW module src/services/ai-provider.ts (not inside ai-client.ts) to avoid risky surgery on the working analyzeSnapshot. HostedProxyProvider reproduces analyzeSnapshot's exact request (${proxyUrl}/v1/chat/completions, OpenAI body) so it is behavior-preserving by construction; wiring analyzeSnapshot to route through selectProvider() is a follow-on. provider:none returns null (free tools unaffected).",
+        "src/services/ai-client.ts defines an AIProvider interface with HostedProxyProvider (preserves current token-optimizer + subscription-key behavior), OpenAIDirect, and AnthropicDirect implementations.",
+        "BYOK key stored under react_debugger_byok_v1 (chrome.storage.local) via a DI'd storage; provider:'none' leaves the free panel tools working.",
+        "Unit tests assert provider selection + request shaping (endpoint, headers, body) for each provider WITHOUT a live network call (fetch injected/mocked); HostedProxy path preserved.",
+        "npx tsc --noEmit exits 0 and the ai-client suite passes."
+      ]
+    },
+    {
+      "id": "US-S3-4",
+      "title": "M-D.5 — snapshot persistence (session)",
+      "priority": 4,
+      "passes": true,
+      "acceptanceCriteria": [
+        "DEVIATION: the DI-tested session-persistence helper (src/panel/snapshot-persistence.ts) is delivered + verified here; wiring it into the TimelineTab component is deferred to S4 (that view is rebuilt as the Profiler + its tests are re-authored there — avoids touching a pre-existing-failing component about to be replaced).",
+        "TimelineTab snapshot state persists to chrome.storage.session (survives tab switch + panel reload, NOT page reload).",
+        "A pure persistence helper (read/write session) is unit-tested with a DI'd storage; a test proves round-trip + that a missing entry yields the empty default.",
+        "npx tsc --noEmit exits 0 and the suite passes."
+      ]
+    },
+    {
+      "id": "US-S3-5",
+      "title": "M-D.1 — R2 unified fiber traversal (HIGH RISK — monolith rewrite, last)",
+      "priority": 5,
+      "passes": true,
+      "acceptanceCriteria": [
+        "AUTONOMOUS (done+verified): src/inject/core/fiber-traversal.ts exports walkFiber(root, visitors[], opts) with FiberVisitor {enter,exit}, per-visitor {skipSubtree}, per-visitor try/catch isolation, and deadline-yield + startAt resume. fiber-traversal.test.ts 5/5. tsc 0, build 0.",
+        "HUMAN GATE (environment): migrating the 3 legacy monolith walkers (snapshot capture, scan walker, Redux store finder) onto walkFiber and DELETING their bodies requires live-React regression (their behavior is not sandbox-verifiable — no live React tree; detector tests use hand-built fibers). Not blind-deleted here; migration + deletion is done on a real app by the maintainer, one walker at a time under regression."
+      ]
+    }
+  ]
+}

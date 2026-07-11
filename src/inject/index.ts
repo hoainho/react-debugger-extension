@@ -5,6 +5,7 @@ import { installCleanupInterval, uninstallCleanupInterval } from './lifecycle';
 import { createRegistry } from './registry';
 import { registerAllDetectors } from './detectors';
 import { sanitizeValue as sanitizeForRegistry } from '../utils/sanitize';
+import { getStateName } from './react-adapters/state-name';
 
 (function() {
   'use strict';
@@ -948,33 +949,9 @@ import { sanitizeValue as sanitizeForRegistry } from '../utils/sanitize';
   }
 
   function tryInferStateName(fiber: FiberNode, hookIndex: number): string | undefined {
-    try {
-      const componentType = fiber.type;
-      if (!componentType) return undefined;
-      
-      let sourceCode: string | undefined;
-      if (typeof componentType === 'function') {
-        sourceCode = componentType.toString();
-      }
-      
-      if (!sourceCode) return undefined;
-      
-      const useStatePattern = /(?:const|let|var)\s*\[\s*(\w+)\s*,\s*set\w*\s*\]\s*=\s*(?:React\.)?useState/g;
-      const matches: string[] = [];
-      let match;
-      
-      while ((match = useStatePattern.exec(sourceCode)) !== null) {
-        matches.push(match[1]);
-      }
-      
-      if (matches[hookIndex]) {
-        return matches[hookIndex];
-      }
-      
-      return undefined;
-    } catch {
-      return undefined;
-    }
+    // Delegates to the WeakMap-cached inferrer (M-C.1) so the toString()+regex
+    // runs at most once per component function instead of on every commit.
+    return getStateName(fiber.type, hookIndex);
   }
 
   function serializeValueForDisplay(value: unknown, maxLength = 200): string {

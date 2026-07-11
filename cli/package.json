@@ -37,7 +37,10 @@
   },
   "dependencies": {
     "@clack/prompts": "^0.9.1",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "decompress": "^4.2.1",
     "picocolors": "^1.1.1",
-    "decompress": "^4.2.1"
+    "ws": "^8.21.0",
+    "zod": "^4.4.3"
   }
 }

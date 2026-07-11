@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect, type CSSProperties } from 'react';
 import type { TimelineEvent, TimelineEventType, RenderEventPayload, StateChangeEventPayload, EffectEventPayload, ErrorEventPayload, MemoryEventPayload, CorrelationResult, ContextChangeEventPayload } from '@/types';
 import { CORRELATION_FEEDBACK_MS, SNAPSHOT_CREATE_FEEDBACK_MS } from '../constants';
 
@@ -529,7 +529,7 @@ export function TimelineTab({ events, tabId, onClear }: TimelineTabProps) {
                 key={type}
                 className={`filter-toggle ${filters[type] ? 'active' : ''}`}
                 onClick={() => toggleFilter(type)}
-                style={{ borderColor: filters[type] ? config.color : 'transparent' }}
+                style={{ '--chip-accent': config.color } as CSSProperties}
               >
                 <span className={`filter-icon ${config.iconClass}`} />
                 <span className="filter-label">{config.label}</span>

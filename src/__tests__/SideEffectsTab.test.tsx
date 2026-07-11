@@ -66,7 +66,7 @@ describe('SideEffectsTab', () => {
   describe('Rendering', () => {
     it('renders tab header correctly', () => {
       render(<SideEffectsTab issues={[]} />);
-      expect(screen.getByText('🔄 Side Effects Analysis')).toBeInTheDocument();
+      expect(screen.getByText('Side Effects Analysis')).toBeInTheDocument();
     });
 
     it('displays empty state when no issues', () => {
@@ -84,22 +84,22 @@ describe('SideEffectsTab', () => {
   describe('Issue Sections', () => {
     it('shows missing cleanup section', () => {
       render(<SideEffectsTab issues={mockSideEffectIssues} />);
-      expect(screen.getByText('⚠️ Missing Cleanup (1)')).toBeInTheDocument();
+      expect(screen.getByText('Missing Cleanup (1)')).toBeInTheDocument();
     });
 
     it('shows dependency issues section', () => {
       render(<SideEffectsTab issues={mockSideEffectIssues} />);
-      expect(screen.getByText('📋 Dependency Issues (1)')).toBeInTheDocument();
+      expect(screen.getByText('Dependency Issues (1)')).toBeInTheDocument();
     });
 
     it('shows infinite loop risk section', () => {
       render(<SideEffectsTab issues={mockSideEffectIssues} />);
-      expect(screen.getByText('🔴 Infinite Loop Risk (1)')).toBeInTheDocument();
+      expect(screen.getByText('Infinite Loop Risk (1)')).toBeInTheDocument();
     });
 
     it('shows stale closures section', () => {
       render(<SideEffectsTab issues={mockSideEffectIssues} />);
-      expect(screen.getByText('🔒 Stale Closures (1)')).toBeInTheDocument();
+      expect(screen.getByText('Stale Closures (1)')).toBeInTheDocument();
     });
   });
 
@@ -136,7 +136,7 @@ describe('SideEffectsTab', () => {
       const issueHeader = screen.getByRole('button', { name: /▶/ });
       fireEvent.click(issueHeader);
       
-      expect(screen.getByText('🔍 Closure Timeline:')).toBeInTheDocument();
+      expect(screen.getByText('Closure Timeline:')).toBeInTheDocument();
     });
 
     it('shows render numbers', () => {
@@ -182,7 +182,7 @@ describe('SideEffectsTab', () => {
   describe('Best Practices Section', () => {
     it('displays best practices', () => {
       render(<SideEffectsTab issues={[]} />);
-      expect(screen.getByText('💡 Best Practices')).toBeInTheDocument();
+      expect(screen.getByText('Best Practices')).toBeInTheDocument();
     });
 
     it('shows specific tips', () => {

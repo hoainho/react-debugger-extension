@@ -12,7 +12,13 @@ export type IssueType =
   | 'SLOW_RENDER'
   | 'MEMORY_GROWTH'
   | 'POTENTIAL_MEMORY_LEAK'
-  | 'UNSTABLE_LIST_KEY';
+  | 'UNSTABLE_LIST_KEY'
+  | 'HYDRATION_MISMATCH'
+  | 'CONTEXT_CASCADE'
+  | 'STALE_CLOSURE_ASYNC'
+  | 'SUSPENSE_WATERFALL'
+  | 'INLINE_HANDLER_COST'
+  | 'REF_MUTATION_DURING_RENDER';
 
 export interface IssueLocation {
   componentName: string;

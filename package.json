@@ -1,7 +1,7 @@
 {
   "name": "react-debugger-extension",
-  "version": "2.0.3",
-  "description": "Chrome DevTools panel for React debugging: Timeline, Performance, Memory, Side Effects, Redux, CLS, AI analysis.",
+  "version": "3.0.0",
+  "description": "React debugging in Chrome DevTools — a 5-view panel (Dashboard, Profiler, State, Effects, Settings) with render/memory profiling, issue detectors, a Redux inspector, AI analysis, and an MCP server for coding agents.",
   "author": "NhoNH",
   "license": "MIT",
   "type": "module",
@@ -41,9 +41,13 @@
     "fixture:basic:dev": "npm --prefix test/fixtures/basic run dev",
     "typecheck": "tsc --noEmit",
     "typecheck:node": "tsc -p tsconfig.node.json --noEmit",
-    "bench": "vitest bench --run"
+    "bench": "vitest bench --run",
+    "test:e2e": "playwright test",
+    "test:visual": "playwright test -c playwright-visual.config.ts"
   },
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@playwright/test": "^1.61.1",
     "@resvg/resvg-js": "^2.6.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -51,6 +55,7 @@
     "@types/jsdom": "^27.0.0",
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^4.2.1",
     "@vitest/coverage-v8": "^4.0.18",
     "jsdom": "^28.0.0",
@@ -58,7 +63,8 @@
     "typescript": "^5.3.3",
     "vite": "^5.0.12",
     "vitest": "^4.0.18",
-    "wrangler": "^4.67.0"
+    "wrangler": "^4.67.0",
+    "ws": "^8.21.0"
   },
   "dependencies": {
     "opencode-antigravity-auth": "^1.4.3",

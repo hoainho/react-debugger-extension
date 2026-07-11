@@ -1,47 +1,5 @@
-:root {
-  /* Base palette — blue-tinted dark */
-  --bg-primary: #0d1117;
-  --bg-secondary: #161b22;
-  --bg-tertiary: #1c2128;
-  --bg-hover: #2d333b;
-  --bg-card: #161b22;
-  --bg-inset: #0d1117;
-
-  /* Text hierarchy */
-  --text-primary: #e6edf3;
-  --text-secondary: #8b949e;
-  --text-muted: #484f58;
-
-  /* Borders & dividers */
-  --border-color: #30363d;
-  --border-subtle: #21262d;
-
-  /* Accent colors — vibrant */
-  --accent-blue: #58a6ff;
-  --accent-green: #3fb950;
-  --accent-yellow: #d29922;
-  --accent-red: #f85149;
-  --accent-purple: #bc8cff;
-  --accent-cyan: #39d2c0;
-
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 3px 6px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
-  --shadow-glow-blue: 0 0 12px rgba(88, 166, 255, 0.15);
-
-  /* Radii */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-
-  /* Transitions */
-  --transition-fast: 0.12s ease;
-  --transition-normal: 0.2s ease;
-
-  /* Typography */
-  --font-mono: 'SF Mono', 'Cascadia Code', 'Consolas', 'Monaco', monospace;
-}
+/* Design tokens extracted to a single source (S4). Must precede all rules. */
+@import './tokens.css';
 
 * {
   box-sizing: border-box;
@@ -2003,38 +1961,6 @@ button:focus:not(:focus-visible),
   color: var(--text-secondary);
 }
 
-.memory-chart {
-  display: flex;
-  gap: 8px;
-  height: 150px;
-  padding: 12px;
-  background: var(--bg-secondary);
-  border-radius: 8px;
-}
-
-.chart-y-axis {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  font-size: 10px;
-  color: var(--text-muted);
-  min-width: 50px;
-  text-align: right;
-  padding-right: 8px;
-}
-
-.chart-area {
-  flex: 1;
-  background: var(--bg-tertiary);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.chart-area svg {
-  width: 100%;
-  height: 100%;
-}
-
 .chart-legend {
   display: flex;
   gap: 16px;
@@ -2113,27 +2039,36 @@ button:focus:not(:focus-visible),
   flex-wrap: wrap;
 }
 
+/* S4.5 V4: quiet, category-tinted chips (was a loud 2px solid-color box). The
+   per-category hue arrives via the inline --chip-accent custom property. */
 .filter-toggle {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  background: var(--bg-secondary);
-  border: 2px solid transparent;
-  border-radius: 4px;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: 11px;
-  color: var(--text-secondary);
-  transition: all 0.2s;
+  color: var(--text-muted);
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
 }
 
 .filter-toggle:hover {
-  background: var(--bg-hover);
+  color: var(--text-secondary);
+  border-color: var(--border-color);
 }
 
 .filter-toggle.active {
   color: var(--text-primary);
-  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+  background: color-mix(in srgb, var(--chip-accent) 10%, var(--bg-tertiary));
+}
+
+/* Inactive chips desaturate their category dot so the row reads calm. */
+.filter-toggle:not(.active) .filter-icon {
+  opacity: 0.45;
 }
 
 .filter-icon {
@@ -3930,6 +3865,8 @@ button:focus:not(:focus-visible),
   margin: 4px 0 0;
   font-size: 13px;
   color: #555;
+}
+
 /* ─── Settings Tab ─────────────────────────────────────────────────────────── */
 
 .settings-tab {
@@ -4232,3 +4169,102 @@ button:focus:not(:focus-visible),
   font-size: 12px;
   margin-top: 4px;
 }
+
+/* ─── S4 redesign: 5-view layout toggle + sub-tab strip ─────────────────────── */
+.layout-toggle {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  padding: 3px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.layout-toggle:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.sub-tab-nav {
+  background: var(--bg-inset);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.sub-tab-nav .tab-button {
+  font-size: 11px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+/* ─── S4.5 V1: DevTools-native shell polish ─────────────────────────────────── */
+.panel-header { position: sticky; top: 0; z-index: 20; }
+
+/* 5-view top nav: clear active bar + hover, dense/flat */
+.view-nav { gap: 2px; }
+.view-nav .tab-button {
+  position: relative;
+  padding: 8px 14px;
+  color: var(--text-secondary);
+  border-bottom: 2px solid transparent;
+}
+.view-nav .tab-button:hover { color: var(--text-primary); background: var(--bg-hover); }
+.view-nav .tab-button.active {
+  color: var(--accent-blue);
+  border-bottom-color: var(--accent-blue);
+  background: transparent;
+}
+
+/* Sub-tab strip as a segmented control */
+.sub-tab-nav {
+  display: inline-flex;
+  gap: 2px;
+  margin: var(--space-2) var(--space-3) 0;
+  padding: 2px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  width: fit-content;
+}
+.sub-tab-nav .tab-button {
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.sub-tab-nav .tab-button:hover { color: var(--text-primary); }
+.sub-tab-nav .tab-button.active {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Content rhythm + aligned numerics */
+.tab-content { padding: var(--space-4); }
+.tab-content :where(.metric-value, .cls-value, .tab-badge, td) { font-variant-numeric: tabular-nums; }
+
+/* ─── S4.5 V5: motion + a11y + WCAG ─────────────────────────────────────────── */
+/* View/section switch: a subtle rise+fade (main is keyed on activeTab so it replays). */
+@keyframes rdbgViewIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.tab-content { animation: rdbgViewIn var(--transition-normal); }
+/* Issue card body reveals with the same easing on expand. */
+.issue-details { animation: rdbgViewIn var(--transition-fast); }
+
+/* Links get the same visible keyboard-focus treatment as buttons. */
+a:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Global reduced-motion catch-all — honor the OS preference everywhere. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* S4.5 V4: chart legend caption (Memory Timeline) */
+.chart-legend .legend-caption { margin-left: auto; color: var(--text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
