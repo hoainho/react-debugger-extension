@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-07-11
+
 ### Added
 
 - **UI redesign — DevTools-native visual pass (S4.5)**: the 9 legacy tabs consolidate into a 5-view shell (Dashboard / Profiler / State / Effects / Settings) with an active-underline nav + per-view count badges, segmented sub-tab strips, and a sticky header. New **Dashboard** landing view (severity KPI stat-tiles, React version/mode + Redux chip, render-pressure sparkline, top-offenders, page-load vitals). Issue cards + design tokens (`tokens.css`) + severity ramp unified across views. The classic 9-tab layout stays one toggle away.

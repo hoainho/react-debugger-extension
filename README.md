@@ -9,7 +9,7 @@
 
 > **The only Chrome extension that unifies React Timeline + Performance + Memory + Side Effects + Redux + CLS + AI analysis into a single DevTools tab — zero install in your app.**
 
-**Extension version:** 2.0.3 · **CLI version:** 2.1.2 · **Author:** [NhoNH](https://github.com/hoainho) · **License:** MIT
+**Extension version:** 3.0.0 · **CLI version:** 2.1.2 · **Author:** [NhoNH](https://github.com/hoainho) · **License:** MIT
 
 ## ⚡ Try it in 30 seconds
 
@@ -81,16 +81,18 @@ The **defensible triple-lock** no competitor combines: **CLS overlay + `useEffec
 
 **Bold rows** = features no other tool combines into one panel.
 
-### Recent release: v2.0.3 — Zero-Lag Performance
+### Recent release: v3.0.0 — DevTools-native redesign + 8 new detectors
 
-The current release shipped a major perf overhaul aligned with [bippy](https://github.com/AidenBai/bippy) (react-scan's render-detection engine):
+The biggest release since launch — a full UI redesign, eight new issue detectors, an MCP server, and BYOK AI:
 
-- **Eliminated host-page jank.** `webNavigation.onCommitted` filters by `transitionType` so SPA `pushState` no longer floods `ENABLE_DEBUGGER`. Heavy init deferred to idle callback.
-- **Hybrid render snapshot architecture.** Lightweight fiber walk in `onCommitFiberRoot` captures render info within a 2ms budget, then deferred analysis uses the snapshot instead of stale `fiber.alternate`.
-- **Accurate render detection.** Rewrote `didFiberRender` to use React's `PerformedWork` flag (0x01) as the primary signal, eliminating false positives from `Update`/`Placement`/`Passive` flags.
-- **Synchronous scan overlay** at commit time — immediate visual feedback with intensity colors (green ×1 → red ×10+).
+- **DevTools-native UI redesign.** The 9 legacy tabs consolidate into a focused 5-view shell — **Dashboard / Profiler / State / Effects / Settings** — with an active-underline nav, per-view count badges, segmented sub-tabs, and a sticky header. The classic 9-tab layout stays one toggle away.
+- **New Dashboard.** A first-screen overview: severity KPI stat-tiles, React version/mode + Redux chip, a render-pressure sparkline, top-offender components, and page-load vitals.
+- **Charts.** A dependency-free `ChartCanvas` (area / line / bars + faint grid + emphasized endpoint) powers the Memory heap-over-time timeline and the Performance render-distribution.
+- **8 new detectors** on a pluggable registry (per-detector Settings toggles + confidence badges): 4 hero — **unstable list keys**, **hydration mismatch**, **context cascade**, **suspense waterfall** — plus **stale-closure-async**, **inline-handler-cost**, and **ref-mutation-during-render**.
+- **MCP server** for LLM coding agents (stdio bridge + token/Origin pairing) and **BYOK AI providers** (HostedProxy / OpenAI / Anthropic / none), with opt-in anonymous telemetry (default **off**).
+- **Accessibility & quality.** WCAG 2.1 AA contrast, `prefers-reduced-motion`, focus-visible rings, and a headless Playwright visual-regression lane.
 
-See [CHANGELOG.md](./CHANGELOG.md) for the full history.
+See [CHANGELOG.md](./CHANGELOG.md) for the full history (including the v2.0.3 zero-lag performance work this builds on).
 
 ---
 

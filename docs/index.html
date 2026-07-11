@@ -3,21 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="React Debugger - Advanced debugging and performance optimization tool for React applications. Detect issues, monitor performance, and debug Redux state.">
-  <meta name="keywords" content="React, Debugger, DevTools, Chrome Extension, Performance, Redux, React Developer Tools">
+  <meta name="description" content="React Debugger 3.0.0 - A DevTools-native 5-view panel (Dashboard, Profiler, State, Effects, Settings) with 8 new detectors, memory &amp; performance charts, an MCP server for AI coding agents, and BYOK AI analysis for React apps.">
+  <meta name="keywords" content="React, Debugger, DevTools, Chrome Extension, Performance, Redux, React Developer Tools, MCP, AI Agents">
   <meta name="author" content="NhoNH">
-  <meta property="og:title" content="React Debugger - Chrome Extension">
-  <meta property="og:description" content="Advanced debugging and performance optimization tool for React applications">
+  <meta property="og:title" content="React Debugger 3.0.0 - Chrome Extension">
+  <meta property="og:description" content="DevTools-native 5-view panel, 8 new detectors, memory &amp; performance charts, an MCP server for AI agents, and BYOK AI analysis for React apps.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://hoainho.github.io/react-debugger-extension/">
   <meta property="og:image" content="https://hoainho.github.io/react-debugger-extension/images/preview.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="React Debugger - Chrome Extension">
-  <meta name="twitter:description" content="Advanced debugging and performance optimization tool for React applications">
+  <meta name="twitter:title" content="React Debugger 3.0.0 - Chrome Extension">
+  <meta name="twitter:description" content="DevTools-native 5-view panel, 8 new detectors, memory &amp; performance charts, an MCP server for AI agents, and BYOK AI analysis for React apps.">
   <meta name="twitter:image" content="https://hoainho.github.io/react-debugger-extension/images/preview.png">
-  <title>React Debugger - Advanced React DevTools Extension</title>
+  <title>React Debugger 3.0.0 - Advanced React DevTools Extension</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -658,8 +658,8 @@
     <div class="container">
       <div class="hero-content">
         <div class="hero-badge">
-          <span>v2.0.2</span>
-          Now with improved stability
+          <span>v3.0.0</span>
+          DevTools-native redesign is here
         </div>
         <h1>Debug React Apps<br><span class="highlight">Like a Pro</span></h1>
         <p>Advanced debugging and performance optimization tool for React applications. Detect issues, monitor performance, and debug Redux state—all in one extension.</p>
@@ -683,39 +683,39 @@
       </div>
       <div class="features-grid">
         <div class="feature-card">
-          <div class="feature-icon blue">UI</div>
-          <h3>UI &amp; State Issues</h3>
-          <p>Detect direct state mutations, missing keys, and index-as-key anti-patterns automatically.</p>
+          <div class="feature-icon blue">DASH</div>
+          <h3>Dashboard <span class="badge-new">NEW</span></h3>
+          <p>Severity KPIs, a render-pressure sparkline, top offenders at a glance, and page-load vitals &mdash; the first thing you see when you open the panel.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon purple">PERF</div>
-          <h3>Performance Analysis</h3>
-          <p>Track component re-renders, identify excessive renders, and find performance bottlenecks.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon cyan">FX</div>
-          <h3>Side Effects</h3>
-          <p>Find missing cleanup functions and dependency issues in useEffect hooks.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon green">CLS</div>
-          <h3>CLS Monitor</h3>
-          <p>Track Cumulative Layout Shift in real-time and identify layout shift sources.</p>
+          <h3>Profiler &amp; Charts <span class="badge-new">NEW</span></h3>
+          <p>Memory heap-over-time and render-distribution charts, drawn with a custom ChartCanvas &mdash; no chart library dependencies.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon orange">RDX</div>
-          <h3>Redux DevTools</h3>
-          <p>View state tree, dispatch actions manually, and debug Redux state changes.</p>
+          <h3>State</h3>
+          <p>View the Redux state tree, dispatch actions manually, and debug state changes as they happen.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon red">MEM</div>
-          <h3>Memory Monitor</h3>
-          <p>Monitor memory usage, detect leaks, and track heap size over time.</p>
+          <div class="feature-icon cyan">FX</div>
+          <h3>Effects</h3>
+          <p>Find missing cleanup functions, dependency issues, and stale-closure-async bugs in your useEffect hooks.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon green">8X</div>
+          <h3>8 New Detectors <span class="badge-new">NEW</span></h3>
+          <p>Catch unstable list keys, hydration mismatches, context cascades, and suspense waterfalls &mdash; plus stale-closure-async, inline-handler-cost, and ref-mutation-during-render.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon red">SET</div>
+          <h3>Settings <span class="badge-new">NEW</span></h3>
+          <p>Bring your own API key (BYOK) for any AI provider, connect the MCP server for LLM coding agents, and control anonymous telemetry &mdash; opt-in and off by default.</p>
         </div>
         <div class="feature-card featured">
           <div class="feature-icon ai">AI</div>
-          <h3>AI Analysis <span class="badge-new">NEW</span></h3>
-          <p>AI-powered code analysis detects security vulnerabilities, performance bottlenecks, and crash risks. 3 free analyses per session &mdash; unlimited with a subscription key.</p>
+          <h3>AI Analysis</h3>
+          <p>AI-powered code analysis detects security vulnerabilities, performance bottlenecks, and crash risks. 3 free analyses per session &mdash; unlimited with a subscription key or your own BYOK provider.</p>
           <div class="model-tags">
             <span class="model-tag">Gemini 2.5 Flash Lite</span>
             <span class="model-tag">Gemini 2.5 Flash</span>
@@ -725,6 +725,7 @@
             <span class="model-tag">GPT-5.1 Codex Mini</span>
           </div>
       </div>
+    </div>
     </div>
   </section>
 
@@ -768,13 +769,14 @@
       <div class="demo-content">
         <div class="demo-text">
           <h2>See It in Action</h2>
-          <p>Open DevTools on any React application and find the "React Debugger" tab. Start debugging immediately.</p>
+          <p>Open DevTools on any React application and find the "React Debugger" tab &mdash; now a focused 5-view panel: Dashboard, Profiler, State, Effects, and Settings.</p>
           <ul class="demo-features">
             <li>Works with React 16+ and React 18 concurrent features</li>
             <li>Supports Next.js, Create React App, Vite, and more</li>
             <li>Zero configuration required</li>
             <li>Minimal performance overhead</li>
             <li>Dark theme optimized for DevTools</li>
+            <li>WCAG 2.1 AA accessible, with reduced-motion and full keyboard navigation</li>
           </ul>
         </div>
         <div class="demo-visual">

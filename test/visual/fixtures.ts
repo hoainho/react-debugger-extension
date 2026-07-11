@@ -77,7 +77,7 @@ export async function loadPanel(page: Page): Promise<void> {
     window.chrome = {
       runtime: {
         id: 'visual',
-        getManifest: () => ({ version: '2.0.3' }),
+        getManifest: () => ({ version: '3.0.0' }),
         sendMessage: (m: { type: string }) =>
           Promise.resolve(
             m.type === 'GET_STATE'

@@ -11,7 +11,7 @@ const local: Record<string, unknown> = {};
 vi.stubGlobal('chrome', {
   runtime: {
     id: 'testextid',
-    getManifest: () => ({ version: '2.0.3' }),
+    getManifest: () => ({ version: '3.0.0' }),
     sendMessage: vi.fn(async (msg: { type: string }) => {
       if (msg.type === 'GET_STATE') {
         return { success: true, state: { reactDetected: true, reactVersion: '19.2.0', reduxDetected: true, issues: [], components: [], renders: {}, clsReport: null, reduxState: null, reduxActions: [], memoryReport: null, pageLoadMetrics: null, timelineEvents: [] } };
