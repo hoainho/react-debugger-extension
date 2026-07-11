@@ -11,7 +11,7 @@ async function loadInstaller() {
   return import("../src/install.js");
 }
 
-const VERSION = "2.1.1";
+const VERSION = "2.1.3";
 const EXTENSION_NAME = "React Debugger";
 const DEFAULT_DEST = "./react-debugger";
 

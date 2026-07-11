@@ -1,6 +1,6 @@
 {
   "name": "@nhonh/react-debugger",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "description": "Advanced debugging & performance optimization tool for ReactJS applications - Chrome Extension",
   "author": "NhoNH",
   "license": "MIT",
