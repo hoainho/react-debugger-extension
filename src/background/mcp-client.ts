@@ -10,7 +10,7 @@
  * The scheduling primitives (`backoffDelay`, `startKeepalive`) are pure/DI'd so
  * they are unit-testable without a live socket.
  */
-import { readPairing as readPairingFrom, type StoredPairing } from '../mcp/pairing';
+import { readPairing as readPairingFrom, PAIRING_STORAGE_KEY, type StoredPairing } from '../mcp/pairing';
 
 export const MCP_KEEPALIVE_MS = 20_000;
 export const BACKOFF_BASE_MS = 1_000;
@@ -60,29 +60,45 @@ export async function readPairing(): Promise<StoredPairing | null> {
 export function connectMcp(): void {
   let attempt = 0;
   let stopKeepalive: (() => void) | null = null;
+  let socket: WebSocket | null = null;
 
   const open = async (): Promise<void> => {
+    // Already connecting or connected — don't stack sockets (the onChanged
+    // listener and the backoff timer can both call open()).
+    if (socket && (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN)) return;
+
     const pairing = await readPairing();
-    if (!pairing) return; // not paired yet — the options page pairs first
+    if (!pairing) return; // not paired yet — the onChanged listener retries when pairing is saved
 
-    const socket = new WebSocket(`ws://127.0.0.1:${pairing.port}`);
+    const ws = new WebSocket(`ws://127.0.0.1:${pairing.port}`);
+    socket = ws;
 
-    socket.onopen = () => {
+    ws.onopen = () => {
       attempt = 0;
-      socket.send(pairing.token); // token in the first frame
-      stopKeepalive = startKeepalive(socket, {
+      ws.send(pairing.token); // token in the first frame
+      stopKeepalive = startKeepalive(ws, {
         setInterval: (fn, ms) => self.setInterval(fn, ms),
         clearInterval: (id) => self.clearInterval(id),
       });
     };
 
-    socket.onclose = () => {
+    ws.onclose = () => {
       stopKeepalive?.();
       stopKeepalive = null;
+      if (socket === ws) socket = null;
       const delay = backoffDelay(attempt++);
       self.setTimeout(() => void open(), delay);
     };
   };
+
+  // If the SW starts unpaired, connectMcp otherwise exits and never retries.
+  // Connect as soon as the options page writes the pairing record to
+  // storage.session — no extension restart needed.
+  if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area === 'session' && changes[PAIRING_STORAGE_KEY]?.newValue) void open();
+    });
+  }
 
   void open();
 }

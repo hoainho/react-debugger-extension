@@ -16,3 +16,11 @@ export const refMutationInEffect = `function Comp(){
   useEffect(() => { ref.current = Date.now(); }, []);
   return null;
 }`;
+
+// NEGATIVE: mutation inside a DEPS-LESS effect (runs every commit) → still legit,
+// must not be flagged (regression guard for the optional-deps EFFECT_RE fix).
+export const refMutationInEffectNoDeps = `function Comp(){
+  const ref = useRef(0);
+  useEffect(() => { ref.current = Date.now(); });
+  return null;
+}`;

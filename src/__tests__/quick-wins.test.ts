@@ -15,7 +15,7 @@ import { getAdapter } from '../inject/react-adapters';
 import type { FiberNode, FiberRoot } from '../inject/react-adapters/types';
 import type { Issue } from '../types';
 import type { Detector } from '../types/registry';
-import { refMutationInRender, refMutationInEffect } from '../../test/fixtures/quick-wins/sources';
+import { refMutationInRender, refMutationInEffect, refMutationInEffectNoDeps } from '../../test/fixtures/quick-wins/sources';
 
 const T = getAdapter().FIBER_TAGS;
 
@@ -72,6 +72,8 @@ describe('ref-mutation-during-render', () => {
   it('analyzer flags render-body ref mutation but not effect-body mutation', () => {
     expect(analyzeRefMutationInRender(refMutationInRender)).toBe(true);
     expect(analyzeRefMutationInRender(refMutationInEffect)).toBe(false);
+    // deps-less effect body must also be treated as a legit mutation site.
+    expect(analyzeRefMutationInRender(refMutationInEffectNoDeps)).toBe(false);
   });
 
   let detector: Detector<Issue>;

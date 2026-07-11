@@ -14,8 +14,10 @@ import type { ReactVersionAdapter, FiberRoot } from '../react-adapters/types';
 import { walkFiberImpl } from '../react-adapters/utils';
 import { getAdapter } from '../react-adapters';
 
-// Strip useEffect / useLayoutEffect (cb + deps array) bodies — legit ref-mutation site.
-const EFFECT_RE = /use(?:Layout)?Effect\s*\(([\s\S]*?)\}\s*,\s*\[[^\]]*\]\s*\)/g;
+// Strip useEffect / useLayoutEffect bodies — legit ref-mutation site. The deps
+// array is optional so a deps-less effect (`useEffect(() => {...})`, runs every
+// commit) is stripped too, avoiding a false positive on ref mutations inside it.
+const EFFECT_RE = /use(?:Layout)?Effect\s*\(([\s\S]*?)\}(?:\s*,\s*\[[^\]]*\])?\s*\)/g;
 // A `x.current = …` assignment (not `==`).
 const REF_ASSIGN_RE = /\b\w+\.current\s*=(?!=)/;
 

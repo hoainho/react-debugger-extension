@@ -68,7 +68,7 @@ const LEGACY_PORT_KEY = "mcp_pairing_port_v1";
  * legacy keys are removed from BOTH areas so the token never lingers in local.
  */
 export async function migrateLegacyStorage() {
-  if (typeof chrome === "undefined" || !chrome.storage) return;
+  if (typeof chrome === "undefined" || !chrome.storage || !chrome.storage.session) return;
   const [local, session] = await Promise.all([
     chrome.storage.local.get([LEGACY_TOKEN_KEY, LEGACY_PORT_KEY]),
     chrome.storage.session.get([LEGACY_TOKEN_KEY, LEGACY_PORT_KEY]),

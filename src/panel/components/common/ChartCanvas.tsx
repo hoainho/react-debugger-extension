@@ -95,11 +95,15 @@ export function ChartCanvas({
 
     if (n === 1) {
       const y = yPctFor(values[0]);
+      // A single bar reads best centered; area/line need two points to draw a span.
       return {
-        points: [
-          { xPct: 0, yPct: y, value: values[0] },
-          { xPct: 100, yPct: y, value: values[0] },
-        ],
+        points:
+          variant === 'bars'
+            ? [{ xPct: 50, yPct: y, value: values[0] }]
+            : [
+                { xPct: 0, yPct: y, value: values[0] },
+                { xPct: 100, yPct: y, value: values[0] },
+              ],
         flat,
       };
     }
@@ -110,7 +114,7 @@ export function ChartCanvas({
       value: v,
     }));
     return { points, flat };
-  }, [values, yMax]);
+  }, [values, yMax, variant]);
 
   const points = plotted.points;
   const isEmpty = points.length === 0;
