@@ -1,9 +1,15 @@
 #!/usr/bin/env node
 
 import pc from "picocolors";
-import { downloadAndExtract } from "../src/install.js";
 import path from "node:path";
 import fs from "node:fs";
+
+// install.js pulls in `decompress` (a cli-only dep). Load it lazily so the
+// `mcp` subcommand and `--help` don't require the installer's deps to be
+// present — that eager import crashed the CLI where only root deps exist (CI).
+async function loadInstaller() {
+  return import("../src/install.js");
+}
 
 const VERSION = "2.1.1";
 const EXTENSION_NAME = "React Debugger";
@@ -108,6 +114,7 @@ async function runInteractive(args) {
   s.start("Downloading React Debugger extension...");
 
   try {
+    const { downloadAndExtract } = await loadInstaller();
     await downloadAndExtract(fullPath);
     s.stop(pc.green("Download complete!"));
     printSuccess(fullPath, false);
@@ -148,6 +155,7 @@ async function runNonInteractive(args) {
   console.error("Downloading React Debugger extension...");
 
   try {
+    const { downloadAndExtract } = await loadInstaller();
     await downloadAndExtract(fullPath);
     console.error(pc.green("Download complete!"));
     printSuccess(fullPath, true);
