@@ -1,5 +1,5 @@
 import type { ReduxAction } from '@/types';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { UI_FEEDBACK_SHORT_MS, UI_FEEDBACK_MEDIUM_MS } from '../constants';
 
 interface ReduxTabProps {
@@ -31,6 +31,19 @@ export function ReduxTab({ detected, state, actions, tabId, isSearching }: Redux
   const [isClearing, setIsClearing] = useState(false);
   const [dispatchError, setDispatchError] = useState<string | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
+
+  const filteredRootKeys = useMemo(() => {
+    if (!state || typeof state !== 'object' || Array.isArray(state)) return [];
+    const obj = state as Record<string, unknown>;
+    if (obj.__type === 'Date' || obj.__type === 'Map' || obj.__type === 'Set') return [];
+    const keys = Object.keys(obj);
+    if (!searchQuery) return keys;
+    const query = searchQuery.toLowerCase();
+    return keys.filter(key =>
+      key.toLowerCase().includes(query) ||
+      JSON.stringify(obj[key])?.toLowerCase().includes(query)
+    );
+  }, [state, searchQuery]);
 
   const refreshState = useCallback(() => {
     setIsRefreshing(true);
@@ -303,7 +316,8 @@ if (process.env.NODE_ENV === 'development') {
   const renderValue = (value: unknown, path: string, depth: number = 0): React.ReactNode => {
     const pathArray = pathToArray(path);
     const isEditing = editingState &&
-      JSON.stringify(editingState.path) === JSON.stringify(pathArray);
+      editingState.path.length === pathArray.length &&
+      editingState.path.every((segment, index) => segment === pathArray[index]);
 
     if (isEditing) {
       return (
@@ -460,12 +474,7 @@ if (process.env.NODE_ENV === 'development') {
       const keys = Object.keys(obj);
       const isExpanded = expandedPaths.has(path);
 
-      const filteredKeys = searchQuery && depth === 0
-        ? keys.filter(key =>
-            key.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            JSON.stringify(obj[key]).toLowerCase().includes(searchQuery.toLowerCase())
-          )
-        : keys;
+      const filteredKeys = depth === 0 ? filteredRootKeys : keys;
 
       return (
         <span className="json-object">
